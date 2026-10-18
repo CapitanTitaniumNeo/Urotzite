@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Супер-Органайзер (Ядро 3.6)</title>
+<style>
+:root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --gold: #f59e0b; --green: #22c55e; --red: #ef4444; --purple: #a855f7; --text: #f8fafc; --muted: #94a3b8; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background: var(--bg); color: var(--text); line-height: 1.6; padding: 14px; }
+header { background: linear-gradient(135deg, #1e3a8a, #0f172a); border: 2px solid var(--accent); border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.45); }
+header h1 { font-size: 1.25rem; color: var(--accent); }
+header p { font-size: 0.84rem; color: var(--muted); }
+.prog-wrap { background: var(--card); border: 1px solid #334155; border-radius: 10px; padding: 9px 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.prog-bar-bg { flex: 1; min-width: 180px; height: 13px; background: #0f172a; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
+.prog-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width 0.3s ease; }
+.voice-bar, .mini-player { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.btn { border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.82rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+.btn-speak { background: var(--gold); color: #000; }
+.btn-restart { background: #3b82f6; color: #fff; }
+.btn-stop { background: var(--red); color: #fff; }
+.btn-mask { background: var(--purple); color: #fff; }
+.btn-file { background: var(--green); color: #000; font-size: 0.9rem; padding: 10px 16px; box-shadow: 0 0 15px rgba(34,197,94,0.4); }
+.btn-arch { background: #334155; color: var(--text); border: 1px solid #475569; padding: 4px 9px; font-size: 0.75rem; margin-left: auto; }
+.btn-wiki { background: #2563eb; color: #fff; width: 100%; justify-content: center; margin-top: 8px; }
+.btn-unlock { background: var(--green); color: #000; width: 100%; justify-content: center; margin-top: 8px; display: none; }
+.speaking-glow { box-shadow: 0 0 20px var(--gold) !important; border-color: var(--gold) !important; }
+.tabs, .subj-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.subj-nav { background: #0b1120; padding: 10px; border-radius: 12px; border: 1px solid #334155; gap: 6px; }
+.tab-btn { flex: 1; min-width: 155px; background: var(--card); color: var(--text); border: 1px solid #334155; padding: 11px; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.84rem; text-align: center; }
+.tab-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); box-shadow: 0 0 14px rgba(56,189,248,0.45); }
+.s-btn { background: var(--card); color: var(--text); border: 1px solid #475569; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.81rem; display: inline-flex; align-items: center; gap: 5px; }
+.s-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+.s-btn.subj-btn-new { border-bottom: 3px solid var(--green); }
+.s-btn.subj-btn-dropped { border-bottom: 3px dashed var(--purple); opacity: 0.88; }
+.tab-content, .subj-pane { display: none; }
+.tab-content.active, .subj-pane.active { display: block; }
+.panel { background: var(--card); border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+.panel h2 { color: var(--accent); font-size: 1.08rem; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+.panel h3 { color: var(--gold); font-size: 0.96rem; margin: 8px 0 6px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem; margin: 2px; }
+.b-red { background: var(--red); color: #fff; } .b-yellow { background: var(--gold); color: #000; } .b-green { background: var(--green); color: #000; } .b-blue { background: var(--accent); color: #000; } .b-purple { background: var(--purple); color: #fff; }
+.hw-box { background: #0f172a; border: 1px solid #475569; border-radius: 10px; padding: 12px; margin: 8px 0; }
+.hw-step { background: #172554; border-left: 4px solid var(--accent); padding: 10px; margin: 6px 0; border-radius: 6px; font-size: 0.88rem; }
+.memo-vault { background: linear-gradient(135deg, #1c1917, #0f172a); border: 2px solid var(--gold); border-radius: 12px; padding: 14px; margin: 12px 0; }
+.memo-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px dashed var(--gold); padding-bottom: 8px; margin-bottom: 10px; }
+.memo-grid, .sched-grid, .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 10px 0; }
+.memo-card { background: #090d16; border: 1px solid #475569; border-top: 4px solid var(--gold); border-radius: 10px; padding: 11px; font-size: 0.87rem; display: flex; flex-direction: column; justify-content: space-between; gap: 7px; transition: 0.2s; }
+.memo-card.mastered { border-color: var(--green) !important; box-shadow: 0 0 10px rgba(34,197,94,0.25); }
+.visual-anchor { background: #1e293b; border: 1px dashed var(--accent); border-radius: 8px; padding: 7px; font-weight: 800; color: #fde047; text-align: center; font-size: 0.86rem; }
+.memo-word { background: rgba(34,197,94,0.2); border-bottom: 2px solid var(--green); color: #86efac; font-weight: 800; padding: 1px 6px; border-radius: 4px; cursor: pointer; display: inline-block; }
+.memo-word.masked { background: #334155; color: transparent; border-bottom: 2px dashed var(--gold); position: relative; min-width: 65px; user-select: none; }
+.memo-word.masked::after { content: "❓"; color: var(--gold); font-size: 0.72rem; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-weight: 900; }
+.memo-link { color: var(--accent); font-size: 0.78rem; font-weight: 700; text-decoration: none; }
+.mastery-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #334155; font-size: 0.8rem; }
+details.archive-drawer { background: #090d16; border: 1px dashed #475569; border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
+details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(--gold); font-size: 0.88rem; }
+.chk-list { list-style: none; }
+.chk-list li { margin: 6px 0; display: flex; align-items: flex-start; gap: 8px; font-size: 0.86rem; background: #0f172a; padding: 8px 10px; border-radius: 8px; border-left: 4px solid var(--accent); flex-wrap: wrap; }
+.chk-list input[type="checkbox"] { margin-top: 4px; transform: scale(1.2); accent-color: var(--green); cursor: pointer; }
+.shkolo-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 8px; }
+.shkolo-table th, .shkolo-table td { border: 1px solid #334155; padding: 7px 9px; text-align: left; }
+.shkolo-table th { background: #1e3a8a; color: var(--accent); }
+.day-card { background: #0f172a; border: 1px solid #334155; border-top: 3px solid var(--accent); border-radius: 10px; padding: 12px; font-size: 0.83rem; }
+.day-card h4 { color: var(--gold); margin-bottom: 6px; border-bottom: 1px dashed #334155; padding-bottom: 4px; }
+.flip-card { perspective: 1000px; min-height: 480px; }
+.flip-inner { position: relative; width: 100%; height: 100%; min-height: 480px; transition: transform 0.6s; transform-style: preserve-3d; }
+.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+.card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border: 2px solid #334155; background: var(--card); overflow-y: auto; }
+.card-front { border-top: 4px solid var(--accent); }
+.card-back { transform: rotateY(180deg); border-top: 4px solid var(--gold); background: #172033; }
+.story-box { background: #0f172a; border-left: 3px solid var(--gold); padding: 9px; border-radius: 8px; font-size: 0.84rem; margin: 6px 0; }
+.algo-box { background: #0b1325; border: 1px dashed var(--accent); border-radius: 8px; padding: 8px; margin: 6px 0; font-size: 0.8rem; }
+.algo-step { margin: 3px 0; }
+.algo-step b { color: var(--gold); }
+select.ans-select { width: 100%; padding: 9px; border-radius: 8px; background: #0f172a; color: var(--text); border: 2px solid var(--accent); margin: 8px 0; font-size: 0.86rem; font-weight: 700; cursor: pointer; }
+.feedback { font-size: 0.84rem; padding: 9px; border-radius: 8px; margin-top: 6px; display: none; line-height: 1.45; }
+.feedback.ok { display: block; background: rgba(34,197,94,0.2); border: 2px solid var(--green); color: #86efac; }
+.feedback.err { display: block; background: rgba(239,68,68,0.2); border: 2px solid var(--red); color: #fca5a5; }
+.feedback.warn { display: block; background: rgba(245,158,11,0.2); border: 2px dashed var(--gold); color: #fde047; }
+.load-banner { background: linear-gradient(135deg, #064e3b, #0f172a); border: 2px dashed var(--green); border-radius: 12px; padding: 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.due-tag { font-size: 0.74rem; color: var(--gold); background: #1e293b; border: 1px solid #475569; padding: 1px 6px; border-radius: 5px; margin-left: 4px; font-weight: 700; }
+
+/* СТИЛОВЕ ЗА ВИЗУАЛНО РАЗГРАНИЧАВАНЕ: АКТУАЛНО (ЗЕЛЕНО) СРЕЩУ ПРЕГОВОР / ОТПАДНАЛ ПРЕДМЕТ (ЛИЛАВО) */
+.tier-badge-new { display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.18); color: #4ade80; border: 1px solid #22c55e; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.3px; }
+.tier-badge-rev { display: inline-flex; align-items: center; gap: 4px; background: rgba(168,85,247,0.18); color: #d8b4fe; border: 1px solid #a855f7; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.3px; }
+.subj-status-tag { display: inline-block; padding: 1px 6px; border-radius: 5px; font-size: 0.68rem; font-weight: 900; }
+.subj-tag-added { background: var(--green); color: #052e16; }
+.subj-tag-dropped { background: var(--purple); color: #fff; }
+
+.memo-card.item-tier-new { border-top: 4px solid var(--green); box-shadow: 0 4px 14px rgba(34,197,94,0.12); }
+.memo-card.item-tier-rev { border-top: 4px solid var(--purple); background: #0d1122; border-color: #3b2854; }
+
+.hw-step.item-tier-new { border-left: 5px solid var(--green); background: #0c1f24; }
+.hw-step.item-tier-rev { border-left: 5px solid var(--purple); background: #161229; }
+
+.chk-list li.item-tier-new { border-left: 4px solid var(--green); }
+.chk-list li.item-tier-rev { border-left: 4px solid var(--purple); background: #111327; }
+
+.flip-card.item-tier-new .card-front { border-top: 5px solid var(--green); }
+.flip-card.item-tier-rev .card-front { border-top: 5px solid var(--purple); background: #181a30; }
+
+.filter-bar { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.filter-btn { background: #0f172a; color: var(--muted); border: 1px solid #475569; padding: 6px 11px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.78rem; transition: 0.2s; }
+.filter-btn.active-all { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+.filter-btn.active-new { background: var(--green); color: #052e16; border-color: var(--green); }
+.filter-btn.active-rev { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+body.filter-mode-new .item-tier-rev { display: none !important; }
+body.filter-mode-rev .item-tier-new { display: none !important; }
+
+.file-Chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; margin: 3px; }
+.file-Chip.chip-new { background: rgba(34,197,94,0.2); border: 1px solid var(--green); color: #86efac; }
+.file-Chip.chip-rev { background: rgba(168,85,247,0.2); border: 1px solid var(--purple); color: #d8b4fe; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 id="header-title">🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 3.6)</h1>
+    <p id="header-subtitle">🔒 100% Лична локална база данни | Заредете вашия .js файл от устройството</p>
+  </div>
+  <div class="voice-bar">
+    <button class="btn btn-speak" id="btn-voice-start" onclick="speakGreeting()">🎙️ Гласов старт</button>
+    <button class="btn btn-mask" id="btn-toggle-masks" onclick="toggleAllMasks()">🙈 Скрий/Покажи думи</button>
+    <button class="btn btn-stop" id="btn-voice-stop" onclick="stopSpeech()">⏹️ Стоп</button>
+  </div>
+</header>
+
+<div class="load-banner" id="quick-file-banner">
+  <div style="flex:1;">
+    <strong style="color:var(--green);" id="banner-title">📂 Лична база данни (.js файл):</strong>
+    <span id="db-status-label" style="font-size:0.84rem; color:var(--text); display:block;">Няма заредена база в браузъра. Натиснете зеления бутон вдясно и изберете вашия .js файл (данните остават само на вашето устройство).</span>
+    <div id="loaded-files-badges" class="no-read" style="margin-top:6px;"></div>
+  </div>
+  <div class="voice-bar">
+    <input type="file" id="file-picker" accept=".js,.json,.txt" multiple style="display:none;" onchange="loadDataFromFile(this)">
+    <button class="btn btn-file" id="btn-pick-file" onclick="document.getElementById('file-picker').click()">➕ Добави .js файлове</button>
+    <button class="btn btn-stop" id="btn-clear-mem" style="display:none;" onclick="resetToDefaultFileDB()">🗑️ Изчисти данните</button>
+  </div>
+</div>
+
+<div class="prog-wrap">
+  <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:220px;">
+    <strong><span class="no-read">📊</span> <span id="lbl-prog-title">Общ напредък:</span> <span id="prog-text" class="no-read" style="color:var(--green)">0%</span></strong>
+    <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill"></div></div>
+  </div>
+  <div class="filter-bar no-read">
+    <span style="font-size:0.78rem; color:var(--muted); font-weight:700;">Филтър:</span>
+    <button class="filter-btn active-all" id="flt-all" onclick="setTierFilter('all')">📚 Всички (Нови + Преговор)</button>
+    <button class="filter-btn" id="flt-new" onclick="setTierFilter('new')">🆕 Само най-новия файл</button>
+    <button class="filter-btn" id="flt-rev" onclick="setTierFilter('rev')">⏪ Само база за преговор</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tab-btn-1" onclick="openTab('tab-1', this)">📱 1. ДНЕВНИК</button>
+  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">📚 2. ПРЕДМЕТИ + СЕЙФ</button>
+  <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">🃏 3. 3D ТРЕНАЖОР</button>
+  <button class="tab-btn" id="tab-btn-4" onclick="openTab('tab-4', this)">📈 4. АНАЛИЗ И ОТЧЕТ</button>
+  <button class="tab-btn" id="tab-btn-5" onclick="openTab('tab-5', this)">📥 5. ОБНОВИ ДАННИ</button>
+</div>
+
+<!-- ТАБ 1 -->
+<div id="tab-1" class="tab-content active">
+  <div class="subj-nav">
+    <button class="s-btn active" id="sub-btn-1" onclick="openPane('tab-1', 'pane-hw', this)">💼 1. Домашни работи</button>
+    <button class="s-btn" id="sub-btn-2" onclick="openPane('tab-1', 'pane-exams', this)">📅 2. Контролни и Класни</button>
+    <button class="s-btn" id="sub-btn-3" onclick="openPane('tab-1', 'pane-topics', this)">📖 3. Взети и Следващи теми</button>
+    <button class="s-btn" id="sub-btn-4" onclick="openPane('tab-1', 'pane-sched', this)">🗓️ 4. Седмично разписание</button>
+  </div>
+
+  <div id="pane-hw" class="subj-pane active">
+    <div class="panel" id="p-shk-hw">
+      <h2><span id="heading-hw">💼 ДОМАШНИ РАБОТИ ПО ХРОНОЛОГИЯ И ПРИОРИТЕТ</span> <span id="pl-p-shk-hw"></span></h2>
+      <ul class="chk-list" id="active-hw-list"></ul>
+      <details class="archive-drawer" open>
+        <summary id="summary-arch">🗄️ АРХИВ И ПРЕГОВОР НА МИНАЛИ ДОМАШНИ</summary>
+        <ul class="chk-list" id="archive-list"></ul>
+      </details>
+    </div>
+  </div>
+
+  <div id="pane-exams" class="subj-pane">
+    <div class="panel">
+      <h2 id="heading-exams">📅 ГРАФИК НА КОНТРОЛНИ И КЛАСНИ РАБОТИ</h2>
+      <div style="overflow-x:auto;">
+        <table class="shkolo-table no-read">
+          <thead><tr id="thead-exams"></tr></thead>
+          <tbody id="exams-tbody"></tbody>
+        </table>
+      </div>
+      <details class="archive-drawer" id="exams-arch-drawer" style="display:none;" open>
+        <summary id="summary-exams-arch">🗄️ АРХИВ НА МИНАЛИ КОНТРОЛНИ И ТЕСТОВЕ (Кликни за преглед)</summary>
+        <div style="overflow-x:auto; margin-top:8px;">
+          <table class="shkolo-table no-read">
+            <thead><tr id="thead-exams-arch"></tr></thead>
+            <tbody id="exams-arch-tbody"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div id="pane-topics" class="subj-pane">
+    <div class="panel" id="p-topics">
+      <h2><span id="heading-topics">📖 ТЕМАТИЧНО РАЗПРЕДЕЛЕНИЕ ПО ПРЕДМЕТИ</span> <span id="pl-p-topics"></span></h2>
+      <div class="hw-box" id="topics-box"></div>
+      <details class="archive-drawer" id="topics-arch-drawer" style="display:none;" open>
+        <summary id="summary-topics-arch">🗄️ БАЗА ЗА ПРЕГОВОР: ВЗЕТИ И МИНАЛИ ТЕМИ (От по-стари файлове)</summary>
+        <div class="hw-box" id="topics-arch-box"></div>
+      </details>
+    </div>
+  </div>
+
+  <div id="pane-sched" class="subj-pane">
+    <div class="panel">
+      <h2 id="heading-sched">🗓️ СЕДМИЧНО РАЗПИСАНИЕ</h2>
+      <div class="sched-grid" id="sched-box"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ТАБ 2 -->
+<div id="tab-2" class="tab-content">
+  <div class="subj-nav" id="subj-nav-btns"></div>
+  <div id="subj-panes-wrap"></div>
+</div>
+
+<!-- ТАБ 3 -->
+<div id="tab-3" class="tab-content">
+  <div class="panel">
+    <h2>
+      <span id="heading-cards">🃏 3D ТРЕНАЖОР</span>
+      <button class="btn btn-speak" id="btn-cards-help" onclick="speakCardsInstruction()">🔊 Инструкция</button>
+    </h2>
+    <div class="cards-container" id="cards-wrap"></div>
+    <div style="text-align:center; margin-top:16px; background:#0f172a; border:2px solid var(--gold); padding:14px; border-radius:12px;">
+      <button class="btn btn-speak" id="btn-check-cards" style="font-size:1rem; padding:10px 20px;" onclick="checkAnswers()">✅ ОБЪРНИ И ПРОВЕРИ ВСИЧКИ КАРТИ НАВЕДНЪЖ</button>
+      <div id="total-score" style="margin-top:10px; font-size:1.05rem; font-weight:700;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ТАБ 4 -->
+<div id="tab-4" class="tab-content">
+  <div class="panel">
+    <h2 id="heading-analytics">📈 АНАЛИЗ НА НАПРЕДЪКА И СИНХРОНИЗИРАЩ ОТЧЕТ</h2>
+    <div style="overflow-x:auto;">
+      <table class="shkolo-table no-read">
+        <thead><tr id="thead-analytics"></tr></thead>
+        <tbody id="analytics-tbody"></tbody>
+      </table>
+    </div>
+    <div class="hw-box" style="margin-top:14px;">
+      <h3 id="heading-sync">🔄 Синхронизиращ отчет за Стратегическия Чат</h3>
+      <button class="btn btn-speak" id="btn-gen-sync" onclick="generateSyncReport()">📋 Генерирай и Копирай Отчет за Напредъка</button>
+      <textarea id="sync-box" rows="7" style="width:100%; margin-top:8px; background:#090d16; color:#86efac; border:1px solid var(--accent); border-radius:8px; padding:10px; font-family:monospace;" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ТАБ 5 -->
+<div id="tab-5" class="tab-content">
+  <div class="panel">
+    <h2 id="heading-updater">📥 Управление и Обединяване на Лични Файлове (Ядро 3.6)</h2>
+    <div class="hw-box" style="border-color:var(--green); margin-bottom:14px;">
+      <p style="font-size:0.86rem; margin-bottom:8px;">
+        🔒 <b>Пълна защита на личните данни:</b> Всички файлове се зареждат директно от вашето устройство и се пазят единствено във вашия браузър.
+        Можете да изберете един или няколко <b>.js</b> файла с различен брой предмети – системата автоматично ги обединява и оцветява новите в 🟢 <b>зелено</b>, а старите за преговор в 🟣 <b>лилаво</b>.
+      </p>
+      <button class="btn btn-file" onclick="document.getElementById('file-picker').click()">➕ Избери и обедини .js файлове от устройството</button>
+      <div id="tab5-files-list" style="margin-top:12px;"></div>
+    </div>
+    <div class="hw-box">
+      <textarea id="custom-db-input" rows="8" placeholder="Или поставете директно кода на window.APP_DATA тук..." style="width:100%; background:#090d16; color:#fde047; border:1px solid var(--gold); border-radius:8px; padding:10px; font-family:monospace; margin-bottom:10px;"></textarea>
+      <div class="voice-bar">
+        <button class="btn btn-speak" onclick="applyCustomDataJS()">⚡ Добави и обедини код</button>
+        <button class="btn btn-stop" onclick="resetToDefaultFileDB()">🗑️ Изчисти всички качени файлове от браузъра</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_PREFIX = 'APP_SHELL_V36_';
+
+// Напълно неутрални текстове по подразбиране (без никакви лични имена в публичния HTML)
+const DEFAULT_UI = {
+  pageTitle: "Супер-Органайзер (Ядро 3.6)",
+  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 3.6)",
+  headerSubtitle: "🔒 Лична локална база | 🔐 Златен Сейф | 🎯 3-Стъпков Алгоритъм | 🕒 Хронология София",
+  voiceGreeting: "Здравей! Зареди своя личен файл с учебни данни или избери задача от дневника!",
+  cardsInstruction: "На всяка карта първо разпознай типа на задачата, какво знаем за нея и кое правило прилагаме! Когато избереш отговор на гърба на картата, тя се проверява веднага!",
+  voiceCheckDone: "Проверката на всички карти приключи!",
+  speechLang: "bg-BG",
+  speechIgnoreSelectors: ".no-read, .math-expr, .frac, .tri-box, .visual-anchor, ruby, select, button, a, input, textarea",
+  btnVoiceStart: "<span class='no-read'>🎙️</span> Гласов старт",
+  btnToggleMasks: "<span class='no-read'>🙈</span> Скрий/Покажи думи",
+  btnVoiceStop: "<span class='no-read'>⏹️</span> Стоп",
+  bannerTitle: "📂 Зареждане на лична база данни (.js):",
+  btnPickFile: "➕ Добави .js файлове",
+  btnClearMem: "🗑️ Изчисти данните",
+  statusLoadedPrefix: "✅ Обединена база данни:",
+  lblProgTitle: "Общ напредък:",
+  tab1: "📱 1. ДНЕВНИК ШКОЛО",
+  tab2: "📚 2. ПРЕДМЕТИ + СЕЙФ",
+  tab3: "🃏 3. 3D ТРЕНАЖОР",
+  tab4: "📈 4. АНАЛИЗ И ОТЧЕТ",
+  tab5: "📥 5. ОБНОВИ ДАННИ",
+  subTab1: "💼 1. Домашни работи",
+  subTab2: "📅 2. Контролни и Класни",
+  subTab3: "📖 3. Взети и Следващи теми",
+  subTab4: "🗓️ 4. Седмично разписание",
+  headingHw: "💼 ДОМАШНИ РАБОТИ ПО ХРОНОЛОГИЯ И ПРИОРИТЕТ",
+  summaryArch: "🗄️ АРХИВ И ПРЕГОВОР НА МИНАЛИ ДОМАШНИ (От по-стари дати и файлове)",
+  headingExams: "📅 ГРАФИК НА КОНТРОЛНИ И КЛАСНИ РАБОТИ",
+  examsCols: ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"],
+  headingTopics: "📖 ТЕМАТИЧНО РАЗПРЕДЕЛЕНИЕ ПО ПРЕДМЕТИ",
+  headingSched: "🗓️ СЕДМИЧНО РАЗПИСАНИЕ",
+  vaultPrefix: "🔐 ЗЛАТЕН СЕЙФ:",
+  btnTestMemory: "🙈 Тествай паметта",
+  btnPlayVault: "▶️ Сейф",
+  btnListen: "▶️ Слушай",
+  btnPause: "⏸️ Пауза",
+  btnResume: "▶️ Продължи",
+  vaultLinkText: "🔗 Схема (Уикипедия)",
+  lblMastered: "✅ Научих наизуст",
+  subjArchPrefix: "🗄️ ДОПЪЛНИТЕЛЕН АРХИВ ПО",
+  btnArchive: "📥 Архивирай",
+  btnUnarchive: "📤 Върни в активни",
+  headingCards: "🃏 3D ТРЕНАЖОР (С ПРИОРИТЕТ ОТ НАЙ-НОВИЯ ФАЙЛ НАЗАД)",
+  btnCardsHelp: "🔊 Инструкция",
+  btnCheckCards: "✅ ОБЪРНИ И ПРОВЕРИ ВСИЧКИ КАРТИ НАВЕДНЪЖ",
+  cardBadgePrefix: "Карта",
+  questionBadgePrefix: "Въпрос",
+  algoStep1: "1. Тип задача:",
+  algoStep2: "2. Какво знаем:",
+  algoStep3: "3. Правило:",
+  btnPlayJoker: "▶️ Алгоритъм и Жокер",
+  cardLinkLabel: "🔗 Таен линк (Уикипедия)",
+  btnUnlockQuestion: "ОТКРИЙ ВЪПРОСА ❓",
+  selectPlaceholder: "-- Избери отговор (Проверява се веднага!) --",
+  btnBackToFront: "↩️ Назад към алгоритъма и жокера",
+  msgCorrect: "Вярно! Браво!",
+  msgWrong: "Грешен избор!",
+  msgCorrectIs: "Правилният отговор е:",
+  msgNoAnswer: "Не си избрал отговор на тази карта!",
+  lblScore: "Верни:",
+  lblAnswered: "Попълнени:",
+  lblGrade: "Оценка:",
+  headingAnalytics: "📈 АНАЛИЗ НА НАПРЕДЪКА И СИНХРОНИЗИРАЩ ОТЧЕТ",
+  analyticsCols: ["№", "Отделен Предмет", "Статус на предмета", "Текущо домашно", "Златен сейф (Нови + Преговор)", "3D Тренажор (Общо)"],
+  statusDone: "✅ Изпълнено",
+  statusActive: "⏳ Активно",
+  statusPending: "⏳ Не е решена",
+  statusArchTag: "(🗄️ Архив)",
+  headingSync: "🔄 Синхронизиращ отчет за Стратегическия Чат",
+  btnGenSync: "📋 Генерирай и Копирай Отчет за Напредъка",
+  reportHeader: "=== ОТЧЕТ ЗА НАПРЕДЪКА ==="
+};
+
+function ui(key, fallback = '') {
+  if (window.APP_DATA && window.APP_DATA.ui && window.APP_DATA.ui[key] !== undefined) {
+    return window.APP_DATA.ui[key];
+  }
+  if (DEFAULT_UI[key] !== undefined) return DEFAULT_UI[key];
+  return fallback;
+}
+
+// ================= ФИЛТРИРАНЕ: ВСИЧКИ / САМО НОВИ / САМО ПРЕГОВОР =================
+function setTierFilter(mode) {
+  document.body.classList.remove('filter-mode-new', 'filter-mode-rev');
+  document.getElementById('flt-all').className = 'filter-btn';
+  document.getElementById('flt-new').className = 'filter-btn';
+  document.getElementById('flt-rev').className = 'filter-btn';
+
+  if (mode === 'new') {
+    document.body.classList.add('filter-mode-new');
+    document.getElementById('flt-new').classList.add('active-new');
+  } else if (mode === 'rev') {
+    document.body.classList.add('filter-mode-rev');
+    document.getElementById('flt-rev').classList.add('active-rev');
+  } else {
+    document.getElementById('flt-all').classList.add('active-all');
+  }
+}
+
+// ================= ПАРСВАНЕ НА БЪЛГАРСКИ ДАТИ И ПОМОЩНИ ФУНКЦИИ =================
+function parseBgDateString(str, endOfDayIfNoTime = false) {
+  if (!str) return null;
+  const m = String(str).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:.*?(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10) - 1;
+  const year = parseInt(m[3], 10);
+  const hour = m[4] !== undefined ? parseInt(m[4], 10) : (endOfDayIfNoTime ? 23 : 0);
+  const min = m[5] !== undefined ? parseInt(m[5], 10) : (endOfDayIfNoTime ? 59 : 0);
+  return new Date(year, month, day, hour, min, 0).getTime();
+}
+
+function shortDateLabel(genStr) {
+  if (!genStr) return 'База';
+  const m = String(genStr).match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
+  return m ? m[1] : genStr;
+}
+
+function tierBadgeHTML(isLatest, genDate) {
+  const dLbl = shortDateLabel(genDate);
+  if (isLatest) {
+    return `<span class="tier-badge-new no-read">🆕 АКТУАЛНО • ${dLbl}</span>`;
+  }
+  return `<span class="tier-badge-rev no-read">⏪ ПРЕГОВОР • ${dLbl}</span>`;
+}
+
+function normalizeSubjKey(s) {
+  if (s && s.id) return String(s.id).trim().toLowerCase();
+  if (s && s.shortName) return 'subj_' + String(s.shortName).trim().toLowerCase().replace(/\s+/g, '_');
+  return 'subj_unknown';
+}
+
+function makeMasteryStorageKey(subjId, vaultTitle, fallbackIdx) {
+  const cleanTitle = String(vaultTitle || fallbackIdx).trim().toLowerCase().replace(/\s+/g, '_').slice(0, 45);
+  return `${STORAGE_PREFIX}mast_${subjId}_${cleanTitle}`;
+}
+
+function getReferenceNowMs(data) {
+  const realNow = Date.now();
+  const genMs = data && data.generatedAt ? parseBgDateString(data.generatedAt, false) : null;
+  return genMs ? Math.max(realNow, genMs) : realNow;
+}
+
+// ================= МНОГОФАЙЛОВО ОБЕДИНЯВАНЕ С ДИНАМИЧНИ ПРЕДМЕТИ =================
+function evalDataCode(codeString) {
+  const fn = new Function('const window = {}; ' + codeString + '; return window.APP_DATA || (typeof APP_DATA !== "undefined" ? APP_DATA : null);');
+  return fn();
+}
+
+function buildMultiFileMergedAppData(entriesList) {
+  const valid = [];
+  entriesList.forEach(item => {
+    try {
+      const parsed = item.parsed || evalDataCode(item.code);
+      if (parsed && Array.isArray(parsed.subjects)) {
+        const ts = parseBgDateString(parsed.generatedAt, false) || 0;
+        valid.push({
+          name: item.name || 'data.js',
+          generatedAt: parsed.generatedAt || item.name || 'База',
+          ts: ts,
+          data: parsed
+        });
+      }
+    } catch (e) { console.error(e); }
+  });
+
+  if (!valid.length) return null;
+
+  // Сортиране от НАЙ-НОВИЯ файл (индекс 0) назад към по-старите файлове
+  valid.sort((a, b) => b.ts - a.ts);
+  const newestTs = valid[0].ts;
+  const hasMultipleFiles = valid.length > 1;
+
+  const latestSubjKeys = new Set();
+  const olderSubjKeys = new Set();
+  valid.forEach((v, idx) => {
+    const isLatestFile = idx === 0 || (v.ts === newestTs && newestTs > 0);
+    (v.data.subjects || []).forEach(s => {
+      const k = normalizeSubjKey(s);
+      if (isLatestFile && !s.dropped && !s.archived) latestSubjKeys.add(k);
+      else olderSubjKeys.add(k);
+    });
+  });
+
+  let mergedUI = Object.assign({}, DEFAULT_UI);
+  let mergedCSS = "";
+  for (let i = valid.length - 1; i >= 0; i--) {
+    if (valid[i].data.ui) mergedUI = Object.assign(mergedUI, valid[i].data.ui);
+    if (valid[i].data.extraCSS) mergedCSS = valid[i].data.extraCSS;
+  }
+  mergedUI.examsCols = ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"];
+  mergedUI.analyticsCols = ["№", "Отделен Предмет", "Статус на предмета", "Текущо домашно", "Златен сейф (Нови + Преговор)", "3D Тренажор (Общо)"];
+
+  const res = {
+    generatedAt: valid[0].generatedAt,
+    extraCSS: mergedCSS,
+    ui: mergedUI,
+    schedule: valid[0].data.schedule || [],
+    loadedMeta: valid.map((v, i) => ({
+      name: v.name,
+      generatedAt: v.generatedAt,
+      subjCount: (v.data.subjects || []).length,
+      isLatest: i === 0 || (v.ts === newestTs && newestTs > 0)
+    }))
+  };
+
+  // 1. ДОМАШНИ РАБОТИ
+  const hwMap = new Map();
+  valid.forEach((v, idx) => {
+    const isLatest = idx === 0 || (v.ts === newestTs && newestTs > 0);
+    (v.data.homework || []).forEach(h => {
+      const key = h.id || (h.title + h.dueDate);
+      if (!hwMap.has(key)) {
+        hwMap.set(key, Object.assign({}, h, {
+          _isLatest: isLatest && !h.archived,
+          _sourceDate: v.generatedAt,
+          _fileRank: idx
+        }));
+      }
+    });
+  });
+  res.homework = Array.from(hwMap.values());
+
+  // 2. КОНТРОЛНИ И КЛАСНИ РАБОТИ
+  const exMap = new Map();
+  valid.forEach((v, idx) => {
+    const isLatest = idx === 0 || (v.ts === newestTs && newestTs > 0);
+    (v.data.exams || []).forEach(e => {
+      const key = e.id || (e.date + e.subj);
+      if (!exMap.has(key)) {
+        exMap.set(key, Object.assign({}, e, {
+          _isLatest: isLatest && !e.archived,
+          _sourceDate: v.generatedAt,
+          _fileRank: idx
+        }));
+      }
+    });
+  });
+  res.exams = Array.from(exMap.values());
+
+  // 3. ТЕМИ ПО ПРЕДМЕТИ
+  const topMap = new Map();
+  valid.forEach((v, idx) => {
+    const isLatest = idx === 0 || (v.ts === newestTs && newestTs > 0);
+    (v.data.topics || []).forEach(t => {
+      const key = t.id || (t.subj + t.date);
+      if (!topMap.has(key)) {
+        topMap.set(key, Object.assign({}, t, {
+          _isLatest: isLatest && !t.archived,
+          _sourceDate: v.generatedAt,
+          _fileRank: idx
+        }));
+      }
+    });
+  });
+  res.topics = Array.from(topMap.values());
+
+  // 4. ДИНАМИЧНО ОБЕДИНЯВАНЕ НА ВСИЧКИ ПРЕДМЕТИ (Основни + Новодобавени + Отпаднали/Стари)
+  const subjMap = new Map();
+  const aliasToKey = new Map();
+
+  valid.forEach((v, idx) => {
+    const isLatest = idx === 0 || (v.ts === newestTs && newestTs > 0);
+    (v.data.subjects || []).forEach((s, sOrderIdx) => {
+      const normId = normalizeSubjKey(s);
+      const normName = s.shortName ? String(s.shortName).trim().toLowerCase() : normId;
+      const mapKey = aliasToKey.get(normId) || aliasToKey.get(normName) || normId;
+
+      aliasToKey.set(normId, mapKey);
+      aliasToKey.set(normName, mapKey);
+
+      const explicitNum = (typeof s.num === 'number' && !isNaN(s.num)) ? s.num : (100 + sOrderIdx + 1);
+
+      if (!subjMap.has(mapKey)) {
+        const clone = JSON.parse(JSON.stringify(s));
+        clone.id = clone.id || mapKey;
+        clone._firstSeenRank = idx;
+        clone._inLatestFile = isLatest && !s.dropped && !s.archived;
+        clone._isNewlyAdded = isLatest && hasMultipleFiles && !olderSubjKeys.has(normId);
+        clone._isDropped = !clone._inLatestFile;
+        clone._sortNum = explicitNum;
+        clone._sourceDate = v.generatedAt;
+
+        clone.vault = (clone.vault || []).map(vItem => Object.assign({}, vItem, {
+          _isLatest: isLatest && !clone._isDropped,
+          _sourceDate: v.generatedAt,
+          _fileRank: idx
+        }));
+
+        clone.homeworkBlocks = [];
+        if (clone.homeworkHTML) {
+          clone.homeworkBlocks.push({
+            html: clone.homeworkHTML,
+            _isLatest: isLatest && !clone._isDropped,
+            _sourceDate: v.generatedAt,
+            _fileRank: idx
+          });
+        }
+        clone.archiveBlocks = [];
+        if (clone.archiveHTML) {
+          clone.archiveBlocks.push({
+            html: clone.archiveHTML,
+            _sourceDate: v.generatedAt
+          });
+        }
+        subjMap.set(mapKey, clone);
+      } else {
+        const existing = subjMap.get(mapKey);
+        const seenTitles = new Set(existing.vault.map(x => (x.title || '').trim().toLowerCase()));
+        (s.vault || []).forEach(vItem => {
+          const tKey = (vItem.title || '').trim().toLowerCase();
+          if (!seenTitles.has(tKey)) {
+            existing.vault.push(Object.assign({}, vItem, {
+              _isLatest: isLatest && !existing._isDropped,
+              _sourceDate: v.generatedAt,
+              _fileRank: idx
+            }));
+            seenTitles.add(tKey);
+          }
+        });
+        if (!existing.extraHTML && s.extraHTML) {
+          existing.extraHTML = s.extraHTML;
+        }
+        if (!existing.hwChk && s.hwChk) existing.hwChk = s.hwChk;
+        if (!existing.hwLi && s.hwLi) existing.hwLi = s.hwLi;
+        if (!existing.cardId && s.cardId) existing.cardId = s.cardId;
+
+        if (s.homeworkHTML && !existing.homeworkBlocks.some(b => b.html === s.homeworkHTML)) {
+          existing.homeworkBlocks.push({
+            html: s.homeworkHTML,
+            _isLatest: isLatest && !existing._isDropped,
+            _sourceDate: v.generatedAt,
+            _fileRank: idx
+          });
+        }
+        if (s.archiveHTML && !existing.archiveBlocks.some(b => b.html === s.archiveHTML)) {
+          existing.archiveBlocks.push({
+            html: s.archiveHTML,
+            _sourceDate: v.generatedAt
+          });
+        }
+      }
+    });
+  });
+
+  const allSubjects = Array.from(subjMap.values()).sort((a, b) => {
+    if (a._inLatestFile !== b._inLatestFile) return a._inLatestFile ? -1 : 1;
+    if (a._sortNum !== b._sortNum) return a._sortNum - b._sortNum;
+    return a._firstSeenRank - b._firstSeenRank;
+  });
+
+  allSubjects.forEach((s, index) => {
+    s.displayNum = index + 1;
+    s.num = index + 1;
+  });
+  res.subjects = allSubjects;
+
+  const totalSubjCount = allSubjects.length;
+  res.ui.tab2 = String(res.ui.tab2 || "📚 2. ПРЕДМЕТИ + СЕЙФ").replace(/\b\d+\s+ПРЕДМЕТА/i, `${totalSubjCount} ПРЕДМЕТА`);
+  if (!/\d+\s+ПРЕДМЕТА/i.test(res.ui.tab2)) {
+    res.ui.tab2 = `📚 2. ${totalSubjCount} ПРЕДМЕТА + СЕЙФ`;
+  }
+  res.ui.headerSubtitle = String(res.ui.headerSubtitle || "").replace(/\b\d+\s+Отделни\s+Предмета/i, `${totalSubjCount} Отделни Предмета`);
+
+  // 5. 3D КАРТИ (От най-новия файл назад)
+  const cardMap = new Map();
+  valid.forEach((v, idx) => {
+    const isLatest = idx === 0 || (v.ts === newestTs && newestTs > 0);
+    (v.data.cards || []).forEach(c => {
+      const key = c.id || c.title;
+      if (!cardMap.has(key)) {
+        cardMap.set(key, Object.assign({}, c, {
+          _isLatest: isLatest,
+          _sourceDate: v.generatedAt,
+          _fileRank: idx
+        }));
+      }
+    });
+  });
+  res.cards = Array.from(cardMap.values()).sort((a, b) => {
+    if (a._fileRank !== b._fileRank) return a._fileRank - b._fileRank;
+    return (a.id || 0) - (b.id || 0);
+  });
+
+  return res;
+}
+
+function getSavedSourcesList() {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function rebuildAndInitFromStorage() {
+  const saved = getSavedSourcesList();
+  const merged = buildMultiFileMergedAppData(saved);
+  if (merged && merged.subjects) {
+    window.APP_DATA = merged;
+    const labelNames = merged.loadedMeta.map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(' + ');
+    initApp(window.APP_DATA, labelNames);
+    return true;
+  } else {
+    window.APP_DATA = null;
+    renderEmptyWaitingState();
+    return false;
+  }
+}
+
+function saveAndRebuildMergedData(newEntries) {
+  const existing = getSavedSourcesList();
+  newEntries.forEach(entry => {
+    const idx = existing.findIndex(x => (entry.generatedAt && x.generatedAt === entry.generatedAt) || x.name === entry.name);
+    if (idx >= 0) existing[idx] = entry;
+    else existing.push(entry);
+  });
+  localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(existing));
+  return rebuildAndInitFromStorage();
+}
+
+function removeSingleSavedSource(index) {
+  const existing = getSavedSourcesList();
+  existing.splice(index, 1);
+  localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(existing));
+  rebuildAndInitFromStorage();
+}
+
+function loadDataFromFile(inputEl) {
+  const files = Array.from(inputEl.files || []);
+  if (!files.length) return;
+
+  const loadedEntries = [];
+  let processed = 0;
+
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const code = e.target.result;
+      try {
+        const parsed = evalDataCode(code);
+        if (parsed && Array.isArray(parsed.subjects)) {
+          loadedEntries.push({
+            name: file.name,
+            generatedAt: parsed.generatedAt || file.name,
+            code: code
+          });
+        } else {
+          alert(`Файлът ${file.name} не съдържа валиден window.APP_DATA!`);
+        }
+      } catch (err) {
+        alert(`Грешка във файл ${file.name}: ` + err.message);
+      }
+      processed++;
+      if (processed === files.length && loadedEntries.length > 0) {
+        if (saveAndRebuildMergedData(loadedEntries)) {
+          openTab('tab-1', document.getElementById('tab-btn-1'));
+        }
+        inputEl.value = '';
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function speakGreeting() { speakDirect(ui('voiceGreeting', 'Заредете файл с данни.')); }
+function speakCardsInstruction() { speakDirect(ui('cardsInstruction', '')); }
+
+function playerHTML(id, label) {
+  const btnLbl = label || ui('btnListen', '▶️');
+  return `<span class="mini-player no-read">
+    <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${btnLbl}</button>
+    <button class="btn btn-restart" onclick="startSpeech('${id}', 0)">🔄</button>
+    <button class="btn btn-stop" onclick="stopSpeech()">⏹️</button>
+  </span>`;
+}
+
+function formatMemoWords(text) {
+  return (text || '').replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
+}
+
+function renderEmptyWaitingState() {
+  document.title = DEFAULT_UI.pageTitle;
+  document.getElementById('header-title').innerHTML = DEFAULT_UI.headerTitle;
+  document.getElementById('header-subtitle').innerHTML = DEFAULT_UI.headerSubtitle;
+  document.getElementById('db-status-label').innerHTML = '🔒 Няма заредена база в браузъра. Натиснете зеления бутон „➕ Добави .js файлове“ и изберете вашия личен файл.';
+  document.getElementById('btn-clear-mem').style.display = 'none';
+  document.getElementById('loaded-files-badges').innerHTML = '';
+  document.getElementById('tab5-files-list').innerHTML = '';
+  document.getElementById('active-hw-list').innerHTML = `<li style="border-left-color:var(--gold); padding:16px;"><b>🔒 Очаква се зареждане на личен .js файл от устройството...</b></li>`;
+  document.getElementById('archive-list').innerHTML = '';
+  document.getElementById('exams-tbody').innerHTML = '';
+  document.getElementById('topics-box').innerHTML = '';
+  document.getElementById('sched-box').innerHTML = '';
+  document.getElementById('subj-nav-btns').innerHTML = '';
+  document.getElementById('subj-panes-wrap').innerHTML = '';
+  document.getElementById('cards-wrap').innerHTML = '';
+  document.getElementById('analytics-tbody').innerHTML = '';
+  document.getElementById('prog-text').innerText = '0%';
+  document.getElementById('prog-fill').style.width = '0%';
+}
+
+function initApp(data, sourceName = 'data.js') {
+  if (!data || !data.subjects) {
+    renderEmptyWaitingState();
+    return;
+  }
+
+  if (data.extraCSS) {
+    let st = document.getElementById('dynamic-data-css');
+    if (!st) {
+      st = document.createElement('style');
+      st.id = 'dynamic-data-css';
+      document.head.appendChild(st);
+    }
+    st.innerHTML = data.extraCSS;
+  }
+
+  document.title = ui('pageTitle', 'App Core 3.6');
+  document.getElementById('header-title').innerHTML = ui('headerTitle', '');
+  document.getElementById('header-subtitle').innerHTML = ui('headerSubtitle', '');
+  document.getElementById('btn-voice-start').innerHTML = ui('btnVoiceStart', '🎙️');
+  document.getElementById('btn-toggle-masks').innerHTML = ui('btnToggleMasks', '🙈');
+  document.getElementById('btn-voice-stop').innerHTML = ui('btnVoiceStop', '⏹️');
+  document.getElementById('banner-title').innerHTML = ui('bannerTitle', '📂 База данни:');
+  document.getElementById('btn-pick-file').innerHTML = ui('btnPickFile', '➕ Добави .js файлове');
+  document.getElementById('btn-clear-mem').innerHTML = ui('btnClearMem', '🗑️ Изчисти');
+  document.getElementById('lbl-prog-title').innerHTML = ui('lblProgTitle', 'Напредък:');
+
+  document.getElementById('tab-btn-1').innerHTML = ui('tab1', '1');
+  document.getElementById('tab-btn-2').innerHTML = ui('tab2', '2');
+  document.getElementById('tab-btn-3').innerHTML = ui('tab3', '3');
+  document.getElementById('tab-btn-4').innerHTML = ui('tab4', '4');
+  document.getElementById('tab-btn-5').innerHTML = ui('tab5', '5');
+
+  document.getElementById('sub-btn-1').innerHTML = ui('subTab1', '1.1');
+  document.getElementById('sub-btn-2').innerHTML = ui('subTab2', '1.2');
+  document.getElementById('sub-btn-3').innerHTML = ui('subTab3', '1.3');
+  document.getElementById('sub-btn-4').innerHTML = ui('subTab4', '1.4');
+
+  document.getElementById('heading-hw').innerHTML = ui('headingHw', '');
+  document.getElementById('summary-arch').innerHTML = ui('summaryArch', '');
+  document.getElementById('heading-exams').innerHTML = ui('headingExams', '');
+  const exColsHTML = (ui('examsCols', ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"])).map(c => `<th>${c}</th>`).join('');
+  document.getElementById('thead-exams').innerHTML = exColsHTML;
+  document.getElementById('thead-exams-arch').innerHTML = exColsHTML;
+  document.getElementById('heading-topics').innerHTML = ui('headingTopics', '');
+  document.getElementById('heading-sched').innerHTML = ui('headingSched', '');
+  document.getElementById('heading-cards').innerHTML = ui('headingCards', '');
+  document.getElementById('btn-cards-help').innerHTML = ui('btnCardsHelp', '🔊');
+  document.getElementById('btn-check-cards').innerHTML = ui('btnCheckCards', '✅');
+  document.getElementById('heading-analytics').innerHTML = ui('headingAnalytics', '');
+  document.getElementById('thead-analytics').innerHTML = (ui('analyticsCols', [])).map(c => `<th>${c}</th>`).join('');
+  document.getElementById('heading-sync').innerHTML = ui('headingSync', '');
+  document.getElementById('btn-gen-sync').innerHTML = ui('btnGenSync', '📋');
+
+  const totalVaultItems = (data.subjects || []).reduce((acc, s) => acc + ((s.vault || []).length), 0);
+  const activeSubjCount = (data.subjects || []).filter(s => s._inLatestFile).length;
+  const droppedSubjCount = (data.subjects || []).filter(s => s._isDropped).length;
+
+  const lbl = document.getElementById('db-status-label');
+  if (lbl) {
+    const droppedNote = droppedSubjCount > 0 ? ` (${activeSubjCount} активни + ${droppedSubjCount} отпаднали за преговор)` : '';
+    lbl.innerHTML = `${ui('statusLoadedPrefix', '✅ Обединена база:')} <b>${(data.loadedMeta || []).length} файла</b> | <b>${data.subjects.length} предмета</b>${droppedNote} | <b>${totalVaultItems} сейф-правила</b> | <b>${(data.cards || []).length} 3D карти</b>`;
+  }
+
+  const badgesContainer = document.getElementById('loaded-files-badges');
+  if (badgesContainer && data.loadedMeta) {
+    badgesContainer.innerHTML = data.loadedMeta.map((m, idx) => `
+      <span class="file-Chip ${m.isLatest ? 'chip-new' : 'chip-rev'}">
+        ${m.isLatest ? '🆕 ПРИОРИТЕТ #1 (НАЙ-НОВ):' : `⏪ ПРЕГОВОР #${idx + 1}:`} <b>${m.name}</b> (${m.generatedAt} • ${m.subjCount} предм.)
+      </span>
+    `).join('');
+  }
+
+  const savedList = getSavedSourcesList();
+  const tab5List = document.getElementById('tab5-files-list');
+  if (tab5List) {
+    tab5List.innerHTML = savedList.map((s, idx) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#172554; padding:7px 12px; border-radius:8px; margin-top:6px; font-size:0.82rem;">
+        <span>📄 <b>${s.name}</b> — Дата на файла: <b style="color:var(--gold)">${s.generatedAt || '—'}</b></span>
+        <button class="btn btn-stop" style="padding:4px 9px; font-size:0.74rem;" onclick="removeSingleSavedSource(${idx})">✖ Премахни</button>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('btn-clear-mem').style.display = 'inline-flex';
+
+  document.getElementById('active-hw-list').innerHTML = '';
+  document.getElementById('archive-list').innerHTML = '';
+  document.getElementById('subj-nav-btns').innerHTML = '';
+  document.getElementById('subj-panes-wrap').innerHTML = '';
+  document.getElementById('cards-wrap').innerHTML = '';
+
+  document.getElementById('pl-p-shk-hw').innerHTML = playerHTML('p-shk-hw');
+  document.getElementById('pl-p-topics').innerHTML = playerHTML('p-topics');
+
+  const refNowMs = getReferenceNowMs(data);
+  const startOfRefDayMs = new Date(new Date(refNowMs).getFullYear(), new Date(refNowMs).getMonth(), new Date(refNowMs).getDate(), 0, 0, 0).getTime();
+
+  // 1. ДОМАШНИ РАБОТИ
+  const actList = document.getElementById('active-hw-list');
+  const archList = document.getElementById('archive-list');
+
+  const sortedHw = [...(data.homework || [])].sort((a, b) => {
+    if ((a._fileRank || 0) !== (b._fileRank || 0)) return (a._fileRank || 0) - (b._fileRank || 0);
+    const da = parseBgDateString(a.dueDate, true) || Number.MAX_SAFE_INTEGER;
+    const db = parseBgDateString(b.dueDate, true) || Number.MAX_SAFE_INTEGER;
+    if (da !== db) return da - db;
+    return (a.priority || 99) - (b.priority || 99);
+  });
+
+  sortedHw.forEach(h => {
+    const dueMs = parseBgDateString(h.dueDate, true);
+    const isPastDue = dueMs !== null && dueMs < refNowMs;
+    const isLatestItem = !!h._isLatest && !isPastDue && !h.archived;
+
+    const savedArch = localStorage.getItem(STORAGE_PREFIX + 'arch_' + h.id);
+    const isArch = savedArch ? (savedArch === 'archived') : (!!h.archived || isPastDue || !h._isLatest);
+
+    const savedChk = localStorage.getItem(STORAGE_PREFIX + 'chk_' + h.chkId);
+    const isChk = savedChk !== null ? (savedChk === '1') : (!!h.checked || (isPastDue && !savedArch));
+
+    const li = document.createElement('li');
+    li.id = h.id;
+    li.className = isLatestItem ? 'item-tier-new' : 'item-tier-rev';
+    const dueLabel = h.dueDate ? `<span class="due-tag no-read">🕒 ${h.dueDate}</span>` : '';
+    const tierBadge = tierBadgeHTML(isLatestItem, h._sourceDate);
+
+    li.innerHTML = `<input type="checkbox" id="${h.chkId}" ${isChk ? 'checked' : ''} onchange="saveChk(this)">
+      <label for="${h.chkId}" style="flex:1;">${tierBadge} <span class="badge ${h.badgeClass} no-read">${h.badge}</span>${dueLabel} <b>${h.title}:</b> ${h.text}</label>
+      <button class="btn btn-arch no-read" onclick="toggleArchiveItem(this)">${isArch ? ui('btnUnarchive', '📤') : ui('btnArchive', '📥')}</button>`;
+    (isArch ? archList : actList).appendChild(li);
+  });
+
+  // 2. КОНТРОЛНИ И КЛАСНИ РАБОТИ
+  const activeExams = [];
+  const pastExams = [];
+  (data.exams || []).forEach(e => {
+    const eMs = parseBgDateString(e.date, true);
+    if (e.archived || (eMs !== null && eMs < refNowMs)) {
+      pastExams.push(e);
+    } else {
+      activeExams.push(e);
+    }
+  });
+
+  activeExams.sort((a, b) => (parseBgDateString(a.date, false) || 0) - (parseBgDateString(b.date, false) || 0));
+  pastExams.sort((a, b) => (parseBgDateString(b.date, false) || 0) - (parseBgDateString(a.date, false) || 0));
+
+  document.getElementById('exams-tbody').innerHTML = activeExams.map((e, i) => `
+    <tr class="item-tier-new" style="${e.urgent ? 'background:rgba(239,68,68,0.2);' : e.klasna ? 'background:rgba(245,158,11,0.18);' : ''}">
+      <td>${i + 1}</td><td>${tierBadgeHTML(true, e._sourceDate)}</td><td><b>${e.date}</b></td><td>${e.subj}</td><td>${e.teacher}</td><td><b>${e.topic}</b></td>
+    </tr>`).join('');
+
+  const exArchDrawer = document.getElementById('exams-arch-drawer');
+  if (pastExams.length > 0) {
+    exArchDrawer.style.display = 'block';
+    document.getElementById('exams-arch-tbody').innerHTML = pastExams.map((e, i) => `
+      <tr class="item-tier-rev">
+        <td>${i + 1}</td><td>${tierBadgeHTML(false, e._sourceDate)}</td><td><b>${e.date}</b></td><td>${e.subj}</td><td>${e.teacher}</td><td>${e.topic}</td>
+      </tr>`).join('');
+  } else {
+    exArchDrawer.style.display = 'none';
+  }
+
+  // 3. ТЕМАТИЧНО РАЗПРЕДЕЛЕНИЕ
+  const activeTopics = [];
+  const archTopics = [];
+  (data.topics || []).forEach(t => {
+    const tMs = parseBgDateString(t.date, true);
+    if (t.archived || !t._isLatest || (tMs !== null && tMs < startOfRefDayMs)) {
+      archTopics.push(t);
+    } else {
+      activeTopics.push(t);
+    }
+  });
+
+  document.getElementById('topics-box').innerHTML = activeTopics.map(t => `
+    <div class="hw-step item-tier-new">${tierBadgeHTML(true, t._sourceDate)} <b>${t.subj}:</b> ${t.text}</div>`).join('');
+
+  const topArchDrawer = document.getElementById('topics-arch-drawer');
+  if (archTopics.length > 0) {
+    topArchDrawer.style.display = 'block';
+    document.getElementById('topics-arch-box').innerHTML = archTopics.map(t => `
+      <div class="hw-step item-tier-rev">${tierBadgeHTML(false, t._sourceDate)} <b>${t.subj}:</b> ${t.text}</div>`).join('');
+  } else {
+    topArchDrawer.style.display = 'none';
+  }
+
+  // 4. СЕДМИЧНО РАЗПИСАНИЕ
+  document.getElementById('sched-box').innerHTML = (data.schedule || []).map(d => `
+    <div class="day-card"><h4>${d.day}</h4>${(d.classes || []).map(c => `<p>${c}</p>`).join('')}</div>`).join('');
+
+  // 5. ДИНАМИЧНИ ПРЕДМЕТИ (Произволен брой: Основни + Нови + Отпаднали/Стари)
+  const navBtns = document.getElementById('subj-nav-btns');
+  const panesWrap = document.getElementById('subj-panes-wrap');
+
+  (data.subjects || []).forEach((s, idx) => {
+    const subjTierClass = s._isDropped ? 'item-tier-rev subj-btn-dropped' : (s._isNewlyAdded ? 'item-tier-new subj-btn-new' : '');
+    const subjMiniBadge = s._isNewlyAdded
+      ? `<span class="subj-status-tag subj-tag-added no-read">НОВ</span>`
+      : (s._isDropped ? `<span class="subj-status-tag subj-tag-dropped no-read">ПРЕГОВОР</span>` : '');
+
+    navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''} ${subjTierClass}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
+      <span class="no-read">${s.icon || '📘'} ${s.displayNum}.</span> ${s.shortName} ${subjMiniBadge}
+    </button>`;
+
+    const vaultCards = (s.vault || []).map((v, vIdx) => {
+      const mStorageKey = makeMasteryStorageKey(s.id, v.title, vIdx + 1);
+      const legacyKey = `${STORAGE_PREFIX}mast_mast_${s.id}_${vIdx + 1}`;
+      const isMast = localStorage.getItem(mStorageKey) === '1' || localStorage.getItem(legacyKey) === '1';
+      const tierCls = v._isLatest ? 'item-tier-new' : 'item-tier-rev';
+      const domChkId = `mast_${s.id}_${vIdx + 1}`;
+
+      return `<div class="memo-card ${tierCls} ${isMast ? 'mastered' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+          ${tierBadgeHTML(v._isLatest, v._sourceDate)}
+          <span class="no-read" style="font-size:0.72rem; color:var(--muted);">#${vIdx + 1}</span>
+        </div>
+        <div class="visual-anchor no-read">${v.visual || ''}</div>
+        <div><b>${v.title}:</b> ${formatMemoWords(v.text)}</div>
+        <div class="mastery-bar">
+          ${v.wiki ? `<a class="memo-link no-read" href="${v.wiki}" target="_blank">${v.linkText || ui('vaultLinkText', '🔗 Линк')}</a>` : `<span></span>`}
+          <label class="no-read"><input type="checkbox" class="mast-chk" id="${domChkId}" data-storage-key="${mStorageKey}" ${isMast ? 'checked' : ''} onchange="saveMastery(this)"> ${ui('lblMastered', '✅')}</label>
+        </div>
+      </div>`;
+    }).join('');
+
+    const hwBlocksHTML = (s.homeworkBlocks || []).map((blk, bIdx) => {
+      const blkId = `hwblk-${s.id}-${bIdx}`;
+      const tierCls = blk._isLatest ? 'item-tier-new' : 'item-tier-rev';
+      return `<div class="hw-box ${tierCls}" id="${blkId}">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+          ${tierBadgeHTML(blk._isLatest, blk._sourceDate)}
+          ${playerHTML(blkId, blk._isLatest ? '▶️ Чуй новия урок' : '▶️ Чуй преговора')}
+        </div>
+        <div class="hw-step ${tierCls}">${blk.html}</div>
+      </div>`;
+    }).join('');
+
+    const archBlocksHTML = (s.archiveBlocks && s.archiveBlocks.length) ? `
+      <details class="archive-drawer item-tier-rev" open>
+        <summary>${ui('subjArchPrefix', '🗄️ ДОПЪЛНИТЕЛЕН АРХИВ ПО')} ${(s.shortName || '').toUpperCase()}</summary>
+        ${s.archiveBlocks.map(ab => `<div class="hw-box"><div class="hw-step item-tier-rev">${tierBadgeHTML(false, ab._sourceDate)}${ab.html}</div></div>`).join('')}
+      </details>` : '';
+
+    const subjHeaderBadge = s._isNewlyAdded
+      ? `<span class="tier-badge-new no-read">🆕 НОВ ПРЕДМЕТ В БАЗАТА</span>`
+      : (s._isDropped ? `<span class="tier-badge-rev no-read">🗄️ ОТПАДНАЛ ОТ ТЕКУЩИЯ ГРАФИК (АКТИВЕН ЗА ПРЕГОВОР)</span>` : '');
+
+    panesWrap.innerHTML += `<div id="sp-${s.id}" class="subj-pane ${idx === 0 ? 'active' : ''}">
+      <div class="panel" id="p-${s.id}">
+        <h2>
+          <span><span class="no-read">${s.icon || '📘'} ${s.displayNum}.</span> ${s.fullName || s.shortName} ${subjHeaderBadge}</span>
+          ${playerHTML('p-' + s.id)}
+        </h2>
+        <div class="memo-vault" id="vault-${s.id}">
+          <div class="memo-head">
+            <h3>${ui('vaultPrefix', '🔐')} ${(s.shortName || '').toUpperCase()} (${(s.vault || []).length} правила)</h3>
+            <div class="mini-player no-read">
+              <button class="btn btn-mask" onclick="maskVault('vault-${s.id}')">${ui('btnTestMemory', '🙈')}</button>
+              ${playerHTML('vault-' + s.id, ui('btnPlayVault', '▶️'))}
+            </div>
+          </div>
+          <div class="memo-grid">${vaultCards}</div>
+        </div>
+        ${s.extraHTML || ''}
+        ${hwBlocksHTML}
+        ${archBlocksHTML}
+      </div>
+    </div>`;
+  });
+
+  // 6. 3D КАРТИ
+  document.getElementById('cards-wrap').innerHTML = (data.cards || []).map(c => {
+    const tierCls = c._isLatest ? 'item-tier-new' : 'item-tier-rev';
+    const algoHTML = c.algo ? `
+      <div class="algo-box">
+        <div class="algo-step">🎯 <b>${ui('algoStep1', '1. Тип задача:')}</b> ${c.algo.type}</div>
+        <div class="algo-step">🧠 <b>${ui('algoStep2', '2. Какво знаем:')}</b> ${c.algo.know}</div>
+        <div class="algo-step">⚙️ <b>${ui('algoStep3', '3. Правило:')}</b> ${c.algo.rule}</div>
+      </div>` : '';
+
+    return `<div class="flip-card ${tierCls}" id="fc${c.id}"><div class="flip-inner">
+      <div class="card-front">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px;">
+            <span class="badge b-blue no-read">${ui('cardBadgePrefix', 'Карта')} ${c.id} • ${c.subj}</span>
+            ${tierBadgeHTML(c._isLatest, c._sourceDate)}
+          </div>
+          <h3>${c.title}</h3>
+          <div id="joker${c.id}">
+            ${algoHTML}
+            <div class="story-box">${c.joker}</div>
+          </div>
+        </div>
+        <div>
+          <div style="text-align:center; margin-bottom:6px;">${playerHTML('joker' + c.id, ui('btnPlayJoker', '▶️'))}</div>
+          <a class="btn btn-wiki" href="${c.wiki}" target="_blank" onclick="document.getElementById('btn${c.id}').style.display='inline-flex'">${c.linkLabel || ui('cardLinkLabel', '🔗 Външен ресурс')}</a>
+          <button id="btn${c.id}" class="btn btn-unlock" onclick="document.getElementById('fc${c.id}').classList.toggle('flipped')">${ui('btnUnlockQuestion', '❓')}</button>
+        </div>
+      </div>
+      <div class="card-back">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span class="badge b-yellow no-read">${ui('questionBadgePrefix', 'Въпрос')} ${c.id}</span>
+            ${tierBadgeHTML(c._isLatest, c._sourceDate)}
+          </div>
+          <h3>${c.q}</h3>
+          <select id="q${c.id}" class="ans-select" onchange="checkSingleCard(${c.id})">
+            <option value="">${ui('selectPlaceholder', '--')}</option>
+            ${(c.opts || []).map(o => `<option value="${o.k}">${o.t}</option>`).join('')}
+          </select>
+          <div id="fb${c.id}" class="feedback"></div>
+        </div>
+        <button class="btn btn-speak" onclick="document.getElementById('fc${c.id}').classList.toggle('flipped')">${ui('btnBackToFront', '↩️')}</button>
+      </div>
+    </div></div>`;
+  }).join('');
+
+  (data.cards || []).forEach(c => {
+    const savedAns = localStorage.getItem(STORAGE_PREFIX + 'card_ans_' + c.id);
+    if (savedAns) {
+      const selEl = document.getElementById('q' + c.id);
+      if (selEl) { selEl.value = savedAns; checkSingleCard(c.id, true); }
+    }
+  });
+
+  updateLiveScoreSummary();
+  updateProgress();
+}
+
+// ================= ЯСНА И ТОЧНА ПРОВЕРКА НА ЕДНА ИЛИ ВСИЧКИ КАРТИ =================
+function cleanExplanation(expText) {
+  return (expText || '').replace(/^Вярно!\s*/i, '');
+}
+
+function checkSingleCard(cardId, silent = false) {
+  if (!window.APP_DATA || !APP_DATA.cards) return false;
+  const c = APP_DATA.cards.find(x => x.id === cardId);
+  if (!c) return false;
+
+  const sel = document.getElementById('q' + c.id).value;
+  const fb = document.getElementById('fb' + c.id);
+  const correctOpt = (c.opts || []).find(o => o.k === c.ans);
+  const correctFullText = correctOpt ? correctOpt.t : c.ans;
+  const cleanExp = cleanExplanation(c.exp);
+
+  if (!sel) {
+    localStorage.removeItem(STORAGE_PREFIX + 'card_ans_' + c.id);
+    fb.className = 'feedback warn';
+    fb.innerHTML = `⚠️ <b>${ui('msgNoAnswer', 'Не си избрал отговор на тази карта!')}</b> Избери вариант от падащото меню горе.`;
+    if (!silent) updateLiveScoreSummary();
+    return false;
+  }
+
+  localStorage.setItem(STORAGE_PREFIX + 'card_ans_' + c.id, sel);
+  const isOk = sel === c.ans;
+
+  if (isOk) {
+    fb.className = 'feedback ok';
+    fb.innerHTML = `✅ <b>${ui('msgCorrect', 'Вярно!')}</b> ${cleanExp}`;
+  } else {
+    fb.className = 'feedback err';
+    fb.innerHTML = `❌ <b>${ui('msgWrong', 'Грешен избор!')}</b><br>👉 ${ui('msgCorrectIs', 'Правилният отговор е:')} <b>${correctFullText}</b><br>💡 ${cleanExp}`;
+  }
+
+  if (!silent) {
+    updateLiveScoreSummary();
+    updateAnalyticsTable();
+  }
+  return isOk;
+}
+
+function updateLiveScoreSummary() {
+  if (!window.APP_DATA || !APP_DATA.cards) return;
+  let score = 0, answered = 0;
+  APP_DATA.cards.forEach(c => {
+    const val = document.getElementById('q' + c.id)?.value;
+    if (val) {
+      answered++;
+      if (val === c.ans) score++;
+    }
+  });
+  const total = APP_DATA.cards.length || 1;
+  const grade = Math.max(2, (2 + (score / total) * 4)).toFixed(2);
+  document.getElementById('total-score').innerHTML = `🏆 ${ui('lblScore', 'Верни:')} <span class="no-read" style="color:var(--green)">${score} / ${total}</span> (${ui('lblAnswered', 'Попълнени:')} ${answered}/${total}) | ${ui('lblGrade', 'Оценка:')} <span class="no-read" style="color:var(--gold)">${grade}</span>`;
+  localStorage.setItem(STORAGE_PREFIX + 'last_score', `${score}/${total} (${grade})`);
+}
+
+function checkAnswers() {
+  if (!window.APP_DATA || !APP_DATA.cards) return;
+  APP_DATA.cards.forEach(c => {
+    document.getElementById('fc' + c.id).classList.add('flipped');
+    checkSingleCard(c.id, true);
+  });
+  updateLiveScoreSummary();
+  updateAnalyticsTable();
+  speakDirect(ui('voiceCheckDone', 'Проверката приключи!'));
+}
+
+function openTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tabId === 'tab-4') updateAnalyticsTable();
+}
+function openPane(parentId, paneId, btn) {
+  document.querySelectorAll(`#${parentId} .subj-pane`).forEach(p => p.classList.remove('active'));
+  document.querySelectorAll(`#${parentId} .s-btn`).forEach(b => b.classList.remove('active'));
+  document.getElementById(paneId).classList.add('active');
+  btn.classList.add('active');
+}
+function maskVault(vId) {
+  const words = document.getElementById(vId).querySelectorAll('.memo-word');
+  const hide = Array.from(words).some(w => !w.classList.contains('masked'));
+  words.forEach(w => w.classList.toggle('masked', hide));
+}
+function toggleAllMasks() {
+  const words = document.querySelectorAll('.memo-word');
+  const hide = Array.from(words).some(w => !w.classList.contains('masked'));
+  words.forEach(w => w.classList.toggle('masked', hide));
+}
+function saveChk(chk) {
+  localStorage.setItem(STORAGE_PREFIX + 'chk_' + chk.id, chk.checked ? '1' : '0');
+  updateProgress();
+}
+function saveMastery(chk) {
+  const key = chk.getAttribute('data-storage-key') || (STORAGE_PREFIX + 'mast_' + chk.id);
+  localStorage.setItem(key, chk.checked ? '1' : '0');
+  chk.closest('.memo-card').classList.toggle('mastered', chk.checked);
+  updateProgress();
+}
+function toggleArchiveItem(btn) {
+  const li = btn.closest('li');
+  const toArch = li.parentElement.id === 'active-hw-list';
+  document.getElementById(toArch ? 'archive-list' : 'active-hw-list').appendChild(li);
+  btn.innerHTML = toArch ? ui('btnUnarchive', '📤') : ui('btnArchive', '📥');
+  localStorage.setItem(STORAGE_PREFIX + 'arch_' + li.id, toArch ? 'archived' : 'active');
+  updateAnalyticsTable();
+}
+function updateProgress() {
+  const all = document.querySelectorAll('#tab-1 input[type="checkbox"], .mast-chk');
+  const done = Array.from(all).filter(c => c.checked).length;
+  const pct = all.length ? Math.round((done / all.length) * 100) : 0;
+  document.getElementById('prog-text').innerText = `${pct}% (${done}/${all.length})`;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  updateAnalyticsTable();
+}
+
+// ================= ГЛАСОВ ЧЕТЕЦ (ЗАПАЗЕН ОРИГИНАЛЕН ФИЛТЪР ПО Т. 4) =================
+let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
+
+function stopSpeech() {
+  stopped = true; paused = false;
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.querySelectorAll('.speaking-glow').forEach(e => e.classList.remove('speaking-glow'));
+  document.querySelectorAll('[id^="play-"]').forEach(b => {
+    if (b.id.startsWith('play-vault-')) b.innerHTML = ui('btnPlayVault', '▶️');
+    else if (b.id.startsWith('play-joker')) b.innerHTML = ui('btnPlayJoker', '▶️');
+    else b.innerHTML = ui('btnListen', '▶️');
+  });
+  activeId = null; queue = []; idx = 0;
+}
+function playNext() {
+  if (stopped || paused || !activeId || idx >= queue.length) { if (idx >= queue.length) stopSpeech(); return; }
+  const u = new SpeechSynthesisUtterance(queue[idx]);
+  u.lang = ui('speechLang', 'bg-BG');
+  u.rate = 1.0;
+  u.onend = () => { if (!stopped && !paused) { idx++; playNext(); } };
+  window.speechSynthesis.speak(u);
+}
+function startSpeech(id, startIdx = 0) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const clone = el.cloneNode(true);
+  const ignoreSel = ui('speechIgnoreSelectors', '.no-read, select, button, a, input, textarea');
+  clone.querySelectorAll(ignoreSel).forEach(n => n.remove());
+  const clean = (clone.innerText || '').replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!clean) return;
+  stopSpeech();
+  activeId = id;
+  queue = (clean.match(/[^.!?]+[.!?]*/g) || [clean]).map(s => s.trim()).filter(s => s.length > 1);
+  idx = startIdx; stopped = false; paused = false;
+  el.classList.add('speaking-glow');
+  const btn = document.getElementById('play-' + id);
+  if (btn) btn.innerHTML = ui('btnPause', '⏸️');
+  playNext();
+}
+function toggleSpeak(id) {
+  if (activeId === id && queue.length) {
+    paused = !paused; stopped = paused;
+    if (paused) window.speechSynthesis.cancel(); else playNext();
+    const btn = document.getElementById('play-' + id);
+    if (btn) btn.innerHTML = paused ? ui('btnResume', '▶️') : ui('btnPause', '⏸️');
+  } else startSpeech(id, 0);
+}
+function speakDirect(txt) {
+  if (!('speechSynthesis' in window) || !txt) return;
+  stopSpeech();
+  stopped = false;
+  const clean = txt.replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!clean) return;
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = ui('speechLang', 'bg-BG');
+  window.speechSynthesis.speak(u);
+}
+
+// ================= ТАБЛИЦА ЗА АНАЛИЗ И ОТЧЕТ (ПОДДЪРЖА N НА БРОЙ ПРЕДМЕТИ) =================
+function getCardsForSubject(s, allCards) {
+  const sShort = String(s.shortName || '').trim().toLowerCase();
+  const sId = String(s.id || '').trim().toLowerCase();
+  const explicitIds = Array.isArray(s.cardIds) ? s.cardIds : (s.cardId ? [s.cardId] : []);
+  return (allCards || []).filter(c => {
+    if (explicitIds.includes(c.id)) return true;
+    if (c.subjId && String(c.subjId).trim().toLowerCase() === sId) return true;
+    const cSubj = String(c.subj || '').trim().toLowerCase();
+    return cSubj && (cSubj === sShort || sShort.includes(cSubj) || cSubj.includes(sShort));
+  });
+}
+
+function updateAnalyticsTable() {
+  const tbody = document.getElementById('analytics-tbody');
+  if (!tbody || !window.APP_DATA || !APP_DATA.subjects) return;
+  tbody.innerHTML = APP_DATA.subjects.map(s => {
+    const chk = s.hwChk ? document.getElementById(s.hwChk) : null;
+    const li = s.hwLi ? document.getElementById(s.hwLi) : null;
+    const isDone = chk && chk.checked;
+    const isArch = li && li.parentElement && li.parentElement.id === 'archive-list';
+    const vEl = document.getElementById('vault-' + s.id);
+    const totM = vEl ? vEl.querySelectorAll('.mast-chk').length : 0;
+    const doneM = vEl ? vEl.querySelectorAll('.mast-chk:checked').length : 0;
+
+    const subjCards = getCardsForSubject(s, APP_DATA.cards);
+    let cardStatus = '—';
+    if (subjCards.length > 0) {
+      let okCount = 0, ansCount = 0;
+      subjCards.forEach(cObj => {
+        const val = document.getElementById('q' + cObj.id)?.value;
+        if (val) {
+          ansCount++;
+          if (val === cObj.ans) okCount++;
+        }
+      });
+      if (ansCount === 0) cardStatus = `${ui('statusPending', '⏳ Не е решена')} (0/${subjCards.length})`;
+      else if (okCount === subjCards.length) cardStatus = `✅ Вярно (${okCount}/${subjCards.length})`;
+      else cardStatus = `⚠️ ${okCount}/${subjCards.length} верни`;
+    }
+
+    let subjStateBadge = `<span class="tier-badge-new">🟢 Активен</span>`;
+    if (s._isNewlyAdded) subjStateBadge = `<span class="tier-badge-new">🆕 Нов предмет</span>`;
+    else if (s._isDropped) subjStateBadge = `<span class="tier-badge-rev">⏪ Преговор (Стар)</span>`;
+
+    const hwCellText = chk
+      ? `${isDone ? ui('statusDone', '✅') : ui('statusActive', '⏳')} ${isArch ? ui('statusArchTag', '(🗄️)') : ''}`
+      : (s._isDropped ? '🗄️ От минал файл' : '—');
+
+    return `<tr class="${s._isDropped ? 'item-tier-rev' : 'item-tier-new'}">
+      <td>${s.displayNum}</td>
+      <td><b>${s.icon || '📘'} ${s.shortName}</b></td>
+      <td>${subjStateBadge}</td>
+      <td>${hwCellText}</td>
+      <td><span class="badge ${doneM === totM && totM > 0 ? 'b-green' : 'b-yellow'}">${doneM} / ${totM}</span></td>
+      <td>${cardStatus}</td>
+    </tr>`;
+  }).join('');
+}
+
+function generateSyncReport() {
+  if (!window.APP_DATA) return;
+  const done = [], pend = [], dropped = [];
+  APP_DATA.subjects.forEach(s => {
+    if (s._isDropped) {
+      dropped.push(s.shortName);
+    } else if (s.hwChk && document.getElementById(s.hwChk)) {
+      (document.getElementById(s.hwChk).checked ? done : pend).push(s.shortName);
+    } else {
+      done.push(s.shortName + ' (без тек. ДР)');
+    }
+  });
+  const mast = document.querySelectorAll('.mast-chk:checked').length;
+  const totM = document.querySelectorAll('.mast-chk').length;
+  const filesLoaded = (APP_DATA.loadedMeta || []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
+  const rep = `${ui('reportHeader', '=== ОТЧЕТ ===')}\n📂 Файлове: ${filesLoaded || '—'}\n📚 Общо предмети: ${APP_DATA.subjects.length}\n✅ Изпълнени: ${done.join(', ') || '—'}\n⏳ Активни: ${pend.join(', ') || '—'}${dropped.length ? '\n⏪ Преговор (отпаднали): ' + dropped.join(', ') : ''}\n🔐 Златен сейф: ${mast} / ${totM}\n🃏 3D Тренажор: ${localStorage.getItem(STORAGE_PREFIX + 'last_score') || '—'}`;
+  const box = document.getElementById('sync-box');
+  box.value = rep; box.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(rep);
+}
+
+function applyCustomDataJS() {
+  const code = document.getElementById('custom-db-input').value.trim();
+  if (!code) return;
+  try {
+    const parsed = evalDataCode(code);
+    if (parsed && Array.isArray(parsed.subjects)) {
+      if (saveAndRebuildMergedData([{ name: 'Ръчен код (' + shortDateLabel(parsed.generatedAt || 'Нов') + ')', generatedAt: parsed.generatedAt || '', code }])) {
+        document.getElementById('custom-db-input').value = '';
+        openTab('tab-1', document.getElementById('tab-btn-1'));
+      }
+    } else {
+      alert('Липсва валиден window.APP_DATA!');
+    }
+  } catch (err) {
+    alert('Грешка: ' + err.message);
+  }
+}
+
+function resetToDefaultFileDB() {
+  localStorage.removeItem(STORAGE_PREFIX + 'MERGED_SOURCES');
+  window.APP_DATA = null;
+  location.reload();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  rebuildAndInitFromStorage();
+});
+</script>
+</body>
+</html>
