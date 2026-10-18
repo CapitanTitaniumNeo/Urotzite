@@ -82,7 +82,6 @@ select.ans-select { width: 100%; padding: 9px; border-radius: 8px; background: #
 .load-banner { background: linear-gradient(135deg, #064e3b, #0f172a); border: 2px dashed var(--green); border-radius: 12px; padding: 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
 .due-tag { font-size: 0.74rem; color: var(--gold); background: #1e293b; border: 1px solid #475569; padding: 1px 6px; border-radius: 5px; margin-left: 4px; font-weight: 700; }
 
-/* СТИЛОВЕ ЗА ВИЗУАЛНО РАЗГРАНИЧАВАНЕ: АКТУАЛНО (ЗЕЛЕНО) СРЕЩУ ПРЕГОВОР (ЛИЛАВО) И АЛАРМИ */
 .tier-badge-new { display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.18); color: #4ade80; border: 1px solid #22c55e; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.3px; }
 .tier-badge-rev { display: inline-flex; align-items: center; gap: 4px; background: rgba(168,85,247,0.18); color: #d8b4fe; border: 1px solid #a855f7; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.3px; }
 .tier-badge-warn { display: inline-flex; align-items: center; gap: 4px; background: rgba(245,158,11,0.2); color: #fde047; border: 1px solid #f59e0b; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; }
@@ -285,7 +284,7 @@ body.filter-mode-rev .item-tier-new { display: none !important; }
     </div>
   </div>
 </div>
-
+<!-- КРАЙ НА ЧАСТ 1 (Постави Част 2 точно тук отдолу) -->
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
 
@@ -435,7 +434,6 @@ function getReferenceNowMs(data) {
   return genMs ? Math.max(realNow, genMs) : realNow;
 }
 
-// ================= ИНТЕЛИГЕНТНО ПАРСВАНЕ И АВТО-ПОПРАВКА НА ПРЕКЪСНАТ .JS ФАЙЛ =================
 function isValidAppDataPart(obj) {
   if (!obj || typeof obj !== 'object') return false;
   return Array.isArray(obj.subjects) ||
@@ -495,7 +493,24 @@ function evalDataCodeWithRepair(codeString) {
     }
     throw err1;
   }
-  // ================= МНОГОФАЙЛОВО ОБЕДИНЯВАНЕ НА ЧАСТИ И ЦЕЛИ БАЗИ =================
+  return { parsed: null, repaired: false };
+}
+
+function describePartContent(d) {
+  const parts = [];
+  if (Array.isArray(d.homework) && d.homework.length) parts.push(`ДР (${d.homework.length})`);
+  if (Array.isArray(d.schedule) && d.schedule.length) parts.push(`Разписание`);
+  if (Array.isArray(d.subjects) && d.subjects.length) {
+    const nums = d.subjects.map(s => s.num || s.shortName).join(',');
+    parts.push(`Предмети (${d.subjects.length}: #${nums})`);
+  }
+  if (Array.isArray(d.cards) && d.cards.length) {
+    const ids = d.cards.map(c => c.id);
+    parts.push(`3D Карти (${d.cards.length}: #${Math.min(...ids)}–#${Math.max(...ids)})`);
+  }
+  return parts.join(' + ') || 'Конфигурация';
+}
+
 function buildMultiFileMergedAppData(entriesList) {
   const valid = [];
   entriesList.forEach(item => {
@@ -525,23 +540,18 @@ function buildMultiFileMergedAppData(entriesList) {
 
   if (!valid.length) return null;
 
-  // Сортиране от НАЙ-НОВИЯ файл (индекс 0) назад към по-старите файлове
   valid.sort((a, b) => b.ts - a.ts);
   const newestDayTs = valid[0].dayTs;
   const newestDateLabel = shortDateLabel(valid[0].generatedAt);
 
-  // Всички файлове/части от най-новата календарна дата (напр. 18.10.2026) са АКТУАЛНИ (🟢 Зелени)
   valid.forEach((v, idx) => {
     v.isLatest = (newestDayTs > 0) ? (v.dayTs === newestDayTs) : (idx === 0);
   });
 
   const hasOlderFiles = valid.some(v => !v.isLatest);
-
-  // Проверка кои части и предмети присъстват в най-новата дата
   const latestSubjKeys = new Set();
   const olderSubjKeys = new Set();
   const latestSubjNums = new Set();
-  const olderSubjNamesByKey = new Map();
   let latestHasDiary = false;
   let latestHasSchedule = false;
   let latestCardsCount = 0;
@@ -563,7 +573,6 @@ function buildMultiFileMergedAppData(entriesList) {
         if (typeof s.num === 'number') latestSubjNums.add(s.num);
       } else {
         olderSubjKeys.add(k);
-        olderSubjNamesByKey.set(k, s.shortName || k);
       }
     });
   });
@@ -577,7 +586,6 @@ function buildMultiFileMergedAppData(entriesList) {
   mergedUI.examsCols = ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"];
   mergedUI.analyticsCols = ["№", "Отделен Предмет", "Статус на предмета", "Текущо домашно", "Златен сейф (Нови + Преговор)", "3D Тренажор (Общо)"];
 
-  // Взимаме най-новото налично седмично разписание
   let activeSchedule = [];
   for (let i = 0; i < valid.length; i++) {
     if (Array.isArray(valid[i].data.schedule) && valid[i].data.schedule.length > 0) {
@@ -601,12 +609,11 @@ function buildMultiFileMergedAppData(entriesList) {
     warnings: []
   };
 
-  // Формиране на аларми за липсващи или прекъснати части от новата база
   if (repairedFilesNames.length > 0) {
-    res.warnings.push(`🛠️ <b>Автоматично възстановен прекъснат файл:</b> <code>${repairedFilesNames.join(', ')}</code> беше с незатворен код накрая. Системата го затвори автоматично, за да не крашне, но проверете дали последните му предмети не са отрязани!`);
+    res.warnings.push(`🛠️ <b>Автоматично възстановен прекъснат файл:</b> <code>${repairedFilesNames.join(', ')}</code> беше с незатворен код накрая. Системата го затвори автоматично, за да не крашне!`);
   }
   if (!latestHasDiary) {
-    res.warnings.push(`⚠️ <b>Липсва част „Дневник/Домашни“</b> за най-новата дата (<b>${newestDateLabel}</b>)! В момента се показват домашните от по-старата база.`);
+    res.warnings.push(`⚠️ <b>Липсва част „Дневник/Домашни“</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
   }
   if (!latestHasSchedule) {
     res.warnings.push(`⚠️ <b>Липсва част „Седмично разписание“</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
@@ -615,7 +622,6 @@ function buildMultiFileMergedAppData(entriesList) {
     res.warnings.push(`⚠️ <b>Липсват файловете с 3D Карти</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
   }
 
-  // Проверка за липсващи номера на предмети (от 1 до макс. номер) в новата дата
   if (latestSubjNums.size > 0) {
     const maxNum = Math.max(...Array.from(latestSubjNums));
     const missingNums = [];
@@ -623,13 +629,12 @@ function buildMultiFileMergedAppData(entriesList) {
       if (!latestSubjNums.has(n)) missingNums.push(`№ ${n}`);
     }
     if (missingNums.length > 0) {
-      res.warnings.push(`🚨 <b>ВНИМАНИЕ – Не всички предмети от новата база (${newestDateLabel}) са налични!</b> В качените части за ${newestDateLabel} липсват уроците за предмети: <b>${missingNums.join(', ')}</b>. За тях системата автоматично зареди уроците от старата база за преговор!`);
+      res.warnings.push(`🚨 <b>АЛАРМА – Не всички предмети от новата база (${newestDateLabel}) са налични!</b> В качените части за ${newestDateLabel} липсват новите уроци за предмети: <b>${missingNums.join(', ')}</b>. За тях системата автоматично зареди уроците от старата база за преговор!`);
     }
   } else {
     res.warnings.push(`🚨 <b>Липсват файловете с Предмети (subjects)</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
   }
 
-  // 1. ДОМАШНИ РАБОТИ
   const hwMap = new Map();
   valid.forEach((v, idx) => {
     (v.data.homework || []).forEach(h => {
@@ -645,7 +650,6 @@ function buildMultiFileMergedAppData(entriesList) {
   });
   res.homework = Array.from(hwMap.values());
 
-  // 2. КОНТРОЛНИ И КЛАСНИ РАБОТИ
   const exMap = new Map();
   valid.forEach((v, idx) => {
     (v.data.exams || []).forEach(e => {
@@ -661,7 +665,6 @@ function buildMultiFileMergedAppData(entriesList) {
   });
   res.exams = Array.from(exMap.values());
 
-  // 3. ТЕМИ ПО ПРЕДМЕТИ
   const topMap = new Map();
   valid.forEach((v, idx) => {
     (v.data.topics || []).forEach(t => {
@@ -677,7 +680,6 @@ function buildMultiFileMergedAppData(entriesList) {
   });
   res.topics = Array.from(topMap.values());
 
-  // 4. ДИНАМИЧНО ОБЕДИНЯВАНЕ НА ВСИЧКИ ПРЕДМЕТИ ОТ ВСИЧКИ ЧАСТИ
   const subjMap = new Map();
   const aliasToKey = new Map();
 
@@ -770,7 +772,6 @@ function buildMultiFileMergedAppData(entriesList) {
     });
   });
 
-  // Сортиране по оригиналния номер на предмета (1 до 15), за да стоят Химия (6) и Биология (7) на точните си места!
   const allSubjects = Array.from(subjMap.values()).sort((a, b) => {
     if (a._sortNum !== b._sortNum) return a._sortNum - b._sortNum;
     return a._firstSeenRank - b._firstSeenRank;
@@ -789,7 +790,6 @@ function buildMultiFileMergedAppData(entriesList) {
   }
   res.ui.headerSubtitle = String(res.ui.headerSubtitle || "").replace(/\b\d+\s+Отделни\s+Предмета/i, `${totalSubjCount} Отделни Предмета`);
 
-  // 5. 3D КАРТИ (Запазваме И новите 20 карти, И старите 10 карти от 261011.js без да се презаписват по ID!)
   const cardMap = new Map();
   valid.forEach((v, idx) => {
     const isLatest = v.isLatest;
@@ -812,7 +812,7 @@ function buildMultiFileMergedAppData(entriesList) {
   });
 
   mergedCards.forEach((c, idx) => {
-    c.uid = idx + 1; // Уникален DOM номер за всяка карта (1 до 30)
+    c.uid = idx + 1;
   });
   res.cards = mergedCards;
 
@@ -846,7 +846,6 @@ function rebuildAndInitFromStorage() {
 function saveAndRebuildMergedData(newEntries) {
   const existing = getSavedSourcesList();
   newEntries.forEach(entry => {
-    // Запазваме всяка отделна част по име на файла ИЛИ по точен час + описание на частта
     const idx = existing.findIndex(x => x.name === entry.name && x.generatedAt === entry.generatedAt);
     if (idx >= 0) existing[idx] = entry;
     else existing.push(entry);
@@ -1012,7 +1011,6 @@ function initApp(data, sourceName = 'data.js') {
     `).join('');
   }
 
-  // Показване на алармата за липсващи части/предмети от новата база
   const alarmBox = document.getElementById('missing-parts-alarm');
   if (alarmBox) {
     if (data.warnings && data.warnings.length > 0) {
@@ -1048,7 +1046,6 @@ function initApp(data, sourceName = 'data.js') {
   const refNowMs = getReferenceNowMs(data);
   const startOfRefDayMs = new Date(new Date(refNowMs).getFullYear(), new Date(refNowMs).getMonth(), new Date(refNowMs).getDate(), 0, 0, 0).getTime();
 
-  // 1. ДОМАШНИ РАБОТИ
   const actList = document.getElementById('active-hw-list');
   const archList = document.getElementById('archive-list');
 
@@ -1083,7 +1080,6 @@ function initApp(data, sourceName = 'data.js') {
     (isArch ? archList : actList).appendChild(li);
   });
 
-  // 2. КОНТРОЛНИ И КЛАСНИ РАБОТИ
   const activeExams = [];
   const pastExams = [];
   (data.exams || []).forEach(e => {
@@ -1114,7 +1110,6 @@ function initApp(data, sourceName = 'data.js') {
     exArchDrawer.style.display = 'none';
   }
 
-  // 3. ТЕМАТИЧНО РАЗПРЕДЕЛЕНИЕ
   const activeTopics = [];
   const archTopics = [];
   (data.topics || []).forEach(t => {
@@ -1138,11 +1133,9 @@ function initApp(data, sourceName = 'data.js') {
     topArchDrawer.style.display = 'none';
   }
 
-  // 4. СЕДМИЧНО РАЗПИСАНИЕ
   document.getElementById('sched-box').innerHTML = (data.schedule || []).map(d => `
     <div class="day-card"><h4>${d.day}</h4>${(d.classes || []).map(c => `<p>${c}</p>`).join('')}</div>`).join('');
 
-  // 5. ДИНАМИЧНИ ПРЕДМЕТИ
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
 
@@ -1222,7 +1215,6 @@ function initApp(data, sourceName = 'data.js') {
     </div>`;
   });
 
-  // 6. 3D КАРТИ (Използваме c.uid за уникалност при дублирани номера в стари и нови файлове)
   document.getElementById('cards-wrap').innerHTML = (data.cards || []).map(c => {
     const tierCls = c._isLatest ? 'item-tier-new' : 'item-tier-rev';
     const algoHTML = c.algo ? `
@@ -1401,7 +1393,6 @@ function updateProgress() {
   updateAnalyticsTable();
 }
 
-// ================= ГЛАСОВ ЧЕТЕЦ =================
 let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
 
 function stopSpeech() {
@@ -1459,7 +1450,6 @@ function speakDirect(txt) {
   window.speechSynthesis.speak(u);
 }
 
-// ================= ТАБЛИЦА ЗА АНАЛИЗ И ОТЧЕТ =================
 function getCardsForSubject(s, allCards) {
   const sShort = String(s.shortName || '').trim().toLowerCase();
   const sId = String(s.id || '').trim().toLowerCase();
@@ -1570,20 +1560,3 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-  return { parsed: null, repaired: false };
-}
-
-function describePartContent(d) {
-  const parts = [];
-  if (Array.isArray(d.homework) && d.homework.length) parts.push(`ДР (${d.homework.length})`);
-  if (Array.isArray(d.schedule) && d.schedule.length) parts.push(`Разписание`);
-  if (Array.isArray(d.subjects) && d.subjects.length) {
-    const nums = d.subjects.map(s => s.num || s.shortName).join(',');
-    parts.push(`Предмети (${d.subjects.length}: #${nums})`);
-  }
-  if (Array.isArray(d.cards) && d.cards.length) {
-    const ids = d.cards.map(c => c.id);
-    parts.push(`3D Карти (${d.cards.length}: #${Math.min(...ids)}–#${Math.max(...ids)})`);
-  }
-  return parts.join(' + ') || 'Конфигурация';
-}
