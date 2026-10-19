@@ -447,14 +447,14 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 </div>
 <!-- КРАЙ НА ЧАСТ 1 ОТ 2 НА INDEX.HTML (Постави Част 2 точно тук отдолу) -->
 <!-- НАЧАЛО НА ФИНАЛНАТА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.1 - С ВГРАДЕН GOOGLE DRIVE ЛИНК) -->
-<script>
+  <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
 // Вграденият личен Google Apps Script Web App URL (/exec):
 const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
 
 const DEFAULT_UI = {
-  pageTitle: "Супер-Органайзер (Ядро 4.1): Борис И. Банев (7Г)",
-  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.1): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
+  pageTitle: "Супер-Органайзер (Ядро 4.2): Борис И. Банев (7Г)",
+  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.2): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
   headerSubtitle: "🎯 Умно Табло по Часове | 🧠 Учене + Мислене | 🔄 Smart Overlay & Google Drive Sync",
   voiceGreeting: "Здравей, Борис! Най-отгоре на таблото са подредени предстоящите домашни по часове на предаване. Отвори решението и мисловната карта или премини към учене и мислене по предмети!",
   speechLang: "bg-BG",
@@ -481,9 +481,33 @@ const DEFAULT_UI = {
   msgNoAnswer: "Избери отговор от падащото меню!"
 };
 
-function ui(key, fallback = '') {
+function valOr(a, b) { return (a !== undefined && a !== null && a !== '') ? a : b; }
+
+function ui(key, fallback) {
+  const fb = fallback !== undefined ? fallback : '';
   if (window.APP_DATA && window.APP_DATA.ui && window.APP_DATA.ui[key] !== undefined) return window.APP_DATA.ui[key];
-  return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fallback;
+  return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fb;
+}
+
+function injectTopManualButtons() {
+  const alertBar = document.getElementById('sync-problem-bar');
+  if (!alertBar || document.getElementById('top-manual-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'top-manual-bar';
+  bar.className = 'prog-wrap no-read';
+  bar.style.borderColor = 'var(--green)';
+  bar.innerHTML = `
+    <div style="font-size:0.83rem; flex:1; min-width:210px;">
+      <strong style="color:var(--green);">📂 База данни:</strong>
+      <span id="top-db-status-text">Готов за зареждане от устройство (.js) или Google Drive.</span>
+    </div>
+    <div class="voice-bar">
+      <button class="btn btn-file" onclick="document.getElementById('file-picker').click()">➕ Зареди .js файлове ръчно</button>
+      <button class="btn btn-cloud" onclick="syncFromGoogleDrive(false)">☁️ Обнови от Google Drive</button>
+      <button class="btn btn-arch" onclick="openTab('tab-3', document.getElementById('tab-btn-3'))">⚙️ Управление</button>
+    </div>
+  `;
+  alertBar.parentNode.insertBefore(bar, alertBar);
 }
 
 function setTierFilter(mode) {
@@ -500,11 +524,11 @@ function filterBoardSection(secId, btn) {
   document.querySelectorAll('.board-quick-nav .q-nav-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   document.querySelectorAll('#tab-1 .board-sec').forEach(sec => {
-    sec.style.display = (secId === 'all' || sec.id === secId) ? 'block' : 'none';
+    sec.style.display = (secId === 'all' ? true : sec.id === secId) ? 'block' : 'none';
   });
 }
 
-function parseBgDateString(str, endOfDayIfNoTime = false) {
+function parseBgDateString(str, endOfDayIfNoTime) {
   if (!str) return null;
   const m = String(str).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:.*?(\d{1,2}):(\d{2}))?/);
   if (!m) return null;
@@ -521,7 +545,8 @@ function shortDateLabel(genStr) {
 }
 
 function parseDayOnlyMs(genStr) {
-  return parseBgDateString(shortDateLabel(genStr), false) || 0;
+  const res = parseBgDateString(shortDateLabel(genStr), false);
+  return res ? res : 0;
 }
 
 function tierBadgeHTML(isLatest, genDate) {
@@ -538,7 +563,7 @@ function normalizeSubjKey(s) {
 }
 
 function guessSubjectKeyFromText(badgeOrTitle, subjects) {
-  const txt = String(badgeOrTitle || '').toLowerCase();
+  const txt = String(valOr(badgeOrTitle, '')).toLowerCase();
   const map = [
     { k: 'math', w: ['математика', 'геометрия', 'алгебра'] },
     { k: 'maat', w: ['маат', 'филип'] },
@@ -567,15 +592,20 @@ function guessSubjectKeyFromText(badgeOrTitle, subjects) {
 }
 
 function makeMasteryStorageKey(subjId, vaultTitle, fallbackIdx) {
-  const cleanTitle = String(vaultTitle || fallbackIdx).trim().toLowerCase().replace(/\s+/g, '_').slice(0, 45);
+  const cleanTitle = String(valOr(vaultTitle, fallbackIdx)).trim().toLowerCase().replace(/\s+/g, '_').slice(0, 45);
   return `${STORAGE_PREFIX}mast_${subjId}_${cleanTitle}`;
 }
 
 function isValidAppDataPart(obj) {
   if (!obj || typeof obj !== 'object') return false;
-  return Array.isArray(obj.subjects) || Array.isArray(obj.homework) || Array.isArray(obj.exams) ||
-         Array.isArray(obj.topics) || Array.isArray(obj.schedule) || Array.isArray(obj.cards) ||
-         Array.isArray(obj.disableIds) || !!obj.ui;
+  if (Array.isArray(obj.subjects)) return true;
+  if (Array.isArray(obj.homework)) return true;
+  if (Array.isArray(obj.exams)) return true;
+  if (Array.isArray(obj.topics)) return true;
+  if (Array.isArray(obj.schedule)) return true;
+  if (Array.isArray(obj.cards)) return true;
+  if (Array.isArray(obj.disableIds)) return true;
+  return Boolean(obj.ui);
 }
 
 function autoCloseTruncatedJS(rawCode) {
@@ -608,13 +638,13 @@ function autoCloseTruncatedJS(rawCode) {
 
 function evalDataCodeWithRepair(codeString) {
   try {
-    const fn = new Function('const window = {}; ' + codeString + '; return window.APP_DATA || (typeof APP_DATA !== "undefined" ? APP_DATA : null);');
+    const fn = new Function('const window = {}; ' + codeString + '; return window.APP_DATA ? window.APP_DATA : (typeof APP_DATA !== "undefined" ? APP_DATA : null);');
     const res = fn();
     if (isValidAppDataPart(res)) return { parsed: res, repaired: false };
   } catch (err1) {
     try {
       const repairedCode = autoCloseTruncatedJS(codeString);
-      const fn2 = new Function('const window = {}; ' + repairedCode + '; return window.APP_DATA || (typeof APP_DATA !== "undefined" ? APP_DATA : null);');
+      const fn2 = new Function('const window = {}; ' + repairedCode + '; return window.APP_DATA ? window.APP_DATA : (typeof APP_DATA !== "undefined" ? APP_DATA : null);');
       const res2 = fn2();
       if (isValidAppDataPart(res2)) return { parsed: res2, repaired: true };
     } catch (err2) {}
@@ -629,28 +659,29 @@ function describePartContent(d) {
   if (Array.isArray(d.subjects) && d.subjects.length) parts.push(`Предмети (${d.subjects.length})`);
   if (Array.isArray(d.cards) && d.cards.length) parts.push(`Карти (${d.cards.length})`);
   if (Array.isArray(d.schedule) && d.schedule.length) parts.push(`График (${d.schedule.length}д)`);
-  return parts.join(' + ') || 'Пач';
+  return parts.length ? parts.join(' + ') : 'Пач';
 }
 
-// АРХИТЕКТУРА НА ПРИПОКРИВАНЕ И ДОПЪЛВАНЕ (SMART DEEP-MERGE & OVERLAY ENGINE)
 function buildMultiFileMergedAppData(entriesList) {
   const disabledFiles = getDisabledFilesMap();
   const valid = [];
 
   entriesList.forEach(item => {
-    if (!item || (item.name && item.name.startsWith('_')) || disabledFiles[item.name]) return;
+    if (!item) return;
+    if (item.name && item.name.startsWith('_')) return;
+    if (disabledFiles[item.name]) return;
     try {
-      let parsed = item.parsed, repaired = !!item.repaired;
+      let parsed = item.parsed, repaired = Boolean(item.repaired);
       if (!parsed && item.code) {
         const ev = evalDataCodeWithRepair(item.code);
         parsed = ev.parsed; repaired = ev.repaired;
       }
       if (isValidAppDataPart(parsed) && parsed.enabled !== false) {
-        const ts = parseBgDateString(parsed.generatedAt, false) || 0;
+        const ts = valOr(parseBgDateString(parsed.generatedAt, false), 0);
         const dayTs = parseDayOnlyMs(parsed.generatedAt);
         valid.push({
-          name: item.name || 'data.js',
-          generatedAt: parsed.generatedAt || item.name || 'База',
+          name: valOr(item.name, 'data.js'),
+          generatedAt: valOr(parsed.generatedAt, valOr(item.name, 'База')),
           ts, dayTs, repaired,
           partDesc: describePartContent(parsed),
           data: parsed
@@ -672,7 +703,7 @@ function buildMultiFileMergedAppData(entriesList) {
 
   const disabledIds = new Set();
   valid.forEach(v => {
-    (v.data.disableIds || []).forEach(id => disabledIds.add(String(id).trim()));
+    (v.data.disableIds ? v.data.disableIds : []).forEach(id => disabledIds.add(String(id).trim()));
   });
 
   let mergedUI = Object.assign({}, DEFAULT_UI);
@@ -687,7 +718,7 @@ function buildMultiFileMergedAppData(entriesList) {
   const schedDayMap = new Map();
   const schedOrder = [];
   valid.forEach(v => {
-    (v.data.schedule || []).forEach(d => {
+    (v.data.schedule ? v.data.schedule : []).forEach(d => {
       if (!d || !d.day) return;
       const dayKeyMatch = String(d.day).toUpperCase().match(/(ПОНЕДЕЛНИК|ВТОРНИК|СРЯДА|ЧЕТВЪРТЪК|ПЕТЪК|СЪБОТА|НЕДЕЛЯ)/);
       const dayKey = dayKeyMatch ? dayKeyMatch[1] : d.day;
@@ -700,11 +731,13 @@ function buildMultiFileMergedAppData(entriesList) {
   const subjMap = new Map(), aliasToKey = new Map();
   valid.forEach(v => {
     const isLatest = v.isLatest;
-    (v.data.subjects || []).forEach((s, sOrderIdx) => {
+    (v.data.subjects ? v.data.subjects : []).forEach((s, sOrderIdx) => {
       const normId = normalizeSubjKey(s);
       if (disabledIds.has(normId)) return;
       const normName = s.shortName ? String(s.shortName).trim().toLowerCase() : normId;
-      const mapKey = aliasToKey.get(normId) || aliasToKey.get(normName) || normId;
+      let mapKey = aliasToKey.get(normId);
+      if (!mapKey) mapKey = aliasToKey.get(normName);
+      if (!mapKey) mapKey = normId;
       aliasToKey.set(normId, mapKey);
       if (s.shortName) aliasToKey.set(normName, mapKey);
 
@@ -712,11 +745,11 @@ function buildMultiFileMergedAppData(entriesList) {
 
       if (!subjMap.has(mapKey)) {
         const clone = JSON.parse(JSON.stringify(s));
-        clone.id = clone.id || mapKey;
+        clone.id = valOr(clone.id, mapKey);
         clone._inLatestFile = isLatest && !s.dropped && !s.archived;
         clone._sortNum = explicitNum !== null ? explicitNum : (100 + sOrderIdx + 1);
         clone._sourceDate = v.generatedAt;
-        clone.vault = (clone.vault || []).filter(vi => !vi.disabled).map(vItem => Object.assign({}, vItem, {
+        clone.vault = (clone.vault ? clone.vault : []).filter(vi => !vi.disabled).map(vItem => Object.assign({}, vItem, {
           _isLatest: isLatest,
           _sourceDate: v.generatedAt
         }));
@@ -736,10 +769,11 @@ function buildMultiFileMergedAppData(entriesList) {
         existing._sourceDate = v.generatedAt;
 
         const newVaultItems = [];
-        (s.vault || []).forEach(vItem => {
-          if (vItem.disabled || (vItem.id && disabledIds.has(vItem.id))) return;
-          const tKey = (vItem.title || '').trim().toLowerCase();
-          const existIdx = existing.vault.findIndex(x => (x.title || '').trim().toLowerCase() === tKey);
+        (s.vault ? s.vault : []).forEach(vItem => {
+          if (vItem.disabled) return;
+          if (vItem.id && disabledIds.has(vItem.id)) return;
+          const tKey = String(valOr(vItem.title, '')).trim().toLowerCase();
+          const existIdx = existing.vault.findIndex(x => String(valOr(x.title, '')).trim().toLowerCase() === tKey);
           const enriched = Object.assign({}, vItem, { _isLatest: isLatest, _sourceDate: v.generatedAt });
           if (existIdx >= 0) {
             existing.vault[existIdx] = Object.assign({}, existing.vault[existIdx], enriched);
@@ -766,13 +800,13 @@ function buildMultiFileMergedAppData(entriesList) {
 
   const hwMap = new Map();
   valid.forEach(v => {
-    (v.data.homework || []).forEach(h => {
-      const key = h.id || (h.title + '_' + h.dueDate);
+    (v.data.homework ? v.data.homework : []).forEach(h => {
+      const key = valOr(h.id, h.title + '_' + h.dueDate);
       if (h.disabled || disabledIds.has(key)) {
         hwMap.delete(key);
         return;
       }
-      const subjId = h.subjId || guessSubjectKeyFromText((h.badge || '') + ' ' + (h.title || ''), allSubjects);
+      const subjId = valOr(h.subjId, guessSubjectKeyFromText(valOr(h.badge, '') + ' ' + valOr(h.title, ''), allSubjects));
       if (!hwMap.has(key)) {
         hwMap.set(key, Object.assign({}, h, {
           id: key,
@@ -784,7 +818,7 @@ function buildMultiFileMergedAppData(entriesList) {
         const prev = hwMap.get(key);
         hwMap.set(key, Object.assign({}, prev, h, {
           id: key,
-          subjId: subjId || prev.subjId,
+          subjId: valOr(subjId, prev.subjId),
           _isLatest: v.isLatest && !h.archived,
           _sourceDate: v.generatedAt
         }));
@@ -794,36 +828,36 @@ function buildMultiFileMergedAppData(entriesList) {
 
   const exMap = new Map();
   valid.forEach(v => {
-    (v.data.exams || []).forEach(e => {
-      const key = e.id || (e.date + '_' + e.subj);
+    (v.data.exams ? v.data.exams : []).forEach(e => {
+      const key = valOr(e.id, e.date + '_' + e.subj);
       if (e.disabled || disabledIds.has(key)) { exMap.delete(key); return; }
-      const prev = exMap.get(key) || {};
+      const prev = exMap.has(key) ? exMap.get(key) : {};
       exMap.set(key, Object.assign({}, prev, e, { _isLatest: v.isLatest && !e.archived, _sourceDate: v.generatedAt }));
     });
   });
 
   const topMap = new Map();
   valid.forEach(v => {
-    (v.data.topics || []).forEach(t => {
-      const key = t.id || (t.subj + '_' + t.date);
+    (v.data.topics ? v.data.topics : []).forEach(t => {
+      const key = valOr(t.id, t.subj + '_' + t.date);
       if (t.disabled || disabledIds.has(key)) { topMap.delete(key); return; }
-      const prev = topMap.get(key) || {};
+      const prev = topMap.has(key) ? topMap.get(key) : {};
       topMap.set(key, Object.assign({}, prev, t, { _isLatest: v.isLatest && !t.archived, _sourceDate: v.generatedAt }));
     });
   });
 
   const cardMap = new Map();
   valid.forEach(v => {
-    (v.data.cards || []).forEach(c => {
-      const uniqueKey = c.patchId || `${shortDateLabel(v.generatedAt)}_${c.id}_${(c.title || '').trim()}`;
+    (v.data.cards ? v.data.cards : []).forEach(c => {
+      const uniqueKey = valOr(c.patchId, `${shortDateLabel(v.generatedAt)}_${c.id}_${String(valOr(c.title, '')).trim()}`);
       if (c.disabled || disabledIds.has(String(c.id)) || disabledIds.has(uniqueKey)) {
         cardMap.delete(uniqueKey);
         return;
       }
-      const cSubjId = c.subjId || guessSubjectKeyFromText(c.subj || c.title, allSubjects);
-      const prev = cardMap.get(uniqueKey) || {};
+      const cSubjId = valOr(c.subjId, guessSubjectKeyFromText(valOr(c.subj, c.title), allSubjects));
+      const prev = cardMap.has(uniqueKey) ? cardMap.get(uniqueKey) : {};
       cardMap.set(uniqueKey, Object.assign({}, prev, c, {
-        subjId: cSubjId || prev.subjId,
+        subjId: valOr(cSubjId, prev.subjId),
         _origId: c.id,
         _isLatest: v.isLatest,
         _sourceDate: v.generatedAt,
@@ -835,7 +869,7 @@ function buildMultiFileMergedAppData(entriesList) {
   const mergedCards = Array.from(cardMap.values()).sort((a, b) => {
     if (a._isLatest !== b._isLatest) return a._isLatest ? -1 : 1;
     if (b._ts !== a._ts) return b._ts - a._ts;
-    return (a._origId || 0) - (b._origId || 0);
+    return valOr(a._origId, 0) - valOr(b._origId, 0);
   });
   mergedCards.forEach((c, idx) => { c.uid = idx + 1; });
 
@@ -863,12 +897,12 @@ function buildMultiFileMergedAppData(entriesList) {
 }
 
 function getCardsForSubject(s, allCards) {
-  const sShort = String(s.shortName || '').trim().toLowerCase();
-  const sId = String(s.id || '').trim().toLowerCase();
-  return (allCards || []).filter(c => {
+  const sShort = String(valOr(s.shortName, '')).trim().toLowerCase();
+  const sId = String(valOr(s.id, '')).trim().toLowerCase();
+  return (allCards ? allCards : []).filter(c => {
     if (c.subjId && String(c.subjId).trim().toLowerCase() === sId) return true;
-    const cSubj = String(c.subj || '').trim().toLowerCase();
-    return cSubj && (cSubj === sShort || sShort.includes(cSubj) || cSubj.includes(sShort));
+    const cSubj = String(valOr(c.subj, '')).trim().toLowerCase();
+    return Boolean(cSubj) && (cSubj === sShort || sShort.includes(cSubj) || cSubj.includes(sShort));
   });
 }
 
@@ -885,16 +919,17 @@ function formatTimeRemaining(dueMs, nowMs) {
 
 function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPastZone) {
   const savedChk = localStorage.getItem(STORAGE_PREFIX + 'chk_' + h.chkId);
-  const isChk = savedChk !== null ? (savedChk === '1') : !!h.checked;
+  const isChk = savedChk !== null ? (savedChk === '1') : Boolean(h.checked);
   const dueMs = parseBgDateString(h.dueDate, true);
   const tierCls = h._isLatest ? 'item-tier-new' : 'item-tier-rev';
 
-  const solHTML = h.solutionHTML || (subjObj && subjObj.homeworkBlocks && subjObj.homeworkBlocks[0] ? subjObj.homeworkBlocks[0].html : '');
-  const visualsHTML = h.visualsHTML || (subjObj && subjObj.extraHTML ? subjObj.extraHTML : '');
+  const fallbackSol = (subjObj && subjObj.homeworkBlocks && subjObj.homeworkBlocks[0]) ? subjObj.homeworkBlocks[0].html : '';
+  const solHTML = valOr(h.solutionHTML, fallbackSol);
+  const visualsHTML = valOr(h.visualsHTML, subjObj ? valOr(subjObj.extraHTML, '') : '');
   const firstCard = (subjCards && subjCards.length) ? subjCards[0] : null;
   const firstVault = (subjObj && subjObj.vault && subjObj.vault.length) ? subjObj.vault[0] : null;
 
-  let mindMapContent = h.mindMapHTML || '';
+  let mindMapContent = valOr(h.mindMapHTML, '');
   if (!mindMapContent && firstCard && firstCard.algo) {
     mindMapContent = `
       <div>🎯 <b>1. Тип задача:</b> ${firstCard.algo.type}</div>
@@ -905,8 +940,13 @@ function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPa
     mindMapContent = `<div>🔐 <b>Ключово правило от Сейфа (${firstVault.title}):</b> ${formatMemoWords(firstVault.text)}</div>`;
   }
 
-  const resLink = h.resourceLink || (firstCard && firstCard.wiki) || (firstVault && firstVault.wiki) || '';
-  const resLabel = h.resourceLabel || (firstCard && firstCard.linkLabel) || '🔗 Отвори интерактивен ресурс по темата';
+  let resLink = valOr(h.resourceLink, '');
+  if (!resLink && firstCard) resLink = valOr(firstCard.wiki, '');
+  if (!resLink && firstVault) resLink = valOr(firstVault.wiki, '');
+
+  let resLabel = valOr(h.resourceLabel, '');
+  if (!resLabel && firstCard) resLabel = valOr(firstCard.linkLabel, '');
+  if (!resLabel) resLabel = '🔗 Отвори интерактивен ресурс по темата';
 
   const countdownBadge = (!isPastZone && dueMs)
     ? `<span class="countdown-tag no-read">⏳ ${formatTimeRemaining(dueMs, nowMs)}</span>`
@@ -920,7 +960,8 @@ function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPa
     ? `<button class="btn btn-arch no-read" onclick="jumpToSubject('${subjObj.id}')">🧠 Отвори Учене + Мислене (${subjObj.shortName})</button>`
     : '';
 
-  const drawerHTML = (solHTML || mindMapContent || visualsHTML) ? `
+  const hasDrawer = Boolean(solHTML) || Boolean(mindMapContent) || Boolean(visualsHTML);
+  const drawerHTML = hasDrawer ? `
     <details class="hw-work-drawer" ${!isPastZone && !isChk ? 'open' : ''}>
       <summary>
         <span>💡 РЕШЕНИЕ ЗА ТЕТРАДКАТА + МИСЛОВНА КАРТА И ВИЗУАЛИЗАЦИЯ</span>
@@ -931,7 +972,7 @@ function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPa
           <b style="color:var(--green);">✍️ Пълно решение и насоки:</b>
           ${playerHTML('sol-' + h.id, '▶️ Чуй решението')}
         </div>
-        <div>${solHTML || 'Виж заданието горе и приложи алгоритъма от мисловната карта.'}</div>
+        <div>${valOr(solHTML, 'Виж заданието горе и приложи алгоритъма от мисловната карта.')}</div>
         ${mindMapContent ? `<div class="mindmap-box"><b>🧭 Мисловна карта и правило:</b><br>${mindMapContent}</div>` : ''}
         ${visualsHTML ? `<div style="margin-top:8px;">${visualsHTML}</div>` : ''}
         <div class="voice-bar no-read" style="margin-top:8px;">
@@ -948,7 +989,7 @@ function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPa
         <div style="flex:1;">
           <div class="hw-meta-pills">
             ${tierBadgeHTML(h._isLatest, h._sourceDate)}
-            <span class="badge ${h.badgeClass || 'b-blue'} no-read">${h.badge || 'Предмет'}</span>
+            <span class="badge ${valOr(h.badgeClass, 'b-blue')} no-read">${valOr(h.badge, 'Предмет')}</span>
             ${h.dueDate ? `<span class="due-tag no-read">🕒 Предаване: ${h.dueDate}</span>` : ''}
             ${countdownBadge}
           </div>
@@ -969,17 +1010,25 @@ function jumpToSubject(subjId) {
 }
 
 function initApp(data) {
+  injectTopManualButtons();
   const alertBar = document.getElementById('sync-problem-bar');
+  const topStatus = document.getElementById('top-db-status-text');
   renderSavedFilesListInTab3();
 
   if (!data) {
     alertBar.style.display = 'flex';
-    document.getElementById('sync-problem-text').innerHTML = '⚠️ <b>Няма активна учебна база данни!</b> Натиснете „Опитай пак“ за изтегляне от Google Drive или отворете „Обнови данни“.';
+    document.getElementById('sync-problem-text').innerHTML = '⚠️ <b>Няма активна учебна база данни!</b> Натиснете зеления бутон „➕ Зареди .js файлове ръчно“ горе или „☁️ Обнови от Google Drive“.';
+    if (topStatus) topStatus.innerHTML = 'Няма заредени файлове в паметта.';
     return;
   }
+
   alertBar.style.display = (data.warnings && data.warnings.length > 0) ? 'flex' : 'none';
   if (data.warnings && data.warnings.length > 0) {
     document.getElementById('sync-problem-text').innerHTML = data.warnings.join(' | ');
+  }
+
+  if (topStatus) {
+    topStatus.innerHTML = `✅ Заредени <b>${(data.loadedMeta ? data.loadedMeta : []).length} файла</b> | <b>${(data.subjects ? data.subjects : []).length} предмета</b> | <b>${(data.homework ? data.homework : []).length} домашни</b>`;
   }
 
   if (data.extraCSS) {
@@ -988,14 +1037,14 @@ function initApp(data) {
     st.innerHTML = data.extraCSS;
   }
 
-  document.title = ui('pageTitle', 'Супер-Органайзер Ядро 4.1');
-  document.getElementById('header-title').innerHTML = ui('headerTitle', '🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.1)');
+  document.title = ui('pageTitle', 'Супер-Органайзер Ядро 4.2');
+  document.getElementById('header-title').innerHTML = ui('headerTitle', '🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.2)');
 
   const nowMs = Date.now();
   const nowObj = new Date(nowMs);
   document.getElementById('live-sofia-clock').innerText = `🕒 София: ${nowObj.toLocaleDateString('bg-BG')} ${nowObj.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'})}`;
 
-  const allHw = [...(data.homework || [])];
+  const allHw = [...(data.homework ? data.homework : [])];
   const upcomingHw = [], pastHw = [];
 
   allHw.forEach(h => {
@@ -1005,12 +1054,12 @@ function initApp(data) {
   });
 
   upcomingHw.sort((a, b) => {
-    const da = parseBgDateString(a.dueDate, true) || Number.MAX_SAFE_INTEGER;
-    const db = parseBgDateString(b.dueDate, true) || Number.MAX_SAFE_INTEGER;
-    return da !== db ? da - db : ((a.priority || 99) - (b.priority || 99));
+    const da = valOr(parseBgDateString(a.dueDate, true), Number.MAX_SAFE_INTEGER);
+    const db = valOr(parseBgDateString(b.dueDate, true), Number.MAX_SAFE_INTEGER);
+    return da !== db ? da - db : (valOr(a.priority, 99) - valOr(b.priority, 99));
   });
 
-  pastHw.sort((a, b) => (parseBgDateString(b.dueDate, true) || 0) - (parseBgDateString(a.dueDate, true) || 0));
+  pastHw.sort((a, b) => valOr(parseBgDateString(b.dueDate, true), 0) - valOr(parseBgDateString(a.dueDate, true), 0));
 
   const focusDayStr = upcomingHw.length > 0 ? shortDateLabel(upcomingHw[0].dueDate) : '';
   const focusDayMs = parseDayOnlyMs(focusDayStr);
@@ -1022,7 +1071,7 @@ function initApp(data) {
   const zone1 = [], zone2 = [], zone3 = [];
   upcomingHw.forEach(h => {
     const dStr = shortDateLabel(h.dueDate);
-    const dMs = parseBgDateString(h.dueDate, true) || 0;
+    const dMs = valOr(parseBgDateString(h.dueDate, true), 0);
     if (dStr === focusDayStr) zone1.push(h);
     else if (dMs <= endOfCurrentWeekMs) zone2.push(h);
     else zone3.push(h);
@@ -1042,40 +1091,40 @@ function initApp(data) {
     : `🔥 1. ПОСЛЕДНИ АКТИВНИ ДОМАШНИ`;
 
   document.getElementById('active-hw-chips').innerHTML = zone1.map(h => {
-    const sObj = (data.subjects || []).find(s => s.id === h.subjId);
-    const lbl = sObj ? `${sObj.icon || '📘'} ${sObj.shortName}` : h.badge;
-    const timePart = (h.dueDate || '').split(' ')[1] || '';
+    const sObj = (data.subjects ? data.subjects : []).find(s => s.id === h.subjId);
+    const lbl = sObj ? `${valOr(sObj.icon, '📘')} ${sObj.shortName}` : h.badge;
+    const timePart = valOr(valOr(h.dueDate, '').split(' ')[1], '');
     return `<span class="subj-chip-jump ${h.badgeClass === 'b-red' ? 'urgent-chip' : ''}" onclick="document.getElementById('card-${h.id}')?.scrollIntoView({behavior:'smooth'})">
       ${lbl} ${timePart ? `(${timePart} ч.)` : ''}
     </span>`;
   }).join('');
 
   const mapHwList = (list, isPast) => list.map(h => {
-    const sObj = (data.subjects || []).find(s => s.id === h.subjId);
+    const sObj = (data.subjects ? data.subjects : []).find(s => s.id === h.subjId);
     const sCards = sObj ? getCardsForSubject(sObj, data.cards) : [];
-    const relExam = (data.exams || []).find(e => !e.archived && sObj && String(e.subj || '').toLowerCase().includes(sObj.shortName.toLowerCase()));
+    const relExam = (data.exams ? data.exams : []).find(e => !e.archived && sObj && String(valOr(e.subj, '')).toLowerCase().includes(sObj.shortName.toLowerCase()));
     return renderSmartHomeworkCard(h, sObj, sCards, relExam, nowMs, isPast);
   }).join('');
 
   document.getElementById('pl-zone-focus-box').innerHTML = playerHTML('zone-focus-box', '▶️ Слушай');
-  document.getElementById('hw-zone-focus').innerHTML = mapHwList(zone1, false) || `<p style="color:var(--muted);">Няма предстоящи задачи за този ден.</p>`;
+  document.getElementById('hw-zone-focus').innerHTML = valOr(mapHwList(zone1, false), `<p style="color:var(--muted);">Няма предстоящи задачи за този ден.</p>`);
   document.getElementById('hw-zone-week').innerHTML = mapHwList(zone2, false);
   document.getElementById('zone-week-box').style.display = zone2.length ? 'block' : 'none';
   document.getElementById('zone-next-box').style.display = zone3.length ? 'block' : 'none';
   document.getElementById('hw-zone-next').innerHTML = mapHwList(zone3, false);
   document.getElementById('hw-zone-past').innerHTML = mapHwList(pastHw, true);
 
-  document.getElementById('sched-box').innerHTML = (data.schedule || []).map(d => `
-    <div class="uni-card"><h4>${d.day}</h4>${(d.classes || []).map(c => `<p style="margin:4px 0;">${c}</p>`).join('')}</div>`).join('');
+  document.getElementById('sched-box').innerHTML = (data.schedule ? data.schedule : []).map(d => `
+    <div class="uni-card"><h4>${d.day}</h4>${(d.classes ? d.classes : []).map(c => `<p style="margin:4px 0;">${c}</p>`).join('')}</div>`).join('');
 
   const activeExams = [], pastExams = [];
-  (data.exams || []).forEach(e => {
+  (data.exams ? data.exams : []).forEach(e => {
     const eMs = parseBgDateString(e.date, true);
     if (e.archived || (eMs !== null && eMs < nowMs)) pastExams.push(e);
     else activeExams.push(e);
   });
-  activeExams.sort((a, b) => (parseBgDateString(a.date, false) || 0) - (parseBgDateString(b.date, false) || 0));
-  pastExams.sort((a, b) => (parseBgDateString(b.date, false) || 0) - (parseBgDateString(a.date, false) || 0));
+  activeExams.sort((a, b) => valOr(parseBgDateString(a.date, false), 0) - valOr(parseBgDateString(b.date, false), 0));
+  pastExams.sort((a, b) => valOr(parseBgDateString(b.date, false), 0) - valOr(parseBgDateString(a.date, false), 0));
 
   document.getElementById('exams-cards-box').innerHTML = activeExams.map((e, i) => `
     <div class="uni-card item-tier-new ${e.urgent ? 'urgent-exam' : ''} ${e.klasna ? 'klasna-exam' : ''}">
@@ -1099,8 +1148,8 @@ function initApp(data) {
   } else exArchDrawer.style.display = 'none';
 
   document.getElementById('pl-sec-topics').innerHTML = playerHTML('sec-topics', '▶️ Слушай');
-  const actTopics = (data.topics || []).filter(t => !t.archived && t._isLatest);
-  const archTopics = (data.topics || []).filter(t => t.archived || !t._isLatest);
+  const actTopics = (data.topics ? data.topics : []).filter(t => !t.archived && t._isLatest);
+  const archTopics = (data.topics ? data.topics : []).filter(t => t.archived || !t._isLatest);
 
   document.getElementById('topics-box').innerHTML = actTopics.map(t => `
     <div class="uni-card item-tier-new">
@@ -1124,15 +1173,18 @@ function initApp(data) {
   const panesWrap = document.getElementById('subj-panes-wrap');
   navBtns.innerHTML = ''; panesWrap.innerHTML = '';
 
-  (data.subjects || []).forEach((s, idx) => {
+  (data.subjects ? data.subjects : []).forEach((s, idx) => {
     const subjCards = getCardsForSubject(s, data.cards);
+    const sIcon = valOr(s.icon, '📘');
+    const sShort = valOr(s.shortName, 'Предмет');
+    const sFull = valOr(s.fullName, sShort);
 
     navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
-      <span class="no-read">${s.icon || '📘'} ${s.displayNum}.</span> ${s.shortName}
+      <span class="no-read">${sIcon} ${s.displayNum}.</span> ${sShort}
       <span class="s-btn-pct no-read" id="spct-${s.id}">0%</span>
     </button>`;
 
-    const vaultCardsHTML = (s.vault || []).map((v, vIdx) => {
+    const vaultCardsHTML = (s.vault ? s.vault : []).map((v, vIdx) => {
       const mStorageKey = makeMasteryStorageKey(s.id, v.title, vIdx + 1);
       const legacyKey = `${STORAGE_PREFIX}mast_mast_${s.id}_${vIdx + 1}`;
       const isMast = localStorage.getItem(mStorageKey) === '1' || localStorage.getItem(legacyKey) === '1';
@@ -1144,10 +1196,10 @@ function initApp(data) {
           ${tierBadgeHTML(v._isLatest, v._sourceDate)}
           <span class="no-read" style="font-size:0.72rem; color:var(--muted);">Правило #${vIdx + 1}</span>
         </div>
-        <div class="visual-anchor no-read">${v.visual || ''}</div>
+        <div class="visual-anchor no-read">${valOr(v.visual, '')}</div>
         <div><b>${v.title}:</b> ${formatMemoWords(v.text)}</div>
         <div class="mastery-bar">
-          ${v.wiki ? `<a class="memo-link no-read" href="${v.wiki}" target="_blank">${v.linkText || ui('vaultLinkText', '🔗 Ресурс')}</a>` : `<span></span>`}
+          ${v.wiki ? `<a class="memo-link no-read" href="${v.wiki}" target="_blank">${valOr(v.linkText, ui('vaultLinkText', '🔗 Ресурс'))}</a>` : `<span></span>`}
           <label class="no-read"><input type="checkbox" class="mast-chk" id="${domChkId}" data-subj="${s.id}" data-storage-key="${mStorageKey}" ${isMast ? 'checked' : ''} onchange="saveMastery(this)"> ${ui('lblMastered', '✅ Научих')}</label>
         </div>
       </div>`;
@@ -1174,7 +1226,7 @@ function initApp(data) {
           </div>
           <div>
             <div style="text-align:center; margin-bottom:5px;">${playerHTML('joker' + c.uid, ui('btnPlayJoker'))}</div>
-            <a class="btn btn-wiki" href="${c.wiki}" target="_blank" onclick="document.getElementById('btn${c.uid}').style.display='inline-flex'">${c.linkLabel || ui('cardLinkLabel')}</a>
+            <a class="btn btn-wiki" href="${c.wiki}" target="_blank" onclick="document.getElementById('btn${c.uid}').style.display='inline-flex'">${valOr(c.linkLabel, ui('cardLinkLabel'))}</a>
             <button id="btn${c.uid}" class="btn btn-unlock" onclick="document.getElementById('fc${c.uid}').classList.toggle('flipped')">${ui('btnUnlockQuestion')}</button>
           </div>
         </div>
@@ -1187,7 +1239,7 @@ function initApp(data) {
             <h3>${c.q}</h3>
             <select id="q${c.uid}" class="ans-select" data-subj="${s.id}" onchange="checkSingleCard(${c.uid})">
               <option value="">${ui('selectPlaceholder')}</option>
-              ${(c.opts || []).map(o => `<option value="${o.k}">${o.t}</option>`).join('')}
+              ${(c.opts ? c.opts : []).map(o => `<option value="${o.k}">${o.t}</option>`).join('')}
             </select>
             <div id="fb${c.uid}" class="feedback"></div>
           </div>
@@ -1196,7 +1248,7 @@ function initApp(data) {
       </div></div>`;
     }).join('');
 
-    const hwBlocksHTML = (s.homeworkBlocks || []).map((blk, bIdx) => {
+    const hwBlocksHTML = (s.homeworkBlocks ? s.homeworkBlocks : []).map((blk, bIdx) => {
       const blkId = `hwblk-${s.id}-${bIdx}`;
       const tierCls = blk._isLatest ? 'item-tier-new' : 'item-tier-rev';
       return `<div class="zone-box ${tierCls}" id="${blkId}" style="margin-top:12px;">
@@ -1212,7 +1264,7 @@ function initApp(data) {
       <div class="zone-box" id="p-${s.id}">
         <div class="subj-prog-banner no-read">
           <div>
-            <strong style="color:var(--accent); font-size:0.95rem;">${s.icon || '📘'} ${s.displayNum}. ${s.fullName || s.shortName}</strong>
+            <strong style="color:var(--accent); font-size:0.95rem;">${sIcon} ${s.displayNum}. ${sFull}</strong>
             <div id="sprog-detail-${s.id}" style="font-size:0.8rem; color:var(--muted); margin-top:2px;">Учене наизуст: 0/0 | Тренажор за мислене: 0/0</div>
           </div>
           ${playerHTML('p-' + s.id, '▶️ Слушай целия предмет')}
@@ -1220,7 +1272,7 @@ function initApp(data) {
 
         <div class="memo-vault" id="vault-${s.id}">
           <div class="memo-head">
-            <h3>${ui('vaultPrefix')} ${(s.shortName || '').toUpperCase()} (${(s.vault || []).length} правила)</h3>
+            <h3>${ui('vaultPrefix')} ${sShort.toUpperCase()} (${(s.vault ? s.vault : []).length} правила)</h3>
             <div class="mini-player no-read">
               <button class="btn btn-mask" onclick="maskVault('vault-${s.id}')">${ui('btnTestMemory')}</button>
               ${playerHTML('vault-' + s.id, ui('btnPlayVault'))}
@@ -1229,12 +1281,12 @@ function initApp(data) {
           <div class="memo-grid">${vaultCardsHTML}</div>
         </div>
 
-        ${s.extraHTML || ''}
+        ${valOr(s.extraHTML, '')}
 
         ${subjCards.length > 0 ? `
         <div class="zone-box" style="border-color:var(--accent); margin-top:12px;">
           <div class="zone-title">
-            <span>🃏 АЛГОРИТЪМ ЗА МИСЛЕНЕ И ПРАКТИКА ПО ${(s.shortName \vert{}\vert{} '').toUpperCase()} (${subjCards.length} карти)</span>
+            <span>🃏 АЛГОРИТЪМ ЗА МИСЛЕНЕ И ПРАКТИКА ПО ${sShort.toUpperCase()} (${subjCards.length} карти)</span>
             <button class="btn btn-speak no-read" onclick="checkSubjectCards('${s.id}')">✅ Обърни и провери картите</button>
           </div>
           <div class="cards-container">${cardsHTML}</div>
@@ -1245,17 +1297,17 @@ function initApp(data) {
     </div>`;
   });
 
-  (data.cards || []).forEach(c => {
+  (data.cards ? data.cards : []).forEach(c => {
     const storageKey = `${STORAGE_PREFIX}card_ans_${shortDateLabel(c._sourceDate)}_${c.id}`;
-    const savedAns = localStorage.getItem(storageKey) || localStorage.getItem(STORAGE_PREFIX + 'card_ans_' + c.uid);
+    const savedAns = valOr(localStorage.getItem(storageKey), localStorage.getItem(STORAGE_PREFIX + 'card_ans_' + c.uid));
     if (savedAns) {
       const selEl = document.getElementById('q' + c.uid);
       if (selEl) { selEl.value = savedAns; checkSingleCard(c.uid, true); }
     }
   });
 
-  document.getElementById('db-status-label').innerHTML = `✅ Активни <b>${(data.loadedMeta || []).length} файла/пача</b> | <b>${(data.subjects || []).length} предмета</b> | <b>${(data.homework || []).length} домашни</b> | <b>${(data.cards || []).length} карти за мислене</b>`;
-  document.getElementById('loaded-files-badges').innerHTML = (data.loadedMeta || []).map(m => `
+  document.getElementById('db-status-label').innerHTML = `✅ Активни <b>${(data.loadedMeta ? data.loadedMeta : []).length} файла/пача</b> | <b>${(data.subjects ? data.subjects : []).length} предмета</b> | <b>${(data.homework ? data.homework : []).length} домашни</b> | <b>${(data.cards ? data.cards : []).length} карти за мислене</b>`;
+  document.getElementById('loaded-files-badges').innerHTML = (data.loadedMeta ? data.loadedMeta : []).map(m => `
     <span class="file-Chip">${m.isLatest ? '🆕' : '⏪'} <b>${m.name}</b> (${m.generatedAt} • ${m.partDesc})</span>`).join('');
 
   updateProgress();
@@ -1267,9 +1319,9 @@ function renderSavedFilesListInTab3() {
   const tab5List = document.getElementById('tab5-files-list');
   if (!tab5List) return;
   tab5List.innerHTML = savedList.map((s, idx) => {
-    const isOff = !!disabledMap[s.name];
+    const isOff = Boolean(disabledMap[s.name]);
     return `<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:${isOff ? '#1e1b4b' : '#172554'}; opacity:${isOff ? '0.65' : '1'}; padding:7px 11px; border-radius:8px; margin-top:5px; font-size:0.8rem;">
-      <span>${isOff ? '⏸️ [ИЗКЛЮЧЕН]' : '🟢 [АКТИВЕН]'} 📄 <b>${s.name}</b> (${s.generatedAt || '—'})</span>
+      <span>${isOff ? '⏸️ [ИЗКЛЮЧЕН]' : '🟢 [АКТИВЕН]'} 📄 <b>${s.name}</b> (${valOr(s.generatedAt, '—')})</span>
       <div class="voice-bar">
         <button class="btn ${isOff ? 'btn-file' : 'btn-mask'}" style="padding:3px 9px; font-size:0.73rem;" onclick="toggleSourceEnabled('${s.name.replace(/'/g, "\\'")}')">${isOff ? '▶️ Включи частта' : '⏸️ Изключи частта'}</button>
         <button class="btn btn-stop" style="padding:3px 8px; font-size:0.73rem;" onclick="removeSingleSavedSource(${idx})">✖ Изтрий</button>
@@ -1279,7 +1331,7 @@ function renderSavedFilesListInTab3() {
 }
 
 function getDisabledFilesMap() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'DISABLED_FILES') || '{}'); } catch (e) { return {}; }
+  try { return JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'DISABLED_FILES'), '{}')); } catch (e) { return {}; }
 }
 function toggleSourceEnabled(fileName) {
   const map = getDisabledFilesMap();
@@ -1289,15 +1341,15 @@ function toggleSourceEnabled(fileName) {
   rebuildAndInitFromStorage();
 }
 
-function checkSingleCard(cardUid, silent = false) {
+function checkSingleCard(cardUid, silent) {
   if (!window.APP_DATA || !APP_DATA.cards) return false;
   const c = APP_DATA.cards.find(x => x.uid === cardUid);
   if (!c) return false;
   const sel = document.getElementById('q' + c.uid)?.value;
   const fb = document.getElementById('fb' + c.uid);
-  const correctOpt = (c.opts || []).find(o => o.k === c.ans);
+  const correctOpt = (c.opts ? c.opts : []).find(o => o.k === c.ans);
   const correctFullText = correctOpt ? correctOpt.t : c.ans;
-  const cleanExp = (c.exp || '').replace(/^Вярно!\s*/i, '');
+  const cleanExp = String(valOr(c.exp, '')).replace(/^Вярно!\s*/i, '');
   const storageKey = `${STORAGE_PREFIX}card_ans_${shortDateLabel(c._sourceDate)}_${c.id}`;
 
   if (!sel) {
@@ -1319,7 +1371,7 @@ function checkSingleCard(cardUid, silent = false) {
 
 function checkSubjectCards(subjId) {
   if (!window.APP_DATA) return;
-  const sObj = (APP_DATA.subjects || []).find(s => s.id === subjId);
+  const sObj = (APP_DATA.subjects ? APP_DATA.subjects : []).find(s => s.id === subjId);
   if (!sObj) return;
   getCardsForSubject(sObj, APP_DATA.cards).forEach(c => {
     document.getElementById('fc' + c.uid)?.classList.add('flipped');
@@ -1330,7 +1382,7 @@ function checkSubjectCards(subjId) {
 
 function updateProgress() {
   if (!window.APP_DATA) return;
-  (APP_DATA.subjects || []).forEach(s => {
+  (APP_DATA.subjects ? APP_DATA.subjects : []).forEach(s => {
     const vEl = document.getElementById('vault-' + s.id);
     const totM = vEl ? vEl.querySelectorAll('.mast-chk').length : 0;
     const doneM = vEl ? vEl.querySelectorAll('.mast-chk:checked').length : 0;
@@ -1350,8 +1402,8 @@ function updateProgress() {
   const allChks = document.querySelectorAll('#tab-1 input[type="checkbox"], .mast-chk');
   const doneChks = Array.from(allChks).filter(c => c.checked).length;
   let cardsOk = 0;
-  const totalCards = (APP_DATA.cards || []).length;
-  (APP_DATA.cards || []).forEach(c => { if (document.getElementById('q' + c.uid)?.value === c.ans) cardsOk++; });
+  const totalCards = (APP_DATA.cards ? APP_DATA.cards : []).length;
+  (APP_DATA.cards ? APP_DATA.cards : []).forEach(c => { if (document.getElementById('q' + c.uid)?.value === c.ans) cardsOk++; });
 
   const grandTotal = allChks.length + totalCards;
   const grandDone = doneChks + cardsOk;
@@ -1373,7 +1425,7 @@ function openPane(parentId, paneId, btn) {
   if (btn) btn.classList.add('active');
 }
 function formatMemoWords(text) {
-  return (text || '').replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
+  return String(valOr(text, '')).replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
 }
 function maskVault(vId) {
   const words = document.getElementById(vId).querySelectorAll('.memo-word');
@@ -1391,17 +1443,16 @@ function saveChk(chk) {
   updateProgress();
 }
 function saveMastery(chk) {
-  const key = chk.getAttribute('data-storage-key') || (STORAGE_PREFIX + 'mast_' + chk.id);
+  const key = valOr(chk.getAttribute('data-storage-key'), STORAGE_PREFIX + 'mast_' + chk.id);
   localStorage.setItem(key, chk.checked ? '1' : '0');
   chk.closest('.memo-card')?.classList.toggle('mastered', chk.checked);
   updateProgress();
 }
 
-// БЪЛГАРСКИ ГЛАСОВ ЧЕТЕЦ
 let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
 function playerHTML(id, label) {
   return `<span class="mini-player no-read">
-    <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${label || ui('btnListen')}</button>
+    <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${valOr(label, ui('btnListen'))}</button>
     <button class="btn btn-restart" onclick="startSpeech('${id}', 0)">🔄</button>
     <button class="btn btn-stop" onclick="stopSpeech()">⏹️</button>
   </span>`;
@@ -1419,16 +1470,18 @@ function playNext() {
   u.onend = () => { if (!stopped && !paused) { idx++; playNext(); } };
   window.speechSynthesis.speak(u);
 }
-function startSpeech(id, startIdx = 0) {
+function startSpeech(id, startIdx) {
+  const sIdx = startIdx !== undefined ? startIdx : 0;
   const el = document.getElementById(id);
   if (!el) return;
   const clone = el.cloneNode(true);
   clone.querySelectorAll(ui('speechIgnoreSelectors')).forEach(n => n.remove());
-  const clean = (clone.innerText || '').replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const clean = String(valOr(clone.innerText, '')).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
   stopSpeech(); activeId = id;
-  queue = (clean.match(/[^.!?]+[.!?]*/g) || [clean]).map(s => s.trim()).filter(s => s.length > 1);
-  idx = startIdx; stopped = false; paused = false;
+  const matched = clean.match(/[^.!?]+[.!?]*/g);
+  queue = (matched ? matched : [clean]).map(s => s.trim()).filter(s => s.length > 1);
+  idx = sIdx; stopped = false; paused = false;
   el.classList.add('speaking-glow');
   playNext();
 }
@@ -1448,15 +1501,14 @@ function speakDirect(txt) {
 }
 function speakGreeting() { speakDirect(ui('voiceGreeting')); }
 
-// УПРАВЛЕНИЕ НА ФАЙЛОВЕ И GOOGLE DRIVE AUTO-SYNC
 function getSavedSourcesList() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES') || '[]'); } catch (e) { return []; }
+  try { return JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES'), '[]')); } catch (e) { return []; }
 }
 function rebuildAndInitFromStorage() {
   const merged = buildMultiFileMergedAppData(getSavedSourcesList());
   window.APP_DATA = merged;
   initApp(merged);
-  return !!merged;
+  return Boolean(merged);
 }
 function saveAndRebuildMergedData(newEntries) {
   const existing = getSavedSourcesList();
@@ -1474,7 +1526,7 @@ function removeSingleSavedSource(index) {
   rebuildAndInitFromStorage();
 }
 function loadDataFromFile(inputEl) {
-  const files = Array.from(inputEl.files || []);
+  const files = Array.from(inputEl.files ? inputEl.files : []);
   if (!files.length) return;
   const loadedEntries = []; let processed = 0;
   files.forEach(file => {
@@ -1482,7 +1534,7 @@ function loadDataFromFile(inputEl) {
     reader.onload = function(e) {
       try {
         const ev = evalDataCodeWithRepair(e.target.result);
-        if (ev.parsed) loadedEntries.push({ name: file.name, generatedAt: ev.parsed.generatedAt || file.name, repaired: ev.repaired, code: e.target.result });
+        if (ev.parsed) loadedEntries.push({ name: file.name, generatedAt: valOr(ev.parsed.generatedAt, file.name), repaired: ev.repaired, code: e.target.result });
       } catch (err) { alert(`Грешка във файл ${file.name}: ` + err.message); }
       processed++;
       if (processed === files.length && loadedEntries.length > 0) {
@@ -1500,7 +1552,7 @@ function applyCustomDataJS() {
   try {
     const ev = evalDataCodeWithRepair(code);
     if (ev.parsed) {
-      const stamp = ev.parsed.generatedAt || ('Пач ' + new Date().toLocaleDateString('bg-BG') + ' ' + new Date().toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'}));
+      const stamp = valOr(ev.parsed.generatedAt, 'Пач ' + new Date().toLocaleDateString('bg-BG'));
       saveAndRebuildMergedData([{ name: 'Пач_' + Date.now() + '.js (' + describePartContent(ev.parsed) + ')', generatedAt: stamp, repaired: ev.repaired, code }]);
       document.getElementById('custom-db-input').value = '';
       openTab('tab-1', document.getElementById('tab-btn-1'));
@@ -1515,7 +1567,7 @@ function resetToDefaultFileDB() {
 }
 
 function getDriveUrl() {
-  return localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL') || DEFAULT_DRIVE_WEBAPP_URL;
+  return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL'), DEFAULT_DRIVE_WEBAPP_URL);
 }
 function saveDriveUrlFromInput() {
   const val = document.getElementById('drive-url-input').value.trim();
@@ -1524,27 +1576,36 @@ function saveDriveUrlFromInput() {
   syncFromGoogleDrive(false);
 }
 
-function callDriveJsonp(url, mode, onSuccess, onError) {
-  const cbName = 'gd_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-  const scriptEl = document.createElement('script');
-  const timer = setTimeout(() => {
-    if (window[cbName]) { delete window[cbName]; scriptEl.remove(); onError('Времето за връзка с Google Drive изтече.'); }
-  }, 8500);
-
-  window[cbName] = function(res) {
-    clearTimeout(timer); delete window[cbName]; scriptEl.remove();
-    onSuccess(res);
-  };
-  scriptEl.onerror = function() {
-    clearTimeout(timer); delete window[cbName]; scriptEl.remove();
-    onError('Уверете се, че сте влезли в браузъра със собственика на скрипта в Google.');
-  };
+// ДВОЕН МЕХАНИЗЪМ ЗА ВРЪЗКА С GOOGLE DRIVE (Fetch + резервен JSONP)
+function callDriveEndpoint(url, mode, onSuccess, onError) {
   const sep = url.includes('?') ? '&' : '?';
-  scriptEl.src = `${url}${sep}mode=${mode}&callback=${cbName}&t=${Date.now()}`;
-  document.body.appendChild(scriptEl);
+  const fetchUrl = `${url}${sep}mode=${mode}&t=${Date.now()}`;
+
+  fetch(fetchUrl, { method: 'GET', redirect: 'follow' })
+    .then(r => r.json())
+    .then(data => onSuccess(data))
+    .catch(() => {
+      // Резервен JSONP канал
+      const cbName = 'gd_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      const scriptEl = document.createElement('script');
+      const timer = setTimeout(() => {
+        if (window[cbName]) { delete window[cbName]; scriptEl.remove(); onError('Времето за връзка с Google Drive изтече.'); }
+      }, 8500);
+
+      window[cbName] = function(res) {
+        clearTimeout(timer); delete window[cbName]; scriptEl.remove();
+        onSuccess(res);
+      };
+      scriptEl.onerror = function() {
+        clearTimeout(timer); delete window[cbName]; scriptEl.remove();
+        onError('Браузърът блокира достъпа до личния скрипт. В Google Apps Script нагласете Manage deployments -> Edit -> Who has access: Anyone (Всеки) или заредете .js файловете ръчно с бутона горе!');
+      };
+      scriptEl.src = `${url}${sep}mode=${mode}&callback=${cbName}&t=${Date.now()}`;
+      document.body.appendChild(scriptEl);
+    });
 }
 
-function syncFromGoogleDrive(isSilentAuto = true) {
+function syncFromGoogleDrive(isSilentAuto) {
   const url = getDriveUrl();
   const pill = document.getElementById('cloud-status-pill');
   const logEl = document.getElementById('drive-sync-log');
@@ -1552,7 +1613,7 @@ function syncFromGoogleDrive(isSilentAuto = true) {
 
   if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '☁️ Проверка...'; }
 
-  callDriveJsonp(url, 'check', function(res) {
+  callDriveEndpoint(url, 'check', function(res) {
     if (!res || res.status !== 'ok') {
       if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive грешка'; }
       if (!isSilentAuto) alert(res && res.message ? res.message : 'Грешка при връзка с Google Drive!');
@@ -1568,7 +1629,7 @@ function syncFromGoogleDrive(isSilentAuto = true) {
     }
 
     if (pill) pill.innerText = '☁️ Обновяване...';
-    callDriveJsonp(url, 'full', function(fullRes) {
+    callDriveEndpoint(url, 'full', function(fullRes) {
       if (!fullRes || fullRes.status !== 'ok' || !Array.isArray(fullRes.files)) {
         if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive грешка'; }
         return;
@@ -1578,7 +1639,7 @@ function syncFromGoogleDrive(isSilentAuto = true) {
         if (f.name && f.name.startsWith('_')) return;
         try {
           const ev = evalDataCodeWithRepair(f.code);
-          if (ev.parsed) loadedEntries.push({ name: f.name, generatedAt: ev.parsed.generatedAt || f.name, repaired: ev.repaired, code: f.code });
+          if (ev.parsed) loadedEntries.push({ name: f.name, generatedAt: valOr(ev.parsed.generatedAt, f.name), repaired: ev.repaired, code: f.code });
         } catch (e) { console.error(e); }
       });
 
@@ -1588,18 +1649,20 @@ function syncFromGoogleDrive(isSilentAuto = true) {
         rebuildAndInitFromStorage();
         if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = `☁️ Обновено (${loadedEntries.length})`; }
         if (logEl) logEl.innerText = `✅ Успешно заредени и обединени ${loadedEntries.length} файла от Google Drive!`;
+        if (!isSilentAuto) openTab('tab-1', document.getElementById('tab-btn-1'));
       } else {
         if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '📂 Drive папка празна'; }
         if (logEl) logEl.innerText = '📂 Скриптът е свързан успешно, но в папката все още няма качени .js файлове!';
+        if (!isSilentAuto) alert('Скриптът е свързан успешно, но в папката в Google Drive няма намерени .js файлове!');
       }
-    }, function() {
+    }, function(errMsg) {
       if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive проблем'; }
+      if (!isSilentAuto) alert(errMsg);
     });
   }, function(errMsg) {
     if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Локален режим'; }
     if (!isSilentAuto) {
-      document.getElementById('sync-problem-bar').style.display = 'flex';
-      document.getElementById('sync-problem-text').innerText = '⚠️ ' + errMsg;
+      alert(errMsg);
     }
   });
 }
@@ -1608,14 +1671,15 @@ function generateSyncReport() {
   if (!window.APP_DATA) return;
   const mast = document.querySelectorAll('.mast-chk:checked').length;
   const totM = document.querySelectorAll('.mast-chk').length;
-  const filesLoaded = (APP_DATA.loadedMeta || []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
-  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.1) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
+  const filesLoaded = (APP_DATA.loadedMeta ? APP_DATA.loadedMeta : []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
+  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.2) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
   const box = document.getElementById('sync-box');
   box.style.display = 'block'; box.value = rep; box.select();
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  injectTopManualButtons();
   const savedUrl = getDriveUrl();
   if (savedUrl) document.getElementById('drive-url-input').value = savedUrl;
   rebuildAndInitFromStorage();
