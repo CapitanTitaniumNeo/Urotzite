@@ -466,16 +466,16 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   </div>
 </div>
 <!-- КРАЙ НА ЧАСТ 1 ОТ 2 -->
-<!-- НАЧАЛО НА ФИНАЛНАТА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.1 - С ВГРАДЕН GOOGLE DRIVE ЛИНК) -->
-  <script>
+<!-- НАЧАЛО НА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.2 - С МОДАЛЕН ПРОЗОРЕЦ ЗА ПАРОЛА) -->
+<script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
-// Вграденият личен Google Apps Script Web App URL (/exec):
+// Публичният адрес на скрипта (БЕЗ паролата вътре в кода!):
 const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
 
 const DEFAULT_UI = {
   pageTitle: "Супер-Органайзер (Ядро 4.2): Борис И. Банев (7Г)",
   headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.2): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
-  headerSubtitle: "🎯 Умно Табло по Часове | 🧠 Учене + Мислене | 🔄 Smart Overlay & Google Drive Sync",
+  headerSubtitle: "🎯 Умно Табло по Часове | 🧠 Учене + Мислене | ☁️ Защитен Облачен Синхрон",
   voiceGreeting: "Здравей, Борис! Най-отгоре на таблото са подредени предстоящите домашни по часове на предаване. Отвори решението и мисловната карта или премини към учене и мислене по предмети!",
   speechLang: "bg-BG",
   speechIgnoreSelectors: ".no-read, .math-expr, .frac, .tri-box, .visual-anchor, ruby, select, button, a, input, textarea",
@@ -509,6 +509,39 @@ function ui(key, fallback) {
   return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fb;
 }
 
+// МОДАЛЕН ПРОЗОРЕЦ ЗА ВЪВЕЖДАНЕ НА ПАРОЛА
+function openPassModal(customMsg) {
+  const modal = document.getElementById('pass-modal');
+  const msgEl = document.getElementById('pass-modal-msg');
+  const inp = document.getElementById('pass-modal-input');
+  if (customMsg && msgEl) msgEl.innerHTML = customMsg;
+  if (inp) inp.value = getDriveSecretKey();
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => { if (inp) inp.focus(); }, 100);
+  }
+}
+
+function closePassModal() {
+  const modal = document.getElementById('pass-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function submitModalPassword() {
+  const inp = document.getElementById('pass-modal-input');
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) {
+    alert('Моля, въведете паролата в полето!');
+    return;
+  }
+  localStorage.setItem(STORAGE_PREFIX + 'DRIVE_KEY', val);
+  const tab3Pass = document.getElementById('tab3-pass-input');
+  if (tab3Pass) tab3Pass.value = val;
+  closePassModal();
+  syncFromGoogleDrive(false);
+}
+
 function injectTopManualButtons() {
   const alertBar = document.getElementById('sync-problem-bar');
   if (!alertBar || document.getElementById('top-manual-bar')) return;
@@ -519,11 +552,12 @@ function injectTopManualButtons() {
   bar.innerHTML = `
     <div style="font-size:0.83rem; flex:1; min-width:210px;">
       <strong style="color:var(--green);">📂 База данни:</strong>
-      <span id="top-db-status-text">Готов за зареждане от устройство (.js) или Google Drive.</span>
+      <span id="top-db-status-text">Готов за зареждане от Google Drive или ръчно (.js).</span>
     </div>
     <div class="voice-bar">
-      <button class="btn btn-file" onclick="document.getElementById('file-picker').click()">➕ Зареди .js файлове ръчно</button>
-      <button class="btn btn-cloud" onclick="syncFromGoogleDrive(false)">☁️ Обнови от Google Drive</button>
+      <button class="btn btn-speak" onclick="openPassModal()">🔑 Въведи парола</button>
+      <button class="btn btn-file" onclick="document.getElementById('file-picker').click()">➕ Зареди .js ръчно</button>
+      <button class="btn btn-cloud" onclick="syncFromGoogleDrive(false)">☁️ Обнови от Drive</button>
       <button class="btn btn-arch" onclick="openTab('tab-3', document.getElementById('tab-btn-3'))">⚙️ Управление</button>
     </div>
   `;
@@ -1037,7 +1071,7 @@ function initApp(data) {
 
   if (!data) {
     alertBar.style.display = 'flex';
-    document.getElementById('sync-problem-text').innerHTML = '⚠️ <b>Няма активна учебна база данни!</b> Натиснете зеления бутон „➕ Зареди .js файлове ръчно“ горе или „☁️ Обнови от Google Drive“.';
+    document.getElementById('sync-problem-text').innerHTML = '⚠️ <b>Няма активна учебна база данни!</b> Натиснете „🔑 Въведи парола“ за автоматично зареждане от Google Drive или „➕ Зареди .js ръчно“.';
     if (topStatus) topStatus.innerHTML = 'Няма заредени файлове в паметта.';
     return;
   }
@@ -1583,29 +1617,34 @@ function resetToDefaultFileDB() {
   localStorage.removeItem(STORAGE_PREFIX + 'MERGED_SOURCES');
   localStorage.removeItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
   localStorage.removeItem(STORAGE_PREFIX + 'DISABLED_FILES');
+  localStorage.removeItem(STORAGE_PREFIX + 'DRIVE_KEY');
   location.reload();
 }
 
 function getDriveUrl() {
   return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL'), DEFAULT_DRIVE_WEBAPP_URL);
 }
-function saveDriveUrlFromInput() {
-  const val = document.getElementById('drive-url-input').value.trim();
-  localStorage.setItem(STORAGE_PREFIX + 'DRIVE_URL', val);
-  document.getElementById('drive-sync-log').innerText = '✅ Линкът е запазен! Изпълнява се проверка...';
+function getDriveSecretKey() {
+  return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_KEY'), '');
+}
+function saveDriveSettingsFromTab3() {
+  const urlVal = document.getElementById('drive-url-input').value.trim();
+  const passVal = document.getElementById('tab3-pass-input').value.trim();
+  if (urlVal) localStorage.setItem(STORAGE_PREFIX + 'DRIVE_URL', urlVal);
+  if (passVal) localStorage.setItem(STORAGE_PREFIX + 'DRIVE_KEY', passVal);
+  document.getElementById('drive-sync-log').innerText = '✅ Настройките и паролата са запазени! Изпълнява се проверка...';
   syncFromGoogleDrive(false);
 }
 
-// ДВОЕН МЕХАНИЗЪМ ЗА ВРЪЗКА С GOOGLE DRIVE (Fetch + резервен JSONP)
 function callDriveEndpoint(url, mode, onSuccess, onError) {
+  const secretKey = encodeURIComponent(getDriveSecretKey());
   const sep = url.includes('?') ? '&' : '?';
-  const fetchUrl = `${url}${sep}mode=${mode}&t=${Date.now()}`;
+  const fetchUrl = `${url}${sep}mode=${mode}&key=${secretKey}&t=${Date.now()}`;
 
   fetch(fetchUrl, { method: 'GET', redirect: 'follow' })
     .then(r => r.json())
     .then(data => onSuccess(data))
     .catch(() => {
-      // Резервен JSONP канал
       const cbName = 'gd_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
       const scriptEl = document.createElement('script');
       const timer = setTimeout(() => {
@@ -1618,9 +1657,9 @@ function callDriveEndpoint(url, mode, onSuccess, onError) {
       };
       scriptEl.onerror = function() {
         clearTimeout(timer); delete window[cbName]; scriptEl.remove();
-        onError('Браузърът блокира достъпа до личния скрипт. В Google Apps Script нагласете Manage deployments -> Edit -> Who has access: Anyone (Всеки) или заредете .js файловете ръчно с бутона горе!');
+        onError('Грешка при връзка с Google Drive скрипта.');
       };
-      scriptEl.src = `${url}${sep}mode=${mode}&callback=${cbName}&t=${Date.now()}`;
+      scriptEl.src = `${url}${sep}mode=${mode}&key=${secretKey}&callback=${cbName}&t=${Date.now()}`;
       document.body.appendChild(scriptEl);
     });
 }
@@ -1631,14 +1670,27 @@ function syncFromGoogleDrive(isSilentAuto) {
   const logEl = document.getElementById('drive-sync-log');
   if (!url) return;
 
+  // Ако все още няма въведена парола на устройството -> отваряме централния прозорец за парола!
+  if (!getDriveSecretKey()) {
+    if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '🔑 Въведи парола'; }
+    openPassModal('🔑 Въведете тайната парола за достъп до базата данни и натиснете „Отключи и Зареди (OK)“:');
+    return;
+  }
+
   if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '☁️ Проверка...'; }
 
   callDriveEndpoint(url, 'check', function(res) {
     if (!res || res.status !== 'ok') {
-      if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive грешка'; }
-      if (!isSilentAuto) alert(res && res.message ? res.message : 'Грешка при връзка с Google Drive!');
+      if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '🔒 Грешна парола'; }
+      if (logEl && res && res.message) logEl.innerText = res.message;
+      if (res && res.authError) {
+        openPassModal('🔒 Невалидна парола! Моля, въведете вярната парола за достъп до базата:');
+      } else if (!isSilentAuto) {
+        alert(res && res.message ? res.message : 'Грешка при връзка с Google Drive!');
+      }
       return;
     }
+
     const lastSig = localStorage.getItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
     const hasLocalData = getSavedSourcesList().length > 0;
 
@@ -1671,9 +1723,9 @@ function syncFromGoogleDrive(isSilentAuto) {
         if (logEl) logEl.innerText = `✅ Успешно заредени и обединени ${loadedEntries.length} файла от Google Drive!`;
         if (!isSilentAuto) openTab('tab-1', document.getElementById('tab-btn-1'));
       } else {
-        if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '📂 Drive папка празна'; }
-        if (logEl) logEl.innerText = '📂 Скриптът е свързан успешно, но в папката все още няма качени .js файлове!';
-        if (!isSilentAuto) alert('Скриптът е свързан успешно, но в папката в Google Drive няма намерени .js файлове!');
+        if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '📂 Папката е празна'; }
+        if (logEl) logEl.innerText = '📂 Паролата е вярна, но в папката в Google Drive все още няма качени .js файлове!';
+        if (!isSilentAuto) alert('Паролата е вярна, но в папката в Google Drive няма качени .js файлове!');
       }
     }, function(errMsg) {
       if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive проблем'; }
@@ -1681,9 +1733,7 @@ function syncFromGoogleDrive(isSilentAuto) {
     });
   }, function(errMsg) {
     if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Локален режим'; }
-    if (!isSilentAuto) {
-      alert(errMsg);
-    }
+    if (!isSilentAuto) alert(errMsg);
   });
 }
 
@@ -1701,7 +1751,9 @@ function generateSyncReport() {
 window.addEventListener('DOMContentLoaded', () => {
   injectTopManualButtons();
   const savedUrl = getDriveUrl();
+  const savedKey = getDriveSecretKey();
   if (savedUrl) document.getElementById('drive-url-input').value = savedUrl;
+  if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
   rebuildAndInitFromStorage();
   if (savedUrl) syncFromGoogleDrive(true);
   setInterval(() => { if (window.APP_DATA) initApp(window.APP_DATA); }, 60000);
