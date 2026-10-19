@@ -466,10 +466,9 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   </div>
 </div>
 <!-- КРАЙ НА ЧАСТ 1 ОТ 2 -->
-<!-- НАЧАЛО НА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.2 - С МОДАЛЕН ПРОЗОРЕЦ ЗА ПАРОЛА) -->
+  <!-- НАЧАЛО НА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.2 - ФИКС ЗА ЗАПАЗВАНЕ НА АКТИВЕН ПРЕДМЕТ И ТАБ) -->
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
-// Публичният адрес на скрипта (БЕЗ паролата вътре в кода!):
 const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
 
 const DEFAULT_UI = {
@@ -509,7 +508,6 @@ function ui(key, fallback) {
   return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fb;
 }
 
-// МОДАЛЕН ПРОЗОРЕЦ ЗА ВЪВЕЖДАНЕ НА ПАРОЛА
 function openPassModal(customMsg) {
   const modal = document.getElementById('pass-modal');
   const msgEl = document.getElementById('pass-modal-msg');
@@ -685,7 +683,7 @@ function autoCloseTruncatedJS(rawCode) {
   let suffix = '';
   if (inSingle) suffix += "'";
   if (inDouble) suffix += '"';
-  if (inBacktick) suffix += ' `';
+  if (inBacktick) suffix += '`';
   while (stack.length) suffix += stack.pop();
   return rawCode + suffix + ';';
 }
@@ -1225,15 +1223,24 @@ function initApp(data) {
 
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
+  const currentActivePane = document.querySelector('#subj-panes-wrap .subj-pane.active');
+  const savedSubjId = currentActivePane
+    ? currentActivePane.id.replace('sp-', '')
+    : localStorage.getItem(STORAGE_PREFIX + 'ACTIVE_SUBJ');
+
   navBtns.innerHTML = ''; panesWrap.innerHTML = '';
 
-  (data.subjects ? data.subjects : []).forEach((s, idx) => {
+  const subjectsList = data.subjects ? data.subjects : [];
+  const hasSavedSubj = subjectsList.some(x => x.id === savedSubjId);
+
+  subjectsList.forEach((s, idx) => {
+    const isSubjActive = hasSavedSubj ? (s.id === savedSubjId) : (idx === 0);
     const subjCards = getCardsForSubject(s, data.cards);
     const sIcon = valOr(s.icon, '📘');
     const sShort = valOr(s.shortName, 'Предмет');
     const sFull = valOr(s.fullName, sShort);
 
-    navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
+    navBtns.innerHTML += `<button class="s-btn ${isSubjActive ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
       <span class="no-read">${sIcon} ${s.displayNum}.</span> ${sShort}
       <span class="s-btn-pct no-read" id="spct-${s.id}">0%</span>
     </button>`;
@@ -1314,7 +1321,7 @@ function initApp(data) {
       </div>`;
     }).join('');
 
-    panesWrap.innerHTML += `<div id="sp-${s.id}" class="subj-pane ${idx === 0 ? 'active' : ''}">
+    panesWrap.innerHTML += `<div id="sp-${s.id}" class="subj-pane ${isSubjActive ? 'active' : ''}">
       <div class="zone-box" id="p-${s.id}">
         <div class="subj-prog-banner no-read">
           <div>
@@ -1477,6 +1484,9 @@ function openPane(parentId, paneId, btn) {
   document.querySelectorAll(`#${parentId} .s-btn`).forEach(b => b.classList.remove('active'));
   document.getElementById(paneId)?.classList.add('active');
   if (btn) btn.classList.add('active');
+  if (paneId && paneId.startsWith('sp-')) {
+    localStorage.setItem(STORAGE_PREFIX + 'ACTIVE_SUBJ', paneId.replace('sp-', ''));
+  }
 }
 function formatMemoWords(text) {
   return String(valOr(text, '')).replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
@@ -1670,7 +1680,6 @@ function syncFromGoogleDrive(isSilentAuto) {
   const logEl = document.getElementById('drive-sync-log');
   if (!url) return;
 
-  // Ако все още няма въведена парола на устройството -> отваряме централния прозорец за парола!
   if (!getDriveSecretKey()) {
     if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '🔑 Въведи парола'; }
     openPassModal('🔑 Въведете тайната парола за достъп до базата данни и натиснете „Отключи и Зареди (OK)“:');
@@ -1748,6 +1757,25 @@ function generateSyncReport() {
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
 }
 
+function updateLiveClocks() {
+  const nowMs = Date.now();
+  const nowObj = new Date(nowMs);
+  const clockEl = document.getElementById('live-sofia-clock');
+  if (clockEl) {
+    clockEl.innerText = `🕒 София: ${nowObj.toLocaleDateString('bg-BG')} ${nowObj.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'})}`;
+  }
+  if (!window.APP_DATA || !Array.isArray(window.APP_DATA.homework)) return;
+  window.APP_DATA.homework.forEach(h => {
+    const cardEl = document.getElementById('card-' + h.id);
+    if (!cardEl) return;
+    const tagEl = cardEl.querySelector('.countdown-tag');
+    const dueMs = parseBgDateString(h.dueDate, true);
+    if (tagEl && dueMs) {
+      tagEl.innerHTML = `⏳ ${formatTimeRemaining(dueMs, nowMs)}`;
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   injectTopManualButtons();
   const savedUrl = getDriveUrl();
@@ -1756,7 +1784,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
   rebuildAndInitFromStorage();
   if (savedUrl) syncFromGoogleDrive(true);
-  setInterval(() => { if (window.APP_DATA) initApp(window.APP_DATA); }, 60000);
+  setInterval(updateLiveClocks, 60000);
 });
 </script>
 </body>
