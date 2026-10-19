@@ -3,371 +3,487 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="page-title">Супер-Органайзер (Ядро 3.6)</title>
+<title id="page-title">Супер-Органайзер (Ядро 4.0)</title>
 <style>
-:root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --gold: #f59e0b; --green: #22c55e; --red: #ef4444; --purple: #a855f7; --text: #f8fafc; --muted: #94a3b8; }
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-body { background: var(--bg); color: var(--text); line-height: 1.6; padding: 14px; }
-header { background: linear-gradient(135deg, #1e3a8a, #0f172a); border: 2px solid var(--accent); border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.45); }
-header h1 { font-size: 1.25rem; color: var(--accent); }
-header p { font-size: 0.84rem; color: var(--muted); }
-.prog-wrap { background: var(--card); border: 1px solid #334155; border-radius: 10px; padding: 9px 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-.prog-bar-bg { flex: 1; min-width: 180px; height: 13px; background: #0f172a; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
-.prog-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width 0.3s ease; }
-.voice-bar, .mini-player { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.btn { border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.82rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+:root {
+  --bg: #090d16;
+  --card: #131c2e;
+  --card-alt: #1e293b;
+  --accent: #38bdf8;
+  --gold: #f59e0b;
+  --green: #22c55e;
+  --red: #ef4444;
+  --purple: #a855f7;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --border: #334155;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+body { background: var(--bg); color: var(--text); line-height: 1.55; padding: 10px; max-width: 1280px; margin: 0 auto; }
+
+/* ХЕДЪР И ГЛАВНА ЛЕНТА ЗА НАПРЕДЪК */
+header {
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+}
+header h1 { font-size: 1.18rem; color: var(--accent); letter-spacing: 0.3px; }
+header p { font-size: 0.8rem; color: var(--muted); }
+.sync-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.74rem; font-weight: 800; padding: 3px 9px;
+  border-radius: 20px; background: rgba(34,197,94,0.15);
+  color: #4ade80; border: 1px solid var(--green); cursor: pointer;
+}
+.sync-pill.syncing { background: rgba(245,158,11,0.2); color: #fde047; border-color: var(--gold); }
+.sync-pill.err { background: rgba(239,68,68,0.2); color: #fca5a5; border-color: var(--red); }
+
+/* МАЛКА АЛАРМА САМО ПРИ ПРОБЛЕМ С ОБНОВЯВАНЕТО ИЛИ ЛИПСВАЩА БАЗА */
+.sync-alert-bar {
+  display: none;
+  background: linear-gradient(135deg, #451a03, #3b0764);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  color: #fde68a;
+  font-size: 0.83rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prog-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 9px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.prog-bar-bg { flex: 1; min-width: 140px; height: 12px; background: #090d16; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
+.prog-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width 0.35s ease; }
+
+.voice-bar, .mini-player, .filter-bar { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.btn {
+  border: none; padding: 7px 11px; border-radius: 8px; cursor: pointer;
+  font-weight: 800; font-size: 0.8rem; transition: 0.2s;
+  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+}
 .btn-speak { background: var(--gold); color: #000; }
 .btn-restart { background: #3b82f6; color: #fff; }
 .btn-stop { background: var(--red); color: #fff; }
 .btn-mask { background: var(--purple); color: #fff; }
-.btn-file { background: var(--green); color: #000; font-size: 0.9rem; padding: 10px 16px; box-shadow: 0 0 15px rgba(34,197,94,0.4); }
-.btn-arch { background: #334155; color: var(--text); border: 1px solid #475569; padding: 4px 9px; font-size: 0.75rem; margin-left: auto; }
-.btn-wiki { background: #2563eb; color: #fff; width: 100%; justify-content: center; margin-top: 8px; }
-.btn-unlock { background: var(--green); color: #000; width: 100%; justify-content: center; margin-top: 8px; display: none; }
-.speaking-glow { box-shadow: 0 0 20px var(--gold) !important; border-color: var(--gold) !important; }
-.tabs, .subj-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.subj-nav { background: #0b1120; padding: 10px; border-radius: 12px; border: 1px solid #334155; gap: 6px; }
-.tab-btn { flex: 1; min-width: 155px; background: var(--card); color: var(--text); border: 1px solid #334155; padding: 11px; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.84rem; text-align: center; }
-.tab-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); box-shadow: 0 0 14px rgba(56,189,248,0.45); }
-.s-btn { background: var(--card); color: var(--text); border: 1px solid #475569; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.81rem; display: inline-flex; align-items: center; gap: 5px; }
-.s-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
-.s-btn.subj-btn-new { border-bottom: 3px solid var(--green); }
-.s-btn.subj-btn-dropped { border-bottom: 3px dashed var(--purple); opacity: 0.88; }
-.s-btn.subj-btn-missing { border-bottom: 3px dashed var(--gold); }
+.btn-file { background: var(--green); color: #052e16; font-size: 0.86rem; padding: 9px 14px; }
+.btn-cloud { background: var(--accent); color: #090d16; font-size: 0.86rem; padding: 9px 14px; }
+.btn-arch { background: #1e293b; color: var(--text); border: 1px solid #475569; padding: 4px 9px; font-size: 0.74rem; }
+.btn-wiki { background: #2563eb; color: #fff; width: 100%; justify-content: center; margin-top: 6px; }
+.btn-unlock { background: var(--green); color: #052e16; width: 100%; justify-content: center; margin-top: 6px; display: none; }
+.speaking-glow { box-shadow: 0 0 18px var(--gold) !important; border-color: var(--gold) !important; }
+
+/* 3 ГЛАВНИ ТАБА (Без излишен Таб Анализ) */
+.tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.tab-btn {
+  background: var(--card); color: var(--text); border: 1px solid var(--border);
+  padding: 12px 10px; border-radius: 12px; cursor: pointer;
+  font-weight: 900; font-size: 0.85rem; text-align: center; transition: 0.2s;
+}
+.tab-btn.active {
+  background: var(--accent); color: #090d16; border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(56,189,248,0.45);
+}
 .tab-content, .subj-pane { display: none; }
 .tab-content.active, .subj-pane.active { display: block; }
-.panel { background: var(--card); border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
-.panel h2 { color: var(--accent); font-size: 1.08rem; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
-.panel h3 { color: var(--gold); font-size: 0.96rem; margin: 8px 0 6px; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem; margin: 2px; }
-.b-red { background: var(--red); color: #fff; } .b-yellow { background: var(--gold); color: #000; } .b-green { background: var(--green); color: #000; } .b-blue { background: var(--accent); color: #000; } .b-purple { background: var(--purple); color: #fff; }
-.hw-box { background: #0f172a; border: 1px solid #475569; border-radius: 10px; padding: 12px; margin: 8px 0; }
-.hw-step { background: #172554; border-left: 4px solid var(--accent); padding: 10px; margin: 6px 0; border-radius: 6px; font-size: 0.88rem; }
-.memo-vault { background: linear-gradient(135deg, #1c1917, #0f172a); border: 2px solid var(--gold); border-radius: 12px; padding: 14px; margin: 12px 0; }
+
+/* УМНО ТАБЛО ЗА ДОМАШНИ, ГРАФИК, ТЕМИ И КОНТРОЛНИ (ТАБ 1) */
+.smart-hero-bar {
+  background: linear-gradient(135deg, #064e3b, #0f172a);
+  border: 2px solid var(--green);
+  border-radius: 14px;
+  padding: 12px 15px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.clock-badge {
+  background: #090d16; border: 1px solid var(--gold); color: var(--gold);
+  padding: 5px 11px; border-radius: 9px; font-weight: 900; font-size: 0.84rem;
+}
+.active-subj-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; width: 100%; }
+.subj-chip-jump {
+  background: #090d16; border: 1px solid var(--accent); color: var(--text);
+  padding: 5px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 800;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+}
+.subj-chip-jump.urgent-chip { border-color: var(--red); background: rgba(239,68,68,0.18); color: #fecaca; }
+
+/* БЪРЗА НАВИГАЦИЯ В ТАБ 1 (Унифицирана визия на един екран) */
+.board-quick-nav {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+  background: #0c1322; padding: 8px; border-radius: 11px; border: 1px solid var(--border);
+}
+.q-nav-btn {
+  flex: 1; min-width: 130px; background: var(--card); color: var(--text);
+  border: 1px solid #475569; padding: 7px 10px; border-radius: 8px;
+  font-weight: 800; font-size: 0.77rem; cursor: pointer; text-align: center;
+}
+.q-nav-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+
+/* КАРТИ НА ДОМАШНИТЕ В УМНОТО ТАБЛО (С ВГРАДЕНО РЕШЕНИЕ, МИСЛОВНА КАРТА И ЛИНК КЪМ СЕЙФА) */
+.zone-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; margin-bottom: 14px;
+}
+.zone-box.zone-focus { border: 2px solid var(--green); box-shadow: 0 6px 22px rgba(34,197,94,0.14); }
+.zone-box.zone-week { border-top: 4px solid var(--accent); }
+.zone-box.zone-next { border-top: 4px solid var(--purple); }
+.zone-box.zone-past { border-top: 4px solid var(--gold); }
+
+.zone-title {
+  font-size: 1rem; font-weight: 900; color: var(--accent);
+  margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+}
+
+.hw-smart-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.hw-smart-card {
+  background: #090d16; border: 1px solid #475569; border-left: 6px solid var(--green);
+  border-radius: 12px; padding: 13px; transition: 0.2s;
+}
+.hw-smart-card.done-card { opacity: 0.82; border-left-color: var(--accent); }
+.hw-smart-card.overdue-card { border-left-color: var(--gold); }
+
+.hw-card-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 8px;
+}
+.hw-chk-wrap { display: flex; align-items: flex-start; gap: 9px; flex: 1; min-width: 230px; }
+.hw-chk-wrap input[type="checkbox"] { transform: scale(1.35); accent-color: var(--green); margin-top: 4px; cursor: pointer; }
+
+.hw-meta-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; align-items: center; }
+.due-tag { font-size: 0.75rem; color: #fde047; background: #1e293b; border: 1px solid var(--gold); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
+.countdown-tag { font-size: 0.74rem; color: #86efac; background: rgba(34,197,94,0.16); border: 1px solid var(--green); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
+.exam-inline-alert { background: rgba(239,68,68,0.22); border: 1px solid var(--red); color: #fecaca; padding: 4px 9px; border-radius: 7px; font-size: 0.78rem; font-weight: 800; margin: 5px 0; display: inline-block; }
+
+/* РАЗГЪВАЩ СЕ МОДУЛ ЗА РЕШЕНИЕ + МИСЛОВНА КАРТА В КАРТАТА НА ДОМАШНОТО */
+.hw-work-drawer {
+  background: #111827; border: 1px dashed var(--accent);
+  border-radius: 10px; padding: 10px 12px; margin-top: 9px;
+}
+.hw-work-drawer summary {
+  cursor: pointer; font-weight: 900; color: var(--gold);
+  font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;
+}
+.hw-sol-body { margin-top: 9px; padding-top: 9px; border-top: 1px solid #1e293b; font-size: 0.86rem; }
+.mindmap-box {
+  background: #090d16; border-left: 4px solid var(--purple);
+  padding: 9px 11px; border-radius: 8px; margin-top: 8px; font-size: 0.83rem;
+}
+
+/* УНИФИЦИРАНИ КАРТИ ЗА КОНТРОЛНИ, ТЕМИ И СЕДМИЧНО РАЗПИСАНИЕ (БЕЗ ТЕСНИ ТАБЛИЦИ!) */
+.uni-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: 11px; margin-top: 8px; }
+.uni-card {
+  background: #090d16; border: 1px solid var(--border);
+  border-top: 4px solid var(--accent); border-radius: 11px; padding: 12px; font-size: 0.84rem;
+}
+.uni-card.urgent-exam { border-top-color: var(--red); background: rgba(239,68,68,0.1); }
+.uni-card.klasna-exam { border-top-color: var(--gold); background: rgba(245,158,11,0.1); }
+.uni-card h4 { color: var(--gold); margin-bottom: 6px; font-size: 0.92rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+
+/* ТАБ 2: ОБЕДИНЕНА СЕКЦИЯ (15 ПРЕДМЕТА: УЧЕНЕ НАИЗУСТ + МИСЛЕНЕ 3D КАРТИ + НАПРЕДЪК) */
+.subj-nav {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+  background: #0c1322; padding: 9px; border-radius: 12px; border: 1px solid var(--border);
+}
+.s-btn {
+  background: var(--card); color: var(--text); border: 1px solid #475569;
+  padding: 7px 11px; border-radius: 9px; cursor: pointer;
+  font-weight: 800; font-size: 0.79rem; display: inline-flex; align-items: center; gap: 5px;
+}
+.s-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+.s-btn-pct { font-size: 0.68rem; padding: 1px 5px; border-radius: 5px; background: rgba(0,0,0,0.35); color: #86efac; }
+.s-btn.active .s-btn-pct { background: #090d16; color: var(--gold); }
+
+.subj-prog-banner {
+  background: #090d16; border: 1px solid var(--accent); border-radius: 11px;
+  padding: 10px 14px; margin-bottom: 12px; display: flex; flex-wrap: wrap;
+  justify-content: space-between; align-items: center; gap: 10px;
+}
+
+.memo-vault { background: linear-gradient(135deg, #1c1917, #090d16); border: 2px solid var(--gold); border-radius: 13px; padding: 13px; margin: 11px 0; }
 .memo-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px dashed var(--gold); padding-bottom: 8px; margin-bottom: 10px; }
-.memo-grid, .sched-grid, .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 10px 0; }
-.memo-card { background: #090d16; border: 1px solid #475569; border-top: 4px solid var(--gold); border-radius: 10px; padding: 11px; font-size: 0.87rem; display: flex; flex-direction: column; justify-content: space-between; gap: 7px; transition: 0.2s; }
-.memo-card.mastered { border-color: var(--green) !important; box-shadow: 0 0 10px rgba(34,197,94,0.25); }
-.visual-anchor { background: #1e293b; border: 1px dashed var(--accent); border-radius: 8px; padding: 7px; font-weight: 800; color: #fde047; text-align: center; font-size: 0.86rem; }
+.memo-grid, .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: 12px; margin: 10px 0; }
+.memo-card { background: #090d16; border: 1px solid #475569; border-top: 4px solid var(--gold); border-radius: 10px; padding: 11px; font-size: 0.86rem; display: flex; flex-direction: column; justify-content: space-between; gap: 7px; }
+.memo-card.mastered { border-color: var(--green) !important; box-shadow: 0 0 12px rgba(34,197,94,0.25); }
+.visual-anchor { background: #1e293b; border: 1px dashed var(--accent); border-radius: 8px; padding: 7px; font-weight: 800; color: #fde047; text-align: center; font-size: 0.84rem; }
 .memo-word { background: rgba(34,197,94,0.2); border-bottom: 2px solid var(--green); color: #86efac; font-weight: 800; padding: 1px 6px; border-radius: 4px; cursor: pointer; display: inline-block; }
 .memo-word.masked { background: #334155; color: transparent; border-bottom: 2px dashed var(--gold); position: relative; min-width: 65px; user-select: none; }
 .memo-word.masked::after { content: "❓"; color: var(--gold); font-size: 0.72rem; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-weight: 900; }
-.memo-link { color: var(--accent); font-size: 0.78rem; font-weight: 700; text-decoration: none; }
+.memo-link { color: var(--accent); font-size: 0.78rem; font-weight: 800; text-decoration: none; }
 .mastery-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #334155; font-size: 0.8rem; }
-details.archive-drawer { background: #090d16; border: 1px dashed #475569; border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
-details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(--gold); font-size: 0.88rem; }
-.chk-list { list-style: none; }
-.chk-list li { margin: 6px 0; display: flex; align-items: flex-start; gap: 8px; font-size: 0.86rem; background: #0f172a; padding: 8px 10px; border-radius: 8px; border-left: 4px solid var(--accent); flex-wrap: wrap; }
-.chk-list input[type="checkbox"] { margin-top: 4px; transform: scale(1.2); accent-color: var(--green); cursor: pointer; }
-.shkolo-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 8px; }
-.shkolo-table th, .shkolo-table td { border: 1px solid #334155; padding: 7px 9px; text-align: left; }
-.shkolo-table th { background: #1e3a8a; color: var(--accent); }
-.day-card { background: #0f172a; border: 1px solid #334155; border-top: 3px solid var(--accent); border-radius: 10px; padding: 12px; font-size: 0.83rem; }
-.day-card h4 { color: var(--gold); margin-bottom: 6px; border-bottom: 1px dashed #334155; padding-bottom: 4px; }
-.flip-card { perspective: 1000px; min-height: 480px; }
-.flip-inner { position: relative; width: 100%; height: 100%; min-height: 480px; transition: transform 0.6s; transform-style: preserve-3d; }
+
+/* 3D ФЛАШКАРТИ ЗА МИСЛЕНЕ (ВЪТРЕ В САМАТА ТЕМА НА ПРЕДМЕТА) */
+.flip-card { perspective: 1000px; min-height: 470px; }
+.flip-inner { position: relative; width: 100%; height: 100%; min-height: 470px; transition: transform 0.6s; transform-style: preserve-3d; }
 .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
-.card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border: 2px solid #334155; background: var(--card); overflow-y: auto; }
+.card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; padding: 13px; display: flex; flex-direction: column; justify-content: space-between; border: 2px solid var(--border); background: var(--card-alt); overflow-y: auto; }
 .card-front { border-top: 4px solid var(--accent); }
 .card-back { transform: rotateY(180deg); border-top: 4px solid var(--gold); background: #172033; }
-.story-box { background: #0f172a; border-left: 3px solid var(--gold); padding: 9px; border-radius: 8px; font-size: 0.84rem; margin: 6px 0; }
-.algo-box { background: #0b1325; border: 1px dashed var(--accent); border-radius: 8px; padding: 8px; margin: 6px 0; font-size: 0.8rem; }
+.story-box { background: #090d16; border-left: 3px solid var(--gold); padding: 8px; border-radius: 8px; font-size: 0.83rem; margin: 5px 0; }
+.algo-box { background: #0b1325; border: 1px dashed var(--accent); border-radius: 8px; padding: 8px; margin: 5px 0; font-size: 0.79rem; }
 .algo-step { margin: 3px 0; }
 .algo-step b { color: var(--gold); }
-select.ans-select { width: 100%; padding: 9px; border-radius: 8px; background: #0f172a; color: var(--text); border: 2px solid var(--accent); margin: 8px 0; font-size: 0.86rem; font-weight: 700; cursor: pointer; }
-.feedback { font-size: 0.84rem; padding: 9px; border-radius: 8px; margin-top: 6px; display: none; line-height: 1.45; }
+select.ans-select { width: 100%; padding: 9px; border-radius: 8px; background: #090d16; color: var(--text); border: 2px solid var(--accent); margin: 8px 0; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.feedback { font-size: 0.83rem; padding: 9px; border-radius: 8px; margin-top: 6px; display: none; line-height: 1.45; }
 .feedback.ok { display: block; background: rgba(34,197,94,0.2); border: 2px solid var(--green); color: #86efac; }
 .feedback.err { display: block; background: rgba(239,68,68,0.2); border: 2px solid var(--red); color: #fca5a5; }
 .feedback.warn { display: block; background: rgba(245,158,11,0.2); border: 2px dashed var(--gold); color: #fde047; }
-.load-banner { background: linear-gradient(135deg, #064e3b, #0f172a); border: 2px dashed var(--green); border-radius: 12px; padding: 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
-.due-tag { font-size: 0.74rem; color: var(--gold); background: #1e293b; border: 1px solid #475569; padding: 1px 6px; border-radius: 5px; margin-left: 4px; font-weight: 700; }
 
-.tier-badge-new { display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.18); color: #4ade80; border: 1px solid #22c55e; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.3px; }
-.tier-badge-rev { display: inline-flex; align-items: center; gap: 4px; background: rgba(168,85,247,0.18); color: #d8b4fe; border: 1px solid #a855f7; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.3px; }
-.tier-badge-warn { display: inline-flex; align-items: center; gap: 4px; background: rgba(245,158,11,0.2); color: #fde047; border: 1px solid #f59e0b; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 900; }
-.subj-status-tag { display: inline-block; padding: 1px 6px; border-radius: 5px; font-size: 0.68rem; font-weight: 900; }
-.subj-tag-added { background: var(--green); color: #052e16; }
-.subj-tag-dropped { background: var(--purple); color: #fff; }
-.subj-tag-missing { background: var(--gold); color: #000; }
-
-.memo-card.item-tier-new { border-top: 4px solid var(--green); box-shadow: 0 4px 14px rgba(34,197,94,0.12); }
-.memo-card.item-tier-rev { border-top: 4px solid var(--purple); background: #0d1122; border-color: #3b2854; }
-.hw-step.item-tier-new { border-left: 5px solid var(--green); background: #0c1f24; }
-.hw-step.item-tier-rev { border-left: 5px solid var(--purple); background: #161229; }
-.chk-list li.item-tier-new { border-left: 4px solid var(--green); }
-.chk-list li.item-tier-rev { border-left: 4px solid var(--purple); background: #111327; }
-.flip-card.item-tier-new .card-front { border-top: 5px solid var(--green); }
-.flip-card.item-tier-rev .card-front { border-top: 5px solid var(--purple); background: #181a30; }
-
-.filter-bar { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.filter-btn { background: #0f172a; color: var(--muted); border: 1px solid #475569; padding: 6px 11px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.78rem; transition: 0.2s; }
-.filter-btn.active-all { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.74rem; margin: 2px; }
+.b-red { background: var(--red); color: #fff; } .b-yellow { background: var(--gold); color: #000; } .b-green { background: var(--green); color: #000; } .b-blue { background: var(--accent); color: #000; } .b-purple { background: var(--purple); color: #fff; }
+.tier-badge-new { display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.18); color: #4ade80; border: 1px solid #22c55e; padding: 2px 7px; border-radius: 6px; font-size: 0.71rem; font-weight: 900; }
+.tier-badge-rev { display: inline-flex; align-items: center; gap: 4px; background: rgba(168,85,247,0.18); color: #d8b4fe; border: 1px solid #a855f7; padding: 2px 7px; border-radius: 6px; font-size: 0.71rem; font-weight: 900; }
+.filter-btn { background: #090d16; color: var(--muted); border: 1px solid #475569; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.76rem; }
+.filter-btn.active-all { background: var(--accent); color: #090d16; border-color: var(--accent); }
 .filter-btn.active-new { background: var(--green); color: #052e16; border-color: var(--green); }
 .filter-btn.active-rev { background: var(--purple); color: #fff; border-color: var(--purple); }
-
 body.filter-mode-new .item-tier-rev { display: none !important; }
 body.filter-mode-rev .item-tier-new { display: none !important; }
-
-.file-Chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; margin: 3px; }
-.file-Chip.chip-new { background: rgba(34,197,94,0.2); border: 1px solid var(--green); color: #86efac; }
-.file-Chip.chip-rev { background: rgba(168,85,247,0.2); border: 1px solid var(--purple); color: #d8b4fe; }
-.file-Chip.chip-repaired { background: rgba(245,158,11,0.22); border: 1px solid var(--gold); color: #fde047; }
-
-.missing-parts-alert { background: linear-gradient(135deg, #451a03, #1e1b4b); border: 2px solid var(--gold); border-radius: 10px; padding: 10px 14px; margin-top: 8px; color: #fde68a; font-size: 0.83rem; line-height: 1.5; display: none; }
+.file-Chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 8px; font-size: 0.76rem; font-weight: 700; margin: 3px; border: 1px solid var(--accent); background: #090d16; }
+details.archive-drawer { background: #090d16; border: 1px dashed #475569; border-radius: 10px; padding: 10px 13px; margin-top: 10px; }
+details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(--gold); font-size: 0.86rem; }
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1 id="header-title">🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 3.6)</h1>
-    <p id="header-subtitle">🔒 100% Лична локална база данни | Приема цели файлове и бази на части (.js)</p>
+    <h1 id="header-title">🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.0)</h1>
+    <p id="header-subtitle">🎯 Умно Табло по Часове | 🧠 Учене + Мислене в една тема | ☁️ Google Drive Auto-Sync</p>
   </div>
   <div class="voice-bar">
+    <span id="cloud-status-pill" class="sync-pill no-read" onclick="openTab('tab-3', document.getElementById('tab-btn-3'))" title="Статус на базата данни">☁️ Готов</span>
     <button class="btn btn-speak" id="btn-voice-start" onclick="speakGreeting()">🎙️ Гласов старт</button>
     <button class="btn btn-mask" id="btn-toggle-masks" onclick="toggleAllMasks()">🙈 Скрий/Покажи думи</button>
     <button class="btn btn-stop" id="btn-voice-stop" onclick="stopSpeech()">⏹️ Стоп</button>
   </div>
 </header>
 
-<div class="load-banner" id="quick-file-banner">
-  <div style="flex:1;">
-    <strong style="color:var(--green);" id="banner-title">📂 Лична база данни (.js файлове на части или цели):</strong>
-    <span id="db-status-label" style="font-size:0.84rem; color:var(--text); display:block;">Няма заредена база в браузъра. Натиснете зеления бутон вдясно и изберете всички ваши .js файлове (стари и нови части).</span>
-    <div id="loaded-files-badges" class="no-read" style="margin-top:6px;"></div>
-    <div id="missing-parts-alarm" class="missing-parts-alert no-read"></div>
-  </div>
+<!-- МАЛКА АЛАРМА НА НАЧАЛНИЯ ЕКРАН (Показва се САМО ако има проблем с обновяването или липсват файлове) -->
+<div id="sync-problem-bar" class="sync-alert-bar no-read">
+  <div id="sync-problem-text">⚠️ Няма заредена база данни или възникна проблем при автоматичното обновяване.</div>
   <div class="voice-bar">
-    <input type="file" id="file-picker" accept=".js,.json,.txt" multiple style="display:none;" onchange="loadDataFromFile(this)">
-    <button class="btn btn-file" id="btn-pick-file" onclick="document.getElementById('file-picker').click()">➕ Добави .js файлове (и части)</button>
-    <button class="btn btn-stop" id="btn-clear-mem" style="display:none;" onclick="resetToDefaultFileDB()">🗑️ Изчисти данните</button>
+    <button class="btn btn-cloud" onclick="syncFromGoogleDrive(false)">🔄 Опитай пак</button>
+    <button class="btn btn-speak" onclick="openTab('tab-3', document.getElementById('tab-btn-3'))">📥 Отвори Обнови данни</button>
   </div>
 </div>
 
+<!-- ГЛАВНА ЛЕНТА ЗА НАПРЕДЪК + ФИЛТЪР -->
 <div class="prog-wrap">
-  <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:220px;">
+  <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:210px;">
     <strong><span class="no-read">📊</span> <span id="lbl-prog-title">Общ напредък:</span> <span id="prog-text" class="no-read" style="color:var(--green)">0%</span></strong>
     <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill"></div></div>
   </div>
   <div class="filter-bar no-read">
-    <span style="font-size:0.78rem; color:var(--muted); font-weight:700;">Филтър:</span>
-    <button class="filter-btn active-all" id="flt-all" onclick="setTierFilter('all')">📚 Всички (Нови + Преговор)</button>
-    <button class="filter-btn" id="flt-new" onclick="setTierFilter('new')">🆕 Само най-новата дата</button>
-    <button class="filter-btn" id="flt-rev" onclick="setTierFilter('rev')">⏪ Само база за преговор</button>
+    <span style="font-size:0.76rem; color:var(--muted); font-weight:700;">Филтър:</span>
+    <button class="filter-btn active-all" id="flt-all" onclick="setTierFilter('all')">📚 Всички</button>
+    <button class="filter-btn" id="flt-new" onclick="setTierFilter('new')">🆕 Нови</button>
+    <button class="filter-btn" id="flt-rev" onclick="setTierFilter('rev')">⏪ Преговор</button>
   </div>
 </div>
 
+<!-- ГЛАВНО МЕНЮ (Само 3 чисти секции: 1. Умно Табло и График | 2. Предмети: Учене + Мислене | 3. Обнови данни) -->
 <div class="tabs">
-  <button class="tab-btn active" id="tab-btn-1" onclick="openTab('tab-1', this)">📱 1. ДНЕВНИК</button>
-  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">📚 2. ПРЕДМЕТИ + СЕЙФ</button>
-  <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">🃏 3. 3D ТРЕНАЖОР</button>
-  <button class="tab-btn" id="tab-btn-4" onclick="openTab('tab-4', this)">📈 4. АНАЛИЗ И ОТЧЕТ</button>
-  <button class="tab-btn" id="tab-btn-5" onclick="openTab('tab-5', this)">📥 5. ОБНОВИ ДАННИ</button>
+  <button class="tab-btn active" id="tab-btn-1" onclick="openTab('tab-1', this)">📱 1. ТАБЛО: ДОМАШНИ И ГРАФИК</button>
+  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">🧠 2. ПРЕДМЕТИ (УЧЕНЕ + МИСЛЕНЕ)</button>
+  <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">📥 3. ОБНОВИ ДАННИ</button>
 </div>
 
-<!-- ТАБ 1 -->
+<!-- ================= ТАБ 1: УМНО ТАБЛО ЗА ДОМАШНИ, КОНТРОЛНИ, ТЕМИ И РАЗПИСАНИЕ (САЙТ В САЙТА) ================= -->
 <div id="tab-1" class="tab-content active">
-  <div class="subj-nav">
-    <button class="s-btn active" id="sub-btn-1" onclick="openPane('tab-1', 'pane-hw', this)">💼 1. Домашни работи</button>
-    <button class="s-btn" id="sub-btn-2" onclick="openPane('tab-1', 'pane-exams', this)">📅 2. Контролни и Класни</button>
-    <button class="s-btn" id="sub-btn-3" onclick="openPane('tab-1', 'pane-topics', this)">📖 3. Взети и Следващи теми</button>
-    <button class="s-btn" id="sub-btn-4" onclick="openPane('tab-1', 'pane-sched', this)">🗓️ 4. Седмично разписание</button>
-  </div>
-
-  <div id="pane-hw" class="subj-pane active">
-    <div class="panel" id="p-shk-hw">
-      <h2><span id="heading-hw">💼 ДОМАШНИ РАБОТИ ПО ХРОНОЛОГИЯ И ПРИОРИТЕТ</span> <span id="pl-p-shk-hw"></span></h2>
-      <ul class="chk-list" id="active-hw-list"></ul>
-      <details class="archive-drawer" open>
-        <summary id="summary-arch">🗄️ АРХИВ И ПРЕГОВОР НА МИНАЛИ ДОМАШНИ</summary>
-        <ul class="chk-list" id="archive-list"></ul>
-      </details>
+  <div class="smart-hero-bar">
+    <div style="flex:1;">
+      <div style="font-size:0.98rem; font-weight:900; color:#4ade80;" id="smart-focus-headline">🎯 АКТИВЕН ФОКУС ПО ЧАСОВНИК: Зареждане...</div>
+      <div style="font-size:0.8rem; color:var(--text);" id="smart-focus-subline">Подредено автоматично по реда на предаване според учебната програма по часове.</div>
     </div>
+    <div class="clock-badge no-read" id="live-sofia-clock">🕒 София: --:--</div>
+    <div class="active-subj-chips no-read" id="active-hw-chips"></div>
   </div>
 
-  <div id="pane-exams" class="subj-pane">
-    <div class="panel">
-      <h2 id="heading-exams">📅 ГРАФИК НА КОНТРОЛНИ И КЛАСНИ РАБОТИ</h2>
-      <div style="overflow-x:auto;">
-        <table class="shkolo-table no-read">
-          <thead><tr id="thead-exams"></tr></thead>
-          <tbody id="exams-tbody"></tbody>
-        </table>
+  <!-- Бързи бутони за преглед на един екран или фокус върху секция -->
+  <div class="board-quick-nav no-read">
+    <button class="q-nav-btn active" onclick="filterBoardSection('all', this)">🌟 Всичко на един екран</button>
+    <button class="q-nav-btn" onclick="filterBoardSection('sec-hw', this)">💼 Домашни по часове</button>
+    <button class="q-nav-btn" onclick="filterBoardSection('sec-sched', this)">🗓️ Седмично разписание</button>
+    <button class="q-nav-btn" onclick="filterBoardSection('sec-exams', this)">📅 Контролни и Класни</button>
+    <button class="q-nav-btn" onclick="filterBoardSection('sec-topics', this)">📖 Взети и Следващи теми</button>
+  </div>
+
+  <!-- СЕКЦИЯ А: ХРОНОЛОГИЧНИ ЗОНИ ЗА ДОМАШНИТЕ РАБОТИ -->
+  <div id="sec-hw" class="board-sec">
+    <!-- ЗОНА 1: Предстоящ учебен ден / Следващ час за предаване (Винаги най-отгоре!) -->
+    <div class="zone-box zone-focus" id="zone-focus-box">
+      <div class="zone-title">
+        <span id="zone-1-title">🔥 1. ПРЕДСТОЯЩ УЧЕБЕН ДЕН / СЛЕДВАЩ ЧАС ЗА ПРЕДАВАНЕ</span>
+        <span id="pl-zone-focus-box"></span>
       </div>
-      <details class="archive-drawer" id="exams-arch-drawer" style="display:none;" open>
-        <summary id="summary-exams-arch">🗄️ АРХИВ НА МИНАЛИ КОНТРОЛНИ И ТЕСТОВЕ (Кликни за преглед)</summary>
-        <div style="overflow-x:auto; margin-top:8px;">
-          <table class="shkolo-table no-read">
-            <thead><tr id="thead-exams-arch"></tr></thead>
-            <tbody id="exams-arch-tbody"></tbody>
-          </table>
-        </div>
+      <div class="hw-smart-grid" id="hw-zone-focus"></div>
+    </div>
+
+    <!-- ЗОНА 2: До края на текущата седмица -->
+    <div class="zone-box zone-week" id="zone-week-box">
+      <div class="zone-title">
+        <span id="zone-2-title">📅 2. ПРЕДСТОЯЩИ ДО КРАЯ НА СЕДМИЦАТА</span>
+      </div>
+      <div class="hw-smart-grid" id="hw-zone-week"></div>
+    </div>
+
+    <!-- ЗОНА 3: Следваща седмица и по-нататък -->
+    <div class="zone-box zone-next" id="zone-next-box" style="display:none;">
+      <div class="zone-title">
+        <span id="zone-3-title">🚀 3. СЛЕДВАЩА СЕДМИЦА И ПО-НАТАТЪК</span>
+      </div>
+      <div class="hw-smart-grid" id="hw-zone-next"></div>
+    </div>
+
+    <!-- ЗОНА 4: Минали домашни (Хронологично за проверка дали са написани) -->
+    <div class="zone-box zone-past" id="zone-past-box">
+      <details open>
+        <summary style="cursor:pointer; font-weight:900; color:var(--gold); font-size:0.95rem;">
+          ✅ 4. МИНАЛИ ДОМАШНИ ПО ХРОНОЛОГИЯ (Провери дали са написани в тетрадката)
+        </summary>
+        <div class="hw-smart-grid" id="hw-zone-past" style="margin-top:10px;"></div>
       </details>
     </div>
   </div>
 
-  <div id="pane-topics" class="subj-pane">
-    <div class="panel" id="p-topics">
-      <h2><span id="heading-topics">📖 ТЕМАТИЧНО РАЗПРЕДЕЛЕНИЕ ПО ПРЕДМЕТИ</span> <span id="pl-p-topics"></span></h2>
-      <div class="hw-box" id="topics-box"></div>
-      <details class="archive-drawer" id="topics-arch-drawer" style="display:none;" open>
-        <summary id="summary-topics-arch">🗄️ БАЗА ЗА ПРЕГОВОР: ВЗЕТИ И МИНАЛИ ТЕМИ (От по-стари файлове)</summary>
-        <div class="hw-box" id="topics-arch-box"></div>
-      </details>
-    </div>
+  <!-- СЕКЦИЯ Б: СЕДМИЧНО РАЗПИСАНИЕ (Унифицирани карти) -->
+  <div id="sec-sched" class="board-sec zone-box">
+    <div class="zone-title"><span id="heading-sched">🗓️ СЕДМИЧНО РАЗПИСАНИЕ ПО ДНИ И ЧАСОВЕ</span></div>
+    <div class="uni-grid" id="sched-box"></div>
   </div>
 
-  <div id="pane-sched" class="subj-pane">
-    <div class="panel">
-      <h2 id="heading-sched">🗓️ СЕДМИЧНО РАЗПИСАНИЕ</h2>
-      <div class="sched-grid" id="sched-box"></div>
+  <!-- СЕКЦИЯ В: КОНТРОЛНИ И КЛАСНИ РАБОТИ (Унифицирани карти вместо рязана таблица!) -->
+  <div id="sec-exams" class="board-sec zone-box">
+    <div class="zone-title"><span id="heading-exams">📅 ГРАФИК НА КОНТРОЛНИ И КЛАСНИ РАБОТИ</span></div>
+    <div class="uni-grid" id="exams-cards-box"></div>
+    <details class="archive-drawer" id="exams-arch-drawer" style="display:none;">
+      <summary>🗄️ АРХИВ НА МИНАЛИ КОНТРОЛНИ И ВХОДНИ НИВА</summary>
+      <div class="uni-grid" id="exams-arch-cards-box" style="margin-top:8px;"></div>
+    </details>
+  </div>
+
+  <!-- СЕКЦИЯ Г: ВЗЕТИ И СЛЕДВАЩИ ТЕМИ (Унифицирани карти) -->
+  <div id="sec-topics" class="board-sec zone-box">
+    <div class="zone-title">
+      <span id="heading-topics">📖 ВЗЕТИ И СЛЕДВАЩИ ТЕМИ ПО ПРЕДМЕТИ</span>
+      <span id="pl-sec-topics"></span>
     </div>
+    <div class="uni-grid" id="topics-box"></div>
+    <details class="archive-drawer" id="topics-arch-drawer" style="display:none;">
+      <summary>🗄️ БАЗА ЗА ПРЕГОВОР: МИНАЛИ ТЕМИ</summary>
+      <div class="uni-grid" id="topics-arch-box" style="margin-top:8px;"></div>
+    </details>
   </div>
 </div>
 
-<!-- ТАБ 2 -->
+<!-- ================= ТАБ 2: ОБЕДИНЕНИ ПРЕДМЕТИ (УЧЕНЕ НАИЗУСТ + МИСЛЕНЕ 3D КАРТИ + НАПРЕДЪК) ================= -->
 <div id="tab-2" class="tab-content">
   <div class="subj-nav" id="subj-nav-btns"></div>
   <div id="subj-panes-wrap"></div>
 </div>
 
-<!-- ТАБ 3 -->
+<!-- ================= ТАБ 3: ОБНОВЯВАНЕ НА ДАННИ (ДУАЛЕН РЕЖИМ: GOOGLE DRIVE + ЛОКАЛНИ .JS ФАЙЛОВЕ) ================= -->
 <div id="tab-3" class="tab-content">
-  <div class="panel">
-    <h2>
-      <span id="heading-cards">🃏 3D ТРЕНАЖОР</span>
-      <button class="btn btn-speak" id="btn-cards-help" onclick="speakCardsInstruction()">🔊 Инструкция</button>
-    </h2>
-    <div class="cards-container" id="cards-wrap"></div>
-    <div style="text-align:center; margin-top:16px; background:#0f172a; border:2px solid var(--gold); padding:14px; border-radius:12px;">
-      <button class="btn btn-speak" id="btn-check-cards" style="font-size:1rem; padding:10px 20px;" onclick="checkAnswers()">✅ ОБЪРНИ И ПРОВЕРИ ВСИЧКИ КАРТИ НАВЕДНЪЖ</button>
-      <div id="total-score" style="margin-top:10px; font-size:1.05rem; font-weight:700;"></div>
+  <div class="zone-box" style="border-color:var(--green);">
+    <div class="zone-title"><span>☁️ 1. АВТОМАТИЧНО И РЪЧНО ОБНОВЯВАНЕ ОТ GOOGLE DRIVE</span></div>
+    <p style="font-size:0.84rem; color:var(--muted); margin-bottom:10px;">
+      При всяко отваряне системата проверява автоматично папката в Google Drive за нови или променени <code>.js</code> файлове и ги зарежда сама, ако има разминаване. Оттук можете да настроите линка или да обновите ръчно.
+    </p>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+      <input type="text" id="drive-url-input" placeholder="Поставете вашия Google Apps Script Web App URL (завършващ на /exec)..." style="flex:1; min-width:240px; padding:9px 12px; border-radius:8px; background:#090d16; color:#fde047; border:1px solid var(--accent); font-size:0.83rem;">
+      <button class="btn btn-speak" onclick="saveDriveUrlFromInput()">💾 Запази линка</button>
+      <button class="btn btn-cloud" id="btn-drive-sync" onclick="syncFromGoogleDrive(false)">🔄 Провери и обнови от Google Drive сега</button>
     </div>
+    <div id="drive-sync-log" style="font-size:0.8rem; color:#86efac;"></div>
   </div>
-</div>
 
-<!-- ТАБ 4 -->
-<div id="tab-4" class="tab-content">
-  <div class="panel">
-    <h2 id="heading-analytics">📈 АНАЛИЗ НА НАПРЕДЪКА И СИНХРОНИЗИРАЩ ОТЧЕТ</h2>
-    <div style="overflow-x:auto;">
-      <table class="shkolo-table no-read">
-        <thead><tr id="thead-analytics"></tr></thead>
-        <tbody id="analytics-tbody"></tbody>
-      </table>
+  <div class="zone-box">
+    <div class="zone-title"><span>📂 2. РЪЧНО ЗАРЕЖДАНЕ НА .JS ФАЙЛОВЕ И ЧАСТИ ОТ УСТРОЙСТВОТО</span></div>
+    <span id="db-status-label" style="font-size:0.85rem; color:var(--text); display:block; margin-bottom:8px;">Няма заредена база в браузъра.</span>
+    <div class="voice-bar" style="margin-bottom:10px;">
+      <input type="file" id="file-picker" accept=".js,.json,.txt" multiple style="display:none;" onchange="loadDataFromFile(this)">
+      <button class="btn btn-file" id="btn-pick-file" onclick="document.getElementById('file-picker').click()">➕ Добави .js файлове (и части)</button>
+      <button class="btn btn-stop" id="btn-clear-mem" onclick="resetToDefaultFileDB()">🗑️ Изчисти всички данни</button>
+      <button class="btn btn-arch" onclick="generateSyncReport()">📋 Копирай кратък отчет за чата</button>
     </div>
-    <div class="hw-box" style="margin-top:14px;">
-      <h3 id="heading-sync">🔄 Синхронизиращ отчет за Стратегическия Чат</h3>
-      <button class="btn btn-speak" id="btn-gen-sync" onclick="generateSyncReport()">📋 Генерирай и Копирай Отчет за Напредъка</button>
-      <textarea id="sync-box" rows="7" style="width:100%; margin-top:8px; background:#090d16; color:#86efac; border:1px solid var(--accent); border-radius:8px; padding:10px; font-family:monospace;" readonly></textarea>
-    </div>
+    <div id="loaded-files-badges" class="no-read"></div>
+    <div id="missing-parts-alarm" class="sync-alert-bar no-read" style="margin-top:8px;"></div>
+    <div id="tab5-files-list" style="margin-top:10px;"></div>
+    <textarea id="sync-box" rows="4" style="width:100%; margin-top:8px; display:none; background:#090d16; color:#86efac; border:1px solid var(--accent); border-radius:8px; padding:8px; font-family:monospace; font-size:0.78rem;" readonly></textarea>
   </div>
-</div>
 
-<!-- ТАБ 5 -->
-<div id="tab-5" class="tab-content">
-  <div class="panel">
-    <h2 id="heading-updater">📥 Управление и Обединяване на Файлове и Части (Ядро 3.6)</h2>
-    <div class="hw-box" style="border-color:var(--green); margin-bottom:14px;">
-      <p style="font-size:0.86rem; margin-bottom:8px;">
-        🔒 <b>Поддръжка на цели бази и файлове на части:</b> Можете да изберете наведнъж стария базов файл (напр. <code>261011.js</code>) и всички части на новата база (Дневник, Предмети 1–7, Предмети 8–15, Карти 1–10, Карти 11–20). Системата автоматично сглобява частите от една и съща дата, поправя прекъснати файлове и сигнализира, ако някоя част или предмет от новата дата липсва!
-      </p>
-      <button class="btn btn-file" onclick="document.getElementById('file-picker').click()">➕ Избери и обедини всички .js файлове / части</button>
-      <div id="tab5-files-list" style="margin-top:12px;"></div>
-    </div>
-    <div class="hw-box">
-      <textarea id="custom-db-input" rows="8" placeholder="Или поставете директно кода на window.APP_DATA (цял или част) тук..." style="width:100%; background:#090d16; color:#fde047; border:1px solid var(--gold); border-radius:8px; padding:10px; font-family:monospace; margin-bottom:10px;"></textarea>
-      <div class="voice-bar">
-        <button class="btn btn-speak" onclick="applyCustomDataJS()">⚡ Добави и обедини код</button>
-        <button class="btn btn-stop" onclick="resetToDefaultFileDB()">🗑️ Изчисти всички качени файлове от браузъра</button>
-      </div>
-    </div>
+  <div class="zone-box">
+    <div class="zone-title"><span>⚡ 3. ДИРЕКТНО ПОСТАВЯНЕ НА КОД (window.APP_DATA)</span></div>
+    <textarea id="custom-db-input" rows="5" placeholder="Или поставете директно кода на window.APP_DATA (цял или част за домашно) тук..." style="width:100%; background:#090d16; color:#fde047; border:1px solid var(--gold); border-radius:8px; padding:10px; font-family:monospace; margin-bottom:8px;"></textarea>
+    <button class="btn btn-speak" onclick="applyCustomDataJS()">⚡ Добави и обедини код</button>
   </div>
 </div>
-<!-- КРАЙ НА ЧАСТ 1 (Постави Част 2 точно тук отдолу) -->
+<!-- КРАЙ НА ЧАСТ 1 ОТ 2 НА INDEX.HTML (Постави Част 2 точно тук отдолу) -->
+<!-- НАЧАЛО НА ФИНАЛНАТА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.1 - С ВГРАДЕН GOOGLE DRIVE ЛИНК) -->
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
+// Вграденият личен Google Apps Script Web App URL (/exec):
+const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
 
 const DEFAULT_UI = {
-  pageTitle: "Супер-Органайзер (Ядро 3.6)",
-  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 3.6)",
-  headerSubtitle: "🔒 Лична локална база | 🔐 Златен Сейф | 🎯 3-Стъпков Алгоритъм | 🕒 Хронология София",
-  voiceGreeting: "Здравей! Зареди своите файлове с учебни данни или избери задача от дневника!",
-  cardsInstruction: "На всяка карта първо разпознай типа на задачата, какво знаем за нея и кое правило прилагаме! Когато избереш отговор на гърба на картата, тя се проверява веднага!",
-  voiceCheckDone: "Проверката на всички карти приключи!",
+  pageTitle: "Супер-Органайзер (Ядро 4.1): Борис И. Банев (7Г)",
+  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.1): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
+  headerSubtitle: "🎯 Умно Табло по Часове | 🧠 Учене + Мислене | 🔄 Smart Overlay & Google Drive Sync",
+  voiceGreeting: "Здравей, Борис! Най-отгоре на таблото са подредени предстоящите домашни по часове на предаване. Отвори решението и мисловната карта или премини към учене и мислене по предмети!",
   speechLang: "bg-BG",
   speechIgnoreSelectors: ".no-read, .math-expr, .frac, .tri-box, .visual-anchor, ruby, select, button, a, input, textarea",
-  btnVoiceStart: "<span class='no-read'>🎙️</span> Гласов старт",
-  btnToggleMasks: "<span class='no-read'>🙈</span> Скрий/Покажи думи",
-  btnVoiceStop: "<span class='no-read'>⏹️</span> Стоп",
-  bannerTitle: "📂 Зареждане на база данни (.js файлове и части):",
-  btnPickFile: "➕ Добави .js файлове (и части)",
-  btnClearMem: "🗑️ Изчисти данните",
-  statusLoadedPrefix: "✅ Обединена база данни:",
-  lblProgTitle: "Общ напредък:",
-  tab1: "📱 1. ДНЕВНИК ШКОЛО",
-  tab2: "📚 2. ПРЕДМЕТИ + СЕЙФ",
-  tab3: "🃏 3. 3D ТРЕНАЖОР",
-  tab4: "📈 4. АНАЛИЗ И ОТЧЕТ",
-  tab5: "📥 5. ОБНОВИ ДАННИ",
-  subTab1: "💼 1. Домашни работи",
-  subTab2: "📅 2. Контролни и Класни",
-  subTab3: "📖 3. Взети и Следващи теми",
-  subTab4: "🗓️ 4. Седмично разписание",
-  headingHw: "💼 ДОМАШНИ РАБОТИ ПО ХРОНОЛОГИЯ И ПРИОРИТЕТ",
-  summaryArch: "🗄️ АРХИВ И ПРЕГОВОР НА МИНАЛИ ДОМАШНИ (От по-стари дати и файлове)",
-  headingExams: "📅 ГРАФИК НА КОНТРОЛНИ И КЛАСНИ РАБОТИ",
-  examsCols: ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"],
-  headingTopics: "📖 ТЕМАТИЧНО РАЗПРЕДЕЛЕНИЕ ПО ПРЕДМЕТИ",
-  headingSched: "🗓️ СЕДМИЧНО РАЗПИСАНИЕ",
-  vaultPrefix: "🔐 ЗЛАТЕН СЕЙФ:",
+  vaultPrefix: "🔐 УЧЕНЕ НАИЗУСТ (ЗЛАТЕН СЕЙФ):",
   btnTestMemory: "🙈 Тествай паметта",
   btnPlayVault: "▶️ Сейф",
   btnListen: "▶️ Слушай",
   btnPause: "⏸️ Пауза",
   btnResume: "▶️ Продължи",
-  vaultLinkText: "🔗 Интерактивна връзка",
+  vaultLinkText: "🔗 Интерактивен ресурс",
   lblMastered: "✅ Научих наизуст",
-  subjArchPrefix: "🗄️ ДОПЪЛНИТЕЛЕН АРХИВ ПО",
-  btnArchive: "📥 Архивирай",
-  btnUnarchive: "📤 Върни в активни",
-  headingCards: "🃏 3D ТРЕНАЖОР (АКТУАЛНИ + БАЗА ЗА ПРЕГОВОР)",
-  btnCardsHelp: "🔊 Инструкция",
-  btnCheckCards: "✅ ОБЪРНИ И ПРОВЕРИ ВСИЧКИ КАРТИ НАВЕДНЪЖ",
-  cardBadgePrefix: "Карта",
-  questionBadgePrefix: "Въпрос",
   algoStep1: "1. Тип задача:",
   algoStep2: "2. Какво знаем:",
-  algoStep3: "3. Правило:",
+  algoStep3: "3. Правило в действие:",
   btnPlayJoker: "▶️ Алгоритъм и Жокер",
-  cardLinkLabel: "🔗 Таен линк (Отвори ресурс)",
-  btnUnlockQuestion: "ОТКРИЙ ВЪПРОСА ❓",
+  cardLinkLabel: "🔗 Таен интерактивен ресурс",
+  btnUnlockQuestion: "ОТКРИЙ ПРАКТИЧЕСКАТА ЗАДАЧА ❓",
   selectPlaceholder: "-- Избери отговор (Проверява се веднага!) --",
-  btnBackToFront: "↩️ Назад към алгоритъма и жокера",
+  btnBackToFront: "↩️ Назад към алгоритъма за мислене",
   msgCorrect: "Вярно! Браво!",
   msgWrong: "Грешен избор!",
   msgCorrectIs: "Правилният отговор е:",
-  msgNoAnswer: "Не си избрал отговор на тази карта!",
-  lblScore: "Верни:",
-  lblAnswered: "Попълнени:",
-  lblGrade: "Оценка:",
-  headingAnalytics: "📈 АНАЛИЗ НА НАПРЕДЪКА И СИНХРОНИЗИРАЩ ОТЧЕТ",
-  analyticsCols: ["№", "Отделен Предмет", "Статус на предмета", "Текущо домашно", "Златен сейф (Нови + Преговор)", "3D Тренажор (Общо)"],
-  statusDone: "✅ Изпълнено",
-  statusActive: "⏳ Активно",
-  statusPending: "⏳ Не е решена",
-  statusArchTag: "(🗄️ Архив)",
-  headingSync: "🔄 Синхронизиращ отчет за Стратегическия Чат",
-  btnGenSync: "📋 Генерирай и Копирай Отчет за Напредъка",
-  reportHeader: "=== ОТЧЕТ ЗА НАПРЕДЪКА ==="
+  msgNoAnswer: "Избери отговор от падащото меню!"
 };
 
 function ui(key, fallback = '') {
-  if (window.APP_DATA && window.APP_DATA.ui && window.APP_DATA.ui[key] !== undefined) {
-    return window.APP_DATA.ui[key];
-  }
-  if (DEFAULT_UI[key] !== undefined) return DEFAULT_UI[key];
-  return fallback;
+  if (window.APP_DATA && window.APP_DATA.ui && window.APP_DATA.ui[key] !== undefined) return window.APP_DATA.ui[key];
+  return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fallback;
 }
 
 function setTierFilter(mode) {
@@ -375,24 +491,24 @@ function setTierFilter(mode) {
   document.getElementById('flt-all').className = 'filter-btn';
   document.getElementById('flt-new').className = 'filter-btn';
   document.getElementById('flt-rev').className = 'filter-btn';
-  if (mode === 'new') {
-    document.body.classList.add('filter-mode-new');
-    document.getElementById('flt-new').classList.add('active-new');
-  } else if (mode === 'rev') {
-    document.body.classList.add('filter-mode-rev');
-    document.getElementById('flt-rev').classList.add('active-rev');
-  } else {
-    document.getElementById('flt-all').classList.add('active-all');
-  }
+  if (mode === 'new') { document.body.classList.add('filter-mode-new'); document.getElementById('flt-new').classList.add('active-new'); }
+  else if (mode === 'rev') { document.body.classList.add('filter-mode-rev'); document.getElementById('flt-rev').classList.add('active-rev'); }
+  else { document.getElementById('flt-all').classList.add('active-all'); }
+}
+
+function filterBoardSection(secId, btn) {
+  document.querySelectorAll('.board-quick-nav .q-nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('#tab-1 .board-sec').forEach(sec => {
+    sec.style.display = (secId === 'all' || sec.id === secId) ? 'block' : 'none';
+  });
 }
 
 function parseBgDateString(str, endOfDayIfNoTime = false) {
   if (!str) return null;
   const m = String(str).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:.*?(\d{1,2}):(\d{2}))?/);
   if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10) - 1;
-  const year = parseInt(m[3], 10);
+  const day = parseInt(m[1], 10), month = parseInt(m[2], 10) - 1, year = parseInt(m[3], 10);
   const hour = m[4] !== undefined ? parseInt(m[4], 10) : (endOfDayIfNoTime ? 23 : 0);
   const min = m[5] !== undefined ? parseInt(m[5], 10) : (endOfDayIfNoTime ? 59 : 0);
   return new Date(year, month, day, hour, min, 0).getTime();
@@ -405,16 +521,14 @@ function shortDateLabel(genStr) {
 }
 
 function parseDayOnlyMs(genStr) {
-  const d = shortDateLabel(genStr);
-  return parseBgDateString(d, false) || 0;
+  return parseBgDateString(shortDateLabel(genStr), false) || 0;
 }
 
 function tierBadgeHTML(isLatest, genDate) {
   const dLbl = shortDateLabel(genDate);
-  if (isLatest) {
-    return `<span class="tier-badge-new no-read">🆕 АКТУАЛНО • ${dLbl}</span>`;
-  }
-  return `<span class="tier-badge-rev no-read">⏪ ПРЕГОВОР • ${dLbl}</span>`;
+  return isLatest
+    ? `<span class="tier-badge-new no-read">🆕 АКТУАЛНО • ${dLbl}</span>`
+    : `<span class="tier-badge-rev no-read">⏪ ПРЕГОВОР • ${dLbl}</span>`;
 }
 
 function normalizeSubjKey(s) {
@@ -423,27 +537,45 @@ function normalizeSubjKey(s) {
   return 'subj_unknown';
 }
 
+function guessSubjectKeyFromText(badgeOrTitle, subjects) {
+  const txt = String(badgeOrTitle || '').toLowerCase();
+  const map = [
+    { k: 'math', w: ['математика', 'геометрия', 'алгебра'] },
+    { k: 'maat', w: ['маат', 'филип'] },
+    { k: 'beel', w: ['беел', 'петрова'] },
+    { k: 'lit', w: ['литература', 'ботев', 'чинтулов', 'прощаване'] },
+    { k: 'bg', w: ['български', 'бел', 'медиен'] },
+    { k: 'geo', w: ['география', 'контурна', 'opentopomap'] },
+    { k: 'phy', w: ['физика', 'ом', 'напрежение', 'ток'] },
+    { k: 'chm', w: ['химия', 'валентност', 'молекул'] },
+    { k: 'bio', w: ['биология', 'монера', 'протиста'] },
+    { k: 'eng', w: ['английски', 'unit', 'english'] },
+    { k: 'his', w: ['история', 'възраждане', 'паисий', 'будители'] },
+    { k: 'mus', w: ['музика', 'диез', 'бемол', 'канон'] },
+    { k: 'it', w: ['кмит', 'компютър', 'информационни'] },
+    { k: 'art', w: ['изобразително', 'ии', 'технологии', 'фвс', 'час на класа', 'скицник'] },
+    { k: 'box', w: ['бокс', 'денисов', 'кико'] }
+  ];
+  for (const item of map) {
+    if (item.w.some(word => txt.includes(word))) return item.k;
+  }
+  if (subjects && subjects.length) {
+    const found = subjects.find(s => s.shortName && txt.includes(String(s.shortName).toLowerCase()));
+    if (found) return found.id;
+  }
+  return '';
+}
+
 function makeMasteryStorageKey(subjId, vaultTitle, fallbackIdx) {
   const cleanTitle = String(vaultTitle || fallbackIdx).trim().toLowerCase().replace(/\s+/g, '_').slice(0, 45);
   return `${STORAGE_PREFIX}mast_${subjId}_${cleanTitle}`;
 }
 
-function getReferenceNowMs(data) {
-  const realNow = Date.now();
-  const genMs = data && data.generatedAt ? parseBgDateString(data.generatedAt, false) : null;
-  return genMs ? Math.max(realNow, genMs) : realNow;
-}
-
 function isValidAppDataPart(obj) {
   if (!obj || typeof obj !== 'object') return false;
-  return Array.isArray(obj.subjects) ||
-         Array.isArray(obj.homework) ||
-         Array.isArray(obj.exams) ||
-         Array.isArray(obj.topics) ||
-         Array.isArray(obj.schedule) ||
-         Array.isArray(obj.cards) ||
-         !!obj.ui ||
-         !!obj.extraCSS;
+  return Array.isArray(obj.subjects) || Array.isArray(obj.homework) || Array.isArray(obj.exams) ||
+         Array.isArray(obj.topics) || Array.isArray(obj.schedule) || Array.isArray(obj.cards) ||
+         Array.isArray(obj.disableIds) || !!obj.ui;
 }
 
 function autoCloseTruncatedJS(rawCode) {
@@ -456,11 +588,9 @@ function autoCloseTruncatedJS(rawCode) {
     if (inSingle) { if (ch === "'") inSingle = false; continue; }
     if (inDouble) { if (ch === '"') inDouble = false; continue; }
     if (inBacktick) { if (ch === '`') inBacktick = false; continue; }
-
     if (ch === "'") { inSingle = true; continue; }
     if (ch === '"') { inDouble = true; continue; }
     if (ch === '`') { inBacktick = true; continue; }
-
     if (ch === '{') stack.push('}');
     else if (ch === '[') stack.push(']');
     else if (ch === '(') stack.push(')');
@@ -471,10 +601,9 @@ function autoCloseTruncatedJS(rawCode) {
   let suffix = '';
   if (inSingle) suffix += "'";
   if (inDouble) suffix += '"';
-  if (inBacktick) suffix += ' ⚠️ [КОДЪТ НА ТОЗИ ФАЙЛ ПРЕКЪСВА ТУК!] `';
+  if (inBacktick) suffix += ' `';
   while (stack.length) suffix += stack.pop();
-  suffix += ';';
-  return rawCode + suffix;
+  return rawCode + suffix + ';';
 }
 
 function evalDataCodeWithRepair(codeString) {
@@ -488,9 +617,7 @@ function evalDataCodeWithRepair(codeString) {
       const fn2 = new Function('const window = {}; ' + repairedCode + '; return window.APP_DATA || (typeof APP_DATA !== "undefined" ? APP_DATA : null);');
       const res2 = fn2();
       if (isValidAppDataPart(res2)) return { parsed: res2, repaired: true };
-    } catch (err2) {
-      console.error('Неуспешно авто-поправяне:', err2);
-    }
+    } catch (err2) {}
     throw err1;
   }
   return { parsed: null, repaired: false };
@@ -499,38 +626,32 @@ function evalDataCodeWithRepair(codeString) {
 function describePartContent(d) {
   const parts = [];
   if (Array.isArray(d.homework) && d.homework.length) parts.push(`ДР (${d.homework.length})`);
-  if (Array.isArray(d.schedule) && d.schedule.length) parts.push(`Разписание`);
-  if (Array.isArray(d.subjects) && d.subjects.length) {
-    const nums = d.subjects.map(s => s.num || s.shortName).join(',');
-    parts.push(`Предмети (${d.subjects.length}: #${nums})`);
-  }
-  if (Array.isArray(d.cards) && d.cards.length) {
-    const ids = d.cards.map(c => c.id);
-    parts.push(`3D Карти (${d.cards.length}: #${Math.min(...ids)}–#${Math.max(...ids)})`);
-  }
-  return parts.join(' + ') || 'Конфигурация';
+  if (Array.isArray(d.subjects) && d.subjects.length) parts.push(`Предмети (${d.subjects.length})`);
+  if (Array.isArray(d.cards) && d.cards.length) parts.push(`Карти (${d.cards.length})`);
+  if (Array.isArray(d.schedule) && d.schedule.length) parts.push(`График (${d.schedule.length}д)`);
+  return parts.join(' + ') || 'Пач';
 }
 
+// АРХИТЕКТУРА НА ПРИПОКРИВАНЕ И ДОПЪЛВАНЕ (SMART DEEP-MERGE & OVERLAY ENGINE)
 function buildMultiFileMergedAppData(entriesList) {
+  const disabledFiles = getDisabledFilesMap();
   const valid = [];
+
   entriesList.forEach(item => {
+    if (!item || (item.name && item.name.startsWith('_')) || disabledFiles[item.name]) return;
     try {
-      let parsed = item.parsed;
-      let repaired = !!item.repaired;
+      let parsed = item.parsed, repaired = !!item.repaired;
       if (!parsed && item.code) {
         const ev = evalDataCodeWithRepair(item.code);
-        parsed = ev.parsed;
-        repaired = ev.repaired;
+        parsed = ev.parsed; repaired = ev.repaired;
       }
-      if (isValidAppDataPart(parsed)) {
+      if (isValidAppDataPart(parsed) && parsed.enabled !== false) {
         const ts = parseBgDateString(parsed.generatedAt, false) || 0;
         const dayTs = parseDayOnlyMs(parsed.generatedAt);
         valid.push({
           name: item.name || 'data.js',
           generatedAt: parsed.generatedAt || item.name || 'База',
-          ts: ts,
-          dayTs: dayTs,
-          repaired: repaired,
+          ts, dayTs, repaired,
           partDesc: describePartContent(parsed),
           data: parsed
         });
@@ -540,616 +661,478 @@ function buildMultiFileMergedAppData(entriesList) {
 
   if (!valid.length) return null;
 
-  valid.sort((a, b) => b.ts - a.ts);
-  const newestDayTs = valid[0].dayTs;
-  const newestDateLabel = shortDateLabel(valid[0].generatedAt);
-
-  valid.forEach((v, idx) => {
-    v.isLatest = (newestDayTs > 0) ? (v.dayTs === newestDayTs) : (idx === 0);
-  });
-
-  const hasOlderFiles = valid.some(v => !v.isLatest);
-  const latestSubjKeys = new Set();
-  const olderSubjKeys = new Set();
-  const latestSubjNums = new Set();
-  let latestHasDiary = false;
-  let latestHasSchedule = false;
-  let latestCardsCount = 0;
-  const repairedFilesNames = [];
+  valid.sort((a, b) => a.ts - b.ts);
+  const newestDayTs = valid[valid.length - 1].dayTs;
+  const newestGenAt = valid[valid.length - 1].generatedAt;
+  const oldestDayTs = valid[0].dayTs;
 
   valid.forEach(v => {
-    if (v.repaired) repairedFilesNames.push(`${v.name} (${v.generatedAt})`);
-    if (v.isLatest) {
-      if ((v.data.homework && v.data.homework.length) || (v.data.exams && v.data.exams.length) || (v.data.topics && v.data.topics.length)) {
-        latestHasDiary = true;
-      }
-      if (v.data.schedule && v.data.schedule.length) latestHasSchedule = true;
-      if (v.data.cards && v.data.cards.length) latestCardsCount += v.data.cards.length;
-    }
-    (v.data.subjects || []).forEach(s => {
-      const k = normalizeSubjKey(s);
-      if (v.isLatest && !s.dropped && !s.archived) {
-        latestSubjKeys.add(k);
-        if (typeof s.num === 'number') latestSubjNums.add(s.num);
-      } else {
-        olderSubjKeys.add(k);
-      }
-    });
+    v.isLatest = (newestDayTs > oldestDayTs) ? (v.dayTs > oldestDayTs) : true;
+  });
+
+  const disabledIds = new Set();
+  valid.forEach(v => {
+    (v.data.disableIds || []).forEach(id => disabledIds.add(String(id).trim()));
   });
 
   let mergedUI = Object.assign({}, DEFAULT_UI);
   let mergedCSS = "";
-  for (let i = valid.length - 1; i >= 0; i--) {
-    if (valid[i].data.ui) mergedUI = Object.assign(mergedUI, valid[i].data.ui);
-    if (valid[i].data.extraCSS) mergedCSS += "\n" + valid[i].data.extraCSS;
-  }
-  mergedUI.examsCols = ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"];
-  mergedUI.analyticsCols = ["№", "Отделен Предмет", "Статус на предмета", "Текущо домашно", "Златен сейф (Нови + Преговор)", "3D Тренажор (Общо)"];
-
-  let activeSchedule = [];
-  for (let i = 0; i < valid.length; i++) {
-    if (Array.isArray(valid[i].data.schedule) && valid[i].data.schedule.length > 0) {
-      activeSchedule = valid[i].data.schedule;
-      break;
+  valid.forEach(v => {
+    if (v.data.ui) mergedUI = Object.assign(mergedUI, v.data.ui);
+    if (v.data.extraCSS && !mergedCSS.includes(v.data.extraCSS.trim().slice(0, 60))) {
+      mergedCSS += "\n" + v.data.extraCSS;
     }
-  }
+  });
 
-  const res = {
-    generatedAt: valid[0].generatedAt,
-    extraCSS: mergedCSS,
-    ui: mergedUI,
-    schedule: activeSchedule,
-    loadedMeta: valid.map(v => ({
-      name: v.name,
-      generatedAt: v.generatedAt,
-      partDesc: v.partDesc,
-      repaired: v.repaired,
-      isLatest: v.isLatest
-    })),
-    warnings: []
-  };
-
-  if (repairedFilesNames.length > 0) {
-    res.warnings.push(`🛠️ <b>Автоматично възстановен прекъснат файл:</b> <code>${repairedFilesNames.join(', ')}</code> беше с незатворен код накрая. Системата го затвори автоматично, за да не крашне!`);
-  }
-  if (!latestHasDiary) {
-    res.warnings.push(`⚠️ <b>Липсва част „Дневник/Домашни“</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
-  }
-  if (!latestHasSchedule) {
-    res.warnings.push(`⚠️ <b>Липсва част „Седмично разписание“</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
-  }
-  if (latestCardsCount === 0) {
-    res.warnings.push(`⚠️ <b>Липсват файловете с 3D Карти</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
-  }
-
-  if (latestSubjNums.size > 0) {
-    const maxNum = Math.max(...Array.from(latestSubjNums));
-    const missingNums = [];
-    for (let n = 1; n <= maxNum; n++) {
-      if (!latestSubjNums.has(n)) missingNums.push(`№ ${n}`);
-    }
-    if (missingNums.length > 0) {
-      res.warnings.push(`🚨 <b>АЛАРМА – Не всички предмети от новата база (${newestDateLabel}) са налични!</b> В качените части за ${newestDateLabel} липсват новите уроци за предмети: <b>${missingNums.join(', ')}</b>. За тях системата автоматично зареди уроците от старата база за преговор!`);
-    }
-  } else {
-    res.warnings.push(`🚨 <b>Липсват файловете с Предмети (subjects)</b> за най-новата дата (<b>${newestDateLabel}</b>)!`);
-  }
-
-  const hwMap = new Map();
-  valid.forEach((v, idx) => {
-    (v.data.homework || []).forEach(h => {
-      const key = h.id || (h.title + h.dueDate);
-      if (!hwMap.has(key)) {
-        hwMap.set(key, Object.assign({}, h, {
-          _isLatest: v.isLatest && !h.archived,
-          _sourceDate: v.generatedAt,
-          _fileRank: v.isLatest ? 0 : (idx + 1)
-        }));
-      }
+  const schedDayMap = new Map();
+  const schedOrder = [];
+  valid.forEach(v => {
+    (v.data.schedule || []).forEach(d => {
+      if (!d || !d.day) return;
+      const dayKeyMatch = String(d.day).toUpperCase().match(/(ПОНЕДЕЛНИК|ВТОРНИК|СРЯДА|ЧЕТВЪРТЪК|ПЕТЪК|СЪБОТА|НЕДЕЛЯ)/);
+      const dayKey = dayKeyMatch ? dayKeyMatch[1] : d.day;
+      if (!schedDayMap.has(dayKey)) schedOrder.push(dayKey);
+      schedDayMap.set(dayKey, d);
     });
   });
-  res.homework = Array.from(hwMap.values());
+  const activeSchedule = schedOrder.map(k => schedDayMap.get(k));
 
-  const exMap = new Map();
-  valid.forEach((v, idx) => {
-    (v.data.exams || []).forEach(e => {
-      const key = e.id || (e.date + e.subj);
-      if (!exMap.has(key)) {
-        exMap.set(key, Object.assign({}, e, {
-          _isLatest: v.isLatest && !e.archived,
-          _sourceDate: v.generatedAt,
-          _fileRank: v.isLatest ? 0 : (idx + 1)
-        }));
-      }
-    });
-  });
-  res.exams = Array.from(exMap.values());
-
-  const topMap = new Map();
-  valid.forEach((v, idx) => {
-    (v.data.topics || []).forEach(t => {
-      const key = t.id || (t.subj + t.date);
-      if (!topMap.has(key)) {
-        topMap.set(key, Object.assign({}, t, {
-          _isLatest: v.isLatest && !t.archived,
-          _sourceDate: v.generatedAt,
-          _fileRank: v.isLatest ? 0 : (idx + 1)
-        }));
-      }
-    });
-  });
-  res.topics = Array.from(topMap.values());
-
-  const subjMap = new Map();
-  const aliasToKey = new Map();
-
-  valid.forEach((v, idx) => {
+  const subjMap = new Map(), aliasToKey = new Map();
+  valid.forEach(v => {
     const isLatest = v.isLatest;
     (v.data.subjects || []).forEach((s, sOrderIdx) => {
       const normId = normalizeSubjKey(s);
+      if (disabledIds.has(normId)) return;
       const normName = s.shortName ? String(s.shortName).trim().toLowerCase() : normId;
       const mapKey = aliasToKey.get(normId) || aliasToKey.get(normName) || normId;
-
       aliasToKey.set(normId, mapKey);
-      aliasToKey.set(normName, mapKey);
+      if (s.shortName) aliasToKey.set(normName, mapKey);
 
-      const explicitNum = (typeof s.num === 'number' && !isNaN(s.num)) ? s.num : (100 + sOrderIdx + 1);
+      const explicitNum = (typeof s.num === 'number' && !isNaN(s.num)) ? s.num : null;
 
       if (!subjMap.has(mapKey)) {
         const clone = JSON.parse(JSON.stringify(s));
         clone.id = clone.id || mapKey;
-        clone._firstSeenRank = isLatest ? 0 : (idx + 1);
         clone._inLatestFile = isLatest && !s.dropped && !s.archived;
-        clone._isNewlyAdded = isLatest && hasOlderFiles && !olderSubjKeys.has(normId);
-        clone._isDropped = !clone._inLatestFile;
-        clone._sortNum = explicitNum;
+        clone._sortNum = explicitNum !== null ? explicitNum : (100 + sOrderIdx + 1);
         clone._sourceDate = v.generatedAt;
-
-        clone.vault = (clone.vault || []).map(vItem => Object.assign({}, vItem, {
-          _isLatest: isLatest && !clone._isDropped,
-          _sourceDate: v.generatedAt,
-          _fileRank: idx
+        clone.vault = (clone.vault || []).filter(vi => !vi.disabled).map(vItem => Object.assign({}, vItem, {
+          _isLatest: isLatest,
+          _sourceDate: v.generatedAt
         }));
-
-        clone.homeworkBlocks = [];
-        if (clone.homeworkHTML) {
-          clone.homeworkBlocks.push({
-            html: clone.homeworkHTML,
-            _isLatest: isLatest && !clone._isDropped,
-            _sourceDate: v.generatedAt,
-            _fileRank: idx
-          });
-        }
-        clone.archiveBlocks = [];
-        if (clone.archiveHTML) {
-          clone.archiveBlocks.push({
-            html: clone.archiveHTML,
-            _sourceDate: v.generatedAt
-          });
-        }
+        clone.homeworkBlocks = clone.homeworkHTML ? [{ html: clone.homeworkHTML, _isLatest: isLatest, _sourceDate: v.generatedAt }] : [];
+        clone.archiveBlocks = clone.archiveHTML ? [{ html: clone.archiveHTML, _sourceDate: v.generatedAt }] : [];
         subjMap.set(mapKey, clone);
       } else {
         const existing = subjMap.get(mapKey);
-        if (isLatest && !s.dropped && !s.archived) {
-          existing._inLatestFile = true;
-          existing._isDropped = false;
-          existing._firstSeenRank = 0;
-        }
-        if (explicitNum < existing._sortNum) existing._sortNum = explicitNum;
+        if (isLatest && !s.dropped && !s.archived) existing._inLatestFile = true;
+        if (explicitNum !== null) existing._sortNum = explicitNum;
+        if (s.icon) existing.icon = s.icon;
+        if (s.shortName) existing.shortName = s.shortName;
+        if (s.fullName) existing.fullName = s.fullName;
+        if (s.hwChk) existing.hwChk = s.hwChk;
+        if (s.hwLi) existing.hwLi = s.hwLi;
+        if (s.extraHTML) existing.extraHTML = s.extraHTML;
+        existing._sourceDate = v.generatedAt;
 
-        const seenTitles = new Set(existing.vault.map(x => (x.title || '').trim().toLowerCase()));
+        const newVaultItems = [];
         (s.vault || []).forEach(vItem => {
+          if (vItem.disabled || (vItem.id && disabledIds.has(vItem.id))) return;
           const tKey = (vItem.title || '').trim().toLowerCase();
-          if (!seenTitles.has(tKey)) {
-            existing.vault.push(Object.assign({}, vItem, {
-              _isLatest: isLatest && !existing._isDropped,
-              _sourceDate: v.generatedAt,
-              _fileRank: idx
-            }));
-            seenTitles.add(tKey);
+          const existIdx = existing.vault.findIndex(x => (x.title || '').trim().toLowerCase() === tKey);
+          const enriched = Object.assign({}, vItem, { _isLatest: isLatest, _sourceDate: v.generatedAt });
+          if (existIdx >= 0) {
+            existing.vault[existIdx] = Object.assign({}, existing.vault[existIdx], enriched);
+          } else {
+            newVaultItems.push(enriched);
           }
         });
-        if (!existing.extraHTML && s.extraHTML) existing.extraHTML = s.extraHTML;
-        if (!existing.hwChk && s.hwChk) existing.hwChk = s.hwChk;
-        if (!existing.hwLi && s.hwLi) existing.hwLi = s.hwLi;
-        if (!existing.cardId && s.cardId) existing.cardId = s.cardId;
+        if (newVaultItems.length > 0) {
+          existing.vault = [...newVaultItems, ...existing.vault];
+        }
 
         if (s.homeworkHTML && !existing.homeworkBlocks.some(b => b.html === s.homeworkHTML)) {
-          existing.homeworkBlocks.push({
-            html: s.homeworkHTML,
-            _isLatest: isLatest && !existing._isDropped,
-            _sourceDate: v.generatedAt,
-            _fileRank: idx
-          });
+          existing.homeworkBlocks.unshift({ html: s.homeworkHTML, _isLatest: isLatest, _sourceDate: v.generatedAt });
         }
         if (s.archiveHTML && !existing.archiveBlocks.some(b => b.html === s.archiveHTML)) {
-          existing.archiveBlocks.push({
-            html: s.archiveHTML,
-            _sourceDate: v.generatedAt
-          });
+          existing.archiveBlocks.unshift({ html: s.archiveHTML, _sourceDate: v.generatedAt });
         }
       }
     });
   });
 
-  const allSubjects = Array.from(subjMap.values()).sort((a, b) => {
-    if (a._sortNum !== b._sortNum) return a._sortNum - b._sortNum;
-    return a._firstSeenRank - b._firstSeenRank;
-  });
+  const allSubjects = Array.from(subjMap.values()).sort((a, b) => a._sortNum - b._sortNum);
+  allSubjects.forEach((s, index) => { s.displayNum = (s._sortNum < 100) ? s._sortNum : (index + 1); s.num = s.displayNum; });
 
-  allSubjects.forEach((s, index) => {
-    s.displayNum = (s._sortNum < 100) ? s._sortNum : (index + 1);
-    s.num = s.displayNum;
-  });
-  res.subjects = allSubjects;
-
-  const totalSubjCount = allSubjects.length;
-  res.ui.tab2 = String(res.ui.tab2 || "📚 2. ПРЕДМЕТИ + СЕЙФ").replace(/\b\d+\s+ПРЕДМЕТА/i, `${totalSubjCount} ПРЕДМЕТА`);
-  if (!/\d+\s+ПРЕДМЕТА/i.test(res.ui.tab2)) {
-    res.ui.tab2 = `📚 2. ${totalSubjCount} ПРЕДМЕТА + СЕЙФ`;
-  }
-  res.ui.headerSubtitle = String(res.ui.headerSubtitle || "").replace(/\b\d+\s+Отделни\s+Предмета/i, `${totalSubjCount} Отделни Предмета`);
-
-  const cardMap = new Map();
-  valid.forEach((v, idx) => {
-    const isLatest = v.isLatest;
-    (v.data.cards || []).forEach(c => {
-      const uniqueKey = `${shortDateLabel(v.generatedAt)}_${c.id}_${(c.title || '').trim()}`;
-      if (!cardMap.has(uniqueKey)) {
-        cardMap.set(uniqueKey, Object.assign({}, c, {
-          _origId: c.id,
-          _isLatest: isLatest,
-          _sourceDate: v.generatedAt,
-          _fileRank: isLatest ? 0 : (idx + 1)
+  const hwMap = new Map();
+  valid.forEach(v => {
+    (v.data.homework || []).forEach(h => {
+      const key = h.id || (h.title + '_' + h.dueDate);
+      if (h.disabled || disabledIds.has(key)) {
+        hwMap.delete(key);
+        return;
+      }
+      const subjId = h.subjId || guessSubjectKeyFromText((h.badge || '') + ' ' + (h.title || ''), allSubjects);
+      if (!hwMap.has(key)) {
+        hwMap.set(key, Object.assign({}, h, {
+          id: key,
+          subjId: subjId,
+          _isLatest: v.isLatest && !h.archived,
+          _sourceDate: v.generatedAt
+        }));
+      } else {
+        const prev = hwMap.get(key);
+        hwMap.set(key, Object.assign({}, prev, h, {
+          id: key,
+          subjId: subjId || prev.subjId,
+          _isLatest: v.isLatest && !h.archived,
+          _sourceDate: v.generatedAt
         }));
       }
+    });
+  });
+
+  const exMap = new Map();
+  valid.forEach(v => {
+    (v.data.exams || []).forEach(e => {
+      const key = e.id || (e.date + '_' + e.subj);
+      if (e.disabled || disabledIds.has(key)) { exMap.delete(key); return; }
+      const prev = exMap.get(key) || {};
+      exMap.set(key, Object.assign({}, prev, e, { _isLatest: v.isLatest && !e.archived, _sourceDate: v.generatedAt }));
+    });
+  });
+
+  const topMap = new Map();
+  valid.forEach(v => {
+    (v.data.topics || []).forEach(t => {
+      const key = t.id || (t.subj + '_' + t.date);
+      if (t.disabled || disabledIds.has(key)) { topMap.delete(key); return; }
+      const prev = topMap.get(key) || {};
+      topMap.set(key, Object.assign({}, prev, t, { _isLatest: v.isLatest && !t.archived, _sourceDate: v.generatedAt }));
+    });
+  });
+
+  const cardMap = new Map();
+  valid.forEach(v => {
+    (v.data.cards || []).forEach(c => {
+      const uniqueKey = c.patchId || `${shortDateLabel(v.generatedAt)}_${c.id}_${(c.title || '').trim()}`;
+      if (c.disabled || disabledIds.has(String(c.id)) || disabledIds.has(uniqueKey)) {
+        cardMap.delete(uniqueKey);
+        return;
+      }
+      const cSubjId = c.subjId || guessSubjectKeyFromText(c.subj || c.title, allSubjects);
+      const prev = cardMap.get(uniqueKey) || {};
+      cardMap.set(uniqueKey, Object.assign({}, prev, c, {
+        subjId: cSubjId || prev.subjId,
+        _origId: c.id,
+        _isLatest: v.isLatest,
+        _sourceDate: v.generatedAt,
+        _ts: v.ts
+      }));
     });
   });
 
   const mergedCards = Array.from(cardMap.values()).sort((a, b) => {
     if (a._isLatest !== b._isLatest) return a._isLatest ? -1 : 1;
+    if (b._ts !== a._ts) return b._ts - a._ts;
     return (a._origId || 0) - (b._origId || 0);
   });
+  mergedCards.forEach((c, idx) => { c.uid = idx + 1; });
 
-  mergedCards.forEach((c, idx) => {
-    c.uid = idx + 1;
-  });
-  res.cards = mergedCards;
+  const metaDesc = [...valid].reverse().map(v => ({
+    name: v.name,
+    generatedAt: v.generatedAt,
+    partDesc: v.partDesc,
+    repaired: v.repaired,
+    isLatest: v.isLatest
+  }));
 
-  return res;
+  return {
+    generatedAt: newestGenAt,
+    extraCSS: mergedCSS,
+    ui: mergedUI,
+    schedule: activeSchedule,
+    subjects: allSubjects,
+    homework: Array.from(hwMap.values()),
+    exams: Array.from(exMap.values()),
+    topics: Array.from(topMap.values()),
+    cards: mergedCards,
+    loadedMeta: metaDesc,
+    warnings: []
+  };
 }
 
-function getSavedSourcesList() {
-  try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES');
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
+function getCardsForSubject(s, allCards) {
+  const sShort = String(s.shortName || '').trim().toLowerCase();
+  const sId = String(s.id || '').trim().toLowerCase();
+  return (allCards || []).filter(c => {
+    if (c.subjId && String(c.subjId).trim().toLowerCase() === sId) return true;
+    const cSubj = String(c.subj || '').trim().toLowerCase();
+    return cSubj && (cSubj === sShort || sShort.includes(cSubj) || cSubj.includes(sShort));
+  });
+}
+
+function formatTimeRemaining(dueMs, nowMs) {
+  const diff = dueMs - nowMs;
+  if (diff <= 0) return 'Изтекъл час';
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (days > 0) return `След ${days} д. и ${hrs % 24} ч.`;
+  if (hrs > 0) return `След ${hrs} ч. и ${mins % 60} мин.`;
+  return `След ${mins} мин.!`;
+}
+
+function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPastZone) {
+  const savedChk = localStorage.getItem(STORAGE_PREFIX + 'chk_' + h.chkId);
+  const isChk = savedChk !== null ? (savedChk === '1') : !!h.checked;
+  const dueMs = parseBgDateString(h.dueDate, true);
+  const tierCls = h._isLatest ? 'item-tier-new' : 'item-tier-rev';
+
+  const solHTML = h.solutionHTML || (subjObj && subjObj.homeworkBlocks && subjObj.homeworkBlocks[0] ? subjObj.homeworkBlocks[0].html : '');
+  const visualsHTML = h.visualsHTML || (subjObj && subjObj.extraHTML ? subjObj.extraHTML : '');
+  const firstCard = (subjCards && subjCards.length) ? subjCards[0] : null;
+  const firstVault = (subjObj && subjObj.vault && subjObj.vault.length) ? subjObj.vault[0] : null;
+
+  let mindMapContent = h.mindMapHTML || '';
+  if (!mindMapContent && firstCard && firstCard.algo) {
+    mindMapContent = `
+      <div>🎯 <b>1. Тип задача:</b> ${firstCard.algo.type}</div>
+      <div>🧠 <b>2. Какво знаем:</b> ${firstCard.algo.know}</div>
+      <div>⚙️ <b>3. Правило и алгоритъм:</b> ${firstCard.algo.rule}</div>
+    `;
+  } else if (!mindMapContent && firstVault) {
+    mindMapContent = `<div>🔐 <b>Ключово правило от Сейфа (${firstVault.title}):</b> ${formatMemoWords(firstVault.text)}</div>`;
   }
+
+  const resLink = h.resourceLink || (firstCard && firstCard.wiki) || (firstVault && firstVault.wiki) || '';
+  const resLabel = h.resourceLabel || (firstCard && firstCard.linkLabel) || '🔗 Отвори интерактивен ресурс по темата';
+
+  const countdownBadge = (!isPastZone && dueMs)
+    ? `<span class="countdown-tag no-read">⏳ ${formatTimeRemaining(dueMs, nowMs)}</span>`
+    : `<span class="badge ${isChk ? 'b-green' : 'b-yellow'} no-read">${isChk ? '✅ Написано в тетрадката' : '⚠️ Провери дали е написано!'}</span>`;
+
+  const examBanner = relatedExam
+    ? `<div class="exam-inline-alert no-read">🚨 КОНТРОЛНА РАБОТА: ${relatedExam.date} — ${relatedExam.topic}</div>`
+    : '';
+
+  const jumpBtn = subjObj
+    ? `<button class="btn btn-arch no-read" onclick="jumpToSubject('${subjObj.id}')">🧠 Отвори Учене + Мислене (${subjObj.shortName})</button>`
+    : '';
+
+  const drawerHTML = (solHTML || mindMapContent || visualsHTML) ? `
+    <details class="hw-work-drawer" ${!isPastZone && !isChk ? 'open' : ''}>
+      <summary>
+        <span>💡 РЕШЕНИЕ ЗА ТЕТРАДКАТА + МИСЛОВНА КАРТА И ВИЗУАЛИЗАЦИЯ</span>
+        <span class="no-read" style="font-size:0.75rem; color:var(--accent);">[Разгъни / Свий]</span>
+      </summary>
+      <div class="hw-sol-body" id="sol-${h.id}">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+          <b style="color:var(--green);">✍️ Пълно решение и насоки:</b>
+          ${playerHTML('sol-' + h.id, '▶️ Чуй решението')}
+        </div>
+        <div>${solHTML || 'Виж заданието горе и приложи алгоритъма от мисловната карта.'}</div>
+        ${mindMapContent ? `<div class="mindmap-box"><b>🧭 Мисловна карта и правило:</b><br>${mindMapContent}</div>` : ''}
+        ${visualsHTML ? `<div style="margin-top:8px;">${visualsHTML}</div>` : ''}
+        <div class="voice-bar no-read" style="margin-top:8px;">
+          ${resLink ? `<a class="btn btn-file" href="${resLink}" target="_blank">${resLabel}</a>` : ''}
+          ${jumpBtn}
+        </div>
+      </div>
+    </details>` : `<div class="voice-bar no-read" style="margin-top:6px;">${jumpBtn}</div>`;
+
+  return `<div class="hw-smart-card ${tierCls} ${isChk ? 'done-card' : ''} ${isPastZone && !isChk ? 'overdue-card' : ''}" id="card-${h.id}">
+    <div class="hw-card-top">
+      <div class="hw-chk-wrap">
+        <input type="checkbox" id="${h.chkId}" ${isChk ? 'checked' : ''} onchange="saveChk(this)">
+        <div style="flex:1;">
+          <div class="hw-meta-pills">
+            ${tierBadgeHTML(h._isLatest, h._sourceDate)}
+            <span class="badge ${h.badgeClass || 'b-blue'} no-read">${h.badge || 'Предмет'}</span>
+            ${h.dueDate ? `<span class="due-tag no-read">🕒 Предаване: ${h.dueDate}</span>` : ''}
+            ${countdownBadge}
+          </div>
+          <label for="${h.chkId}" style="cursor:pointer; font-size:0.9rem;"><b>${h.title}:</b> ${h.text}</label>
+          ${examBanner}
+        </div>
+      </div>
+    </div>
+    ${drawerHTML}
+  </div>`;
 }
 
-function rebuildAndInitFromStorage() {
-  const saved = getSavedSourcesList();
-  const merged = buildMultiFileMergedAppData(saved);
-  if (merged) {
-    window.APP_DATA = merged;
-    const labelNames = merged.loadedMeta.map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(' + ');
-    initApp(window.APP_DATA, labelNames);
-    return true;
-  } else {
-    window.APP_DATA = null;
-    renderEmptyWaitingState();
-    return false;
-  }
+function jumpToSubject(subjId) {
+  openTab('tab-2', document.getElementById('tab-btn-2'));
+  const btn = document.getElementById('sbtn-' + subjId);
+  if (btn) openPane('tab-2', 'sp-' + subjId, btn);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function saveAndRebuildMergedData(newEntries) {
-  const existing = getSavedSourcesList();
-  newEntries.forEach(entry => {
-    const idx = existing.findIndex(x => x.name === entry.name && x.generatedAt === entry.generatedAt);
-    if (idx >= 0) existing[idx] = entry;
-    else existing.push(entry);
-  });
-  localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(existing));
-  return rebuildAndInitFromStorage();
-}
+function initApp(data) {
+  const alertBar = document.getElementById('sync-problem-bar');
+  renderSavedFilesListInTab3();
 
-function removeSingleSavedSource(index) {
-  const existing = getSavedSourcesList();
-  existing.splice(index, 1);
-  localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(existing));
-  rebuildAndInitFromStorage();
-}
-
-function loadDataFromFile(inputEl) {
-  const files = Array.from(inputEl.files || []);
-  if (!files.length) return;
-
-  const loadedEntries = [];
-  let processed = 0;
-
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const code = e.target.result;
-      try {
-        const ev = evalDataCodeWithRepair(code);
-        if (ev.parsed) {
-          loadedEntries.push({
-            name: file.name,
-            generatedAt: ev.parsed.generatedAt || file.name,
-            repaired: ev.repaired,
-            code: code
-          });
-        } else {
-          alert(`Файлът ${file.name} не съдържа разпознаваема част от window.APP_DATA!`);
-        }
-      } catch (err) {
-        alert(`Грешка във файл ${file.name}: ` + err.message);
-      }
-      processed++;
-      if (processed === files.length && loadedEntries.length > 0) {
-        if (saveAndRebuildMergedData(loadedEntries)) {
-          openTab('tab-1', document.getElementById('tab-btn-1'));
-        }
-        inputEl.value = '';
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
-  });
-}
-
-function speakGreeting() { speakDirect(ui('voiceGreeting', 'Заредете файл с данни.')); }
-function speakCardsInstruction() { speakDirect(ui('cardsInstruction', '')); }
-
-function playerHTML(id, label) {
-  const btnLbl = label || ui('btnListen', '▶️');
-  return `<span class="mini-player no-read">
-    <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${btnLbl}</button>
-    <button class="btn btn-restart" onclick="startSpeech('${id}', 0)">🔄</button>
-    <button class="btn btn-stop" onclick="stopSpeech()">⏹️</button>
-  </span>`;
-}
-
-function formatMemoWords(text) {
-  return (text || '').replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
-}
-
-function renderEmptyWaitingState() {
-  document.title = DEFAULT_UI.pageTitle;
-  document.getElementById('header-title').innerHTML = DEFAULT_UI.headerTitle;
-  document.getElementById('header-subtitle').innerHTML = DEFAULT_UI.headerSubtitle;
-  document.getElementById('db-status-label').innerHTML = '🔒 Няма заредена база в браузъра. Натиснете зеления бутон „➕ Добави .js файлове (и части)“ и маркирайте всички ваши .js файлове наведнъж.';
-  document.getElementById('btn-clear-mem').style.display = 'none';
-  document.getElementById('loaded-files-badges').innerHTML = '';
-  document.getElementById('missing-parts-alarm').style.display = 'none';
-  document.getElementById('tab5-files-list').innerHTML = '';
-  document.getElementById('active-hw-list').innerHTML = `<li style="border-left-color:var(--gold); padding:16px;"><b>🔒 Очаква се зареждане на .js файлове (цели или на части) от устройството...</b></li>`;
-  document.getElementById('archive-list').innerHTML = '';
-  document.getElementById('exams-tbody').innerHTML = '';
-  document.getElementById('topics-box').innerHTML = '';
-  document.getElementById('sched-box').innerHTML = '';
-  document.getElementById('subj-nav-btns').innerHTML = '';
-  document.getElementById('subj-panes-wrap').innerHTML = '';
-  document.getElementById('cards-wrap').innerHTML = '';
-  document.getElementById('analytics-tbody').innerHTML = '';
-  document.getElementById('prog-text').innerText = '0%';
-  document.getElementById('prog-fill').style.width = '0%';
-}
-
-function initApp(data, sourceName = 'data.js') {
   if (!data) {
-    renderEmptyWaitingState();
+    alertBar.style.display = 'flex';
+    document.getElementById('sync-problem-text').innerHTML = '⚠️ <b>Няма активна учебна база данни!</b> Натиснете „Опитай пак“ за изтегляне от Google Drive или отворете „Обнови данни“.';
     return;
+  }
+  alertBar.style.display = (data.warnings && data.warnings.length > 0) ? 'flex' : 'none';
+  if (data.warnings && data.warnings.length > 0) {
+    document.getElementById('sync-problem-text').innerHTML = data.warnings.join(' | ');
   }
 
   if (data.extraCSS) {
     let st = document.getElementById('dynamic-data-css');
-    if (!st) {
-      st = document.createElement('style');
-      st.id = 'dynamic-data-css';
-      document.head.appendChild(st);
-    }
+    if (!st) { st = document.createElement('style'); st.id = 'dynamic-data-css'; document.head.appendChild(st); }
     st.innerHTML = data.extraCSS;
   }
 
-  document.title = ui('pageTitle', 'App Core 3.6');
-  document.getElementById('header-title').innerHTML = ui('headerTitle', '');
-  document.getElementById('header-subtitle').innerHTML = ui('headerSubtitle', '');
-  document.getElementById('btn-voice-start').innerHTML = ui('btnVoiceStart', '🎙️');
-  document.getElementById('btn-toggle-masks').innerHTML = ui('btnToggleMasks', '🙈');
-  document.getElementById('btn-voice-stop').innerHTML = ui('btnVoiceStop', '⏹️');
-  document.getElementById('banner-title').innerHTML = ui('bannerTitle', '📂 База данни:');
-  document.getElementById('btn-pick-file').innerHTML = ui('btnPickFile', '➕ Добави .js файлове');
-  document.getElementById('btn-clear-mem').innerHTML = ui('btnClearMem', '🗑️ Изчисти');
-  document.getElementById('lbl-prog-title').innerHTML = ui('lblProgTitle', 'Напредък:');
+  document.title = ui('pageTitle', 'Супер-Органайзер Ядро 4.1');
+  document.getElementById('header-title').innerHTML = ui('headerTitle', '🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.1)');
 
-  document.getElementById('tab-btn-1').innerHTML = ui('tab1', '1');
-  document.getElementById('tab-btn-2').innerHTML = ui('tab2', '2');
-  document.getElementById('tab-btn-3').innerHTML = ui('tab3', '3');
-  document.getElementById('tab-btn-4').innerHTML = ui('tab4', '4');
-  document.getElementById('tab-btn-5').innerHTML = ui('tab5', '5');
+  const nowMs = Date.now();
+  const nowObj = new Date(nowMs);
+  document.getElementById('live-sofia-clock').innerText = `🕒 София: ${nowObj.toLocaleDateString('bg-BG')} ${nowObj.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'})}`;
 
-  document.getElementById('sub-btn-1').innerHTML = ui('subTab1', '1.1');
-  document.getElementById('sub-btn-2').innerHTML = ui('subTab2', '1.2');
-  document.getElementById('sub-btn-3').innerHTML = ui('subTab3', '1.3');
-  document.getElementById('sub-btn-4').innerHTML = ui('subTab4', '1.4');
+  const allHw = [...(data.homework || [])];
+  const upcomingHw = [], pastHw = [];
 
-  document.getElementById('heading-hw').innerHTML = ui('headingHw', '');
-  document.getElementById('summary-arch').innerHTML = ui('summaryArch', '');
-  document.getElementById('heading-exams').innerHTML = ui('headingExams', '');
-  const exColsHTML = (ui('examsCols', ["№", "Статус / Файл", "Дата и Час", "Предмет", "Учител", "Тема"])).map(c => `<th>${c}</th>`).join('');
-  document.getElementById('thead-exams').innerHTML = exColsHTML;
-  document.getElementById('thead-exams-arch').innerHTML = exColsHTML;
-  document.getElementById('heading-topics').innerHTML = ui('headingTopics', '');
-  document.getElementById('heading-sched').innerHTML = ui('headingSched', '');
-  document.getElementById('heading-cards').innerHTML = ui('headingCards', '');
-  document.getElementById('btn-cards-help').innerHTML = ui('btnCardsHelp', '🔊');
-  document.getElementById('btn-check-cards').innerHTML = ui('btnCheckCards', '✅');
-  document.getElementById('heading-analytics').innerHTML = ui('headingAnalytics', '');
-  document.getElementById('thead-analytics').innerHTML = (ui('analyticsCols', [])).map(c => `<th>${c}</th>`).join('');
-  document.getElementById('heading-sync').innerHTML = ui('headingSync', '');
-  document.getElementById('btn-gen-sync').innerHTML = ui('btnGenSync', '📋');
+  allHw.forEach(h => {
+    const dMs = parseBgDateString(h.dueDate, true);
+    if (h.archived || (dMs !== null && dMs < nowMs)) pastHw.push(h);
+    else upcomingHw.push(h);
+  });
 
-  const totalVaultItems = (data.subjects || []).reduce((acc, s) => acc + ((s.vault || []).length), 0);
-  const activeSubjCount = (data.subjects || []).filter(s => s._inLatestFile).length;
-  const droppedSubjCount = (data.subjects || []).filter(s => s._isDropped).length;
-
-  const lbl = document.getElementById('db-status-label');
-  if (lbl) {
-    const droppedNote = droppedSubjCount > 0 ? ` (${activeSubjCount} от нова дата + ${droppedSubjCount} само от стара база)` : '';
-    lbl.innerHTML = `${ui('statusLoadedPrefix', '✅ Обединена база:')} <b>${(data.loadedMeta || []).length} файла/части</b> | <b>${(data.subjects || []).length} предмета</b>${droppedNote} | <b>${totalVaultItems} сейф-правила</b> | <b>${(data.cards || []).length} 3D карти</b>`;
-  }
-
-  const badgesContainer = document.getElementById('loaded-files-badges');
-  if (badgesContainer && data.loadedMeta) {
-    badgesContainer.innerHTML = data.loadedMeta.map(m => `
-      <span class="file-Chip ${m.repaired ? 'chip-repaired' : (m.isLatest ? 'chip-new' : 'chip-rev')}">
-        ${m.repaired ? '🛠️ ПОПРАВЕН:' : (m.isLatest ? '🆕 НОВА ЧАСТ:' : '⏪ БАЗА ПРЕГОВОР:')}
-        <b>${m.name}</b> (${m.generatedAt} • ${m.partDesc})
-      </span>
-    `).join('');
-  }
-
-  const alarmBox = document.getElementById('missing-parts-alarm');
-  if (alarmBox) {
-    if (data.warnings && data.warnings.length > 0) {
-      alarmBox.style.display = 'block';
-      alarmBox.innerHTML = data.warnings.join('<br>');
-    } else {
-      alarmBox.style.display = 'none';
-      alarmBox.innerHTML = '';
-    }
-  }
-
-  const savedList = getSavedSourcesList();
-  const tab5List = document.getElementById('tab5-files-list');
-  if (tab5List) {
-    tab5List.innerHTML = savedList.map((s, idx) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; background:#172554; padding:7px 12px; border-radius:8px; margin-top:6px; font-size:0.82rem;">
-        <span>📄 <b>${s.name}</b> — Печат: <b style="color:var(--gold)">${s.generatedAt || '—'}</b> ${s.repaired ? '<span class="badge b-yellow">🛠️ Авто-затворен код</span>' : ''}</span>
-        <button class="btn btn-stop" style="padding:4px 9px; font-size:0.74rem;" onclick="removeSingleSavedSource(${idx})">✖ Премахни</button>
-      </div>
-    `).join('');
-  }
-
-  document.getElementById('btn-clear-mem').style.display = 'inline-flex';
-  document.getElementById('active-hw-list').innerHTML = '';
-  document.getElementById('archive-list').innerHTML = '';
-  document.getElementById('subj-nav-btns').innerHTML = '';
-  document.getElementById('subj-panes-wrap').innerHTML = '';
-  document.getElementById('cards-wrap').innerHTML = '';
-
-  document.getElementById('pl-p-shk-hw').innerHTML = playerHTML('p-shk-hw');
-  document.getElementById('pl-p-topics').innerHTML = playerHTML('p-topics');
-
-  const refNowMs = getReferenceNowMs(data);
-  const startOfRefDayMs = new Date(new Date(refNowMs).getFullYear(), new Date(refNowMs).getMonth(), new Date(refNowMs).getDate(), 0, 0, 0).getTime();
-
-  const actList = document.getElementById('active-hw-list');
-  const archList = document.getElementById('archive-list');
-
-  const sortedHw = [...(data.homework || [])].sort((a, b) => {
-    if ((a._fileRank || 0) !== (b._fileRank || 0)) return (a._fileRank || 0) - (b._fileRank || 0);
+  upcomingHw.sort((a, b) => {
     const da = parseBgDateString(a.dueDate, true) || Number.MAX_SAFE_INTEGER;
     const db = parseBgDateString(b.dueDate, true) || Number.MAX_SAFE_INTEGER;
-    if (da !== db) return da - db;
-    return (a.priority || 99) - (b.priority || 99);
+    return da !== db ? da - db : ((a.priority || 99) - (b.priority || 99));
   });
 
-  sortedHw.forEach(h => {
-    const dueMs = parseBgDateString(h.dueDate, true);
-    const isPastDue = dueMs !== null && dueMs < refNowMs;
-    const isLatestItem = !!h._isLatest && !isPastDue && !h.archived;
+  pastHw.sort((a, b) => (parseBgDateString(b.dueDate, true) || 0) - (parseBgDateString(a.dueDate, true) || 0));
 
-    const savedArch = localStorage.getItem(STORAGE_PREFIX + 'arch_' + h.id);
-    const isArch = savedArch ? (savedArch === 'archived') : (!!h.archived || isPastDue || !h._isLatest);
+  const focusDayStr = upcomingHw.length > 0 ? shortDateLabel(upcomingHw[0].dueDate) : '';
+  const focusDayMs = parseDayOnlyMs(focusDayStr);
+  const focusDateObj = focusDayMs ? new Date(focusDayMs) : nowObj;
+  const dayOfWeek = focusDateObj.getDay();
+  const daysToSunday = dayOfWeek === 0 ? 0 : (7 - dayOfWeek);
+  const endOfCurrentWeekMs = focusDayMs ? (focusDayMs + (daysToSunday + 1) * 86400000 - 1000) : (nowMs + 7 * 86400000);
 
-    const savedChk = localStorage.getItem(STORAGE_PREFIX + 'chk_' + h.chkId);
-    const isChk = savedChk !== null ? (savedChk === '1') : (!!h.checked || (isPastDue && !savedArch));
-
-    const li = document.createElement('li');
-    li.id = h.id;
-    li.className = isLatestItem ? 'item-tier-new' : 'item-tier-rev';
-    const dueLabel = h.dueDate ? `<span class="due-tag no-read">🕒 ${h.dueDate}</span>` : '';
-    const tierBadge = tierBadgeHTML(isLatestItem, h._sourceDate);
-
-    li.innerHTML = `<input type="checkbox" id="${h.chkId}" ${isChk ? 'checked' : ''} onchange="saveChk(this)">
-      <label for="${h.chkId}" style="flex:1;">${tierBadge} <span class="badge ${h.badgeClass} no-read">${h.badge}</span>${dueLabel} <b>${h.title}:</b> ${h.text}</label>
-      <button class="btn btn-arch no-read" onclick="toggleArchiveItem(this)">${isArch ? ui('btnUnarchive', '📤') : ui('btnArchive', '📥')}</button>`;
-    (isArch ? archList : actList).appendChild(li);
+  const zone1 = [], zone2 = [], zone3 = [];
+  upcomingHw.forEach(h => {
+    const dStr = shortDateLabel(h.dueDate);
+    const dMs = parseBgDateString(h.dueDate, true) || 0;
+    if (dStr === focusDayStr) zone1.push(h);
+    else if (dMs <= endOfCurrentWeekMs) zone2.push(h);
+    else zone3.push(h);
   });
 
-  const activeExams = [];
-  const pastExams = [];
+  if (zone1.length === 0 && pastHw.length > 0) {
+    const latestPastDay = shortDateLabel(pastHw[0].dueDate);
+    pastHw.filter(h => shortDateLabel(h.dueDate) === latestPastDay).forEach(h => zone1.push(h));
+  }
+
+  document.getElementById('smart-focus-headline').innerHTML = focusDayStr
+    ? `🎯 ПРЕДСТОЯЩ ДЕН ЗА ПРЕДАВАНЕ: ${focusDayStr} (${zone1.length} домашни по часове)`
+    : `🎯 ВСИЧКИ ЗАРЕДЕНИ ДОМАШНИ СА ПРЕГЛЕДАНИ (${pastHw.length} в архива)`;
+
+  document.getElementById('zone-1-title').innerHTML = focusDayStr
+    ? `🔥 1. АКТИВНИ ЗА ПРЕДАВАНЕ НА ${focusDayStr} (ПО РЕД НА ЧАСОВЕТЕ)`
+    : `🔥 1. ПОСЛЕДНИ АКТИВНИ ДОМАШНИ`;
+
+  document.getElementById('active-hw-chips').innerHTML = zone1.map(h => {
+    const sObj = (data.subjects || []).find(s => s.id === h.subjId);
+    const lbl = sObj ? `${sObj.icon || '📘'} ${sObj.shortName}` : h.badge;
+    const timePart = (h.dueDate || '').split(' ')[1] || '';
+    return `<span class="subj-chip-jump ${h.badgeClass === 'b-red' ? 'urgent-chip' : ''}" onclick="document.getElementById('card-${h.id}')?.scrollIntoView({behavior:'smooth'})">
+      ${lbl} ${timePart ? `(${timePart} ч.)` : ''}
+    </span>`;
+  }).join('');
+
+  const mapHwList = (list, isPast) => list.map(h => {
+    const sObj = (data.subjects || []).find(s => s.id === h.subjId);
+    const sCards = sObj ? getCardsForSubject(sObj, data.cards) : [];
+    const relExam = (data.exams || []).find(e => !e.archived && sObj && String(e.subj || '').toLowerCase().includes(sObj.shortName.toLowerCase()));
+    return renderSmartHomeworkCard(h, sObj, sCards, relExam, nowMs, isPast);
+  }).join('');
+
+  document.getElementById('pl-zone-focus-box').innerHTML = playerHTML('zone-focus-box', '▶️ Слушай');
+  document.getElementById('hw-zone-focus').innerHTML = mapHwList(zone1, false) || `<p style="color:var(--muted);">Няма предстоящи задачи за този ден.</p>`;
+  document.getElementById('hw-zone-week').innerHTML = mapHwList(zone2, false);
+  document.getElementById('zone-week-box').style.display = zone2.length ? 'block' : 'none';
+  document.getElementById('zone-next-box').style.display = zone3.length ? 'block' : 'none';
+  document.getElementById('hw-zone-next').innerHTML = mapHwList(zone3, false);
+  document.getElementById('hw-zone-past').innerHTML = mapHwList(pastHw, true);
+
+  document.getElementById('sched-box').innerHTML = (data.schedule || []).map(d => `
+    <div class="uni-card"><h4>${d.day}</h4>${(d.classes || []).map(c => `<p style="margin:4px 0;">${c}</p>`).join('')}</div>`).join('');
+
+  const activeExams = [], pastExams = [];
   (data.exams || []).forEach(e => {
     const eMs = parseBgDateString(e.date, true);
-    if (e.archived || (eMs !== null && eMs < refNowMs)) {
-      pastExams.push(e);
-    } else {
-      activeExams.push(e);
-    }
+    if (e.archived || (eMs !== null && eMs < nowMs)) pastExams.push(e);
+    else activeExams.push(e);
   });
-
   activeExams.sort((a, b) => (parseBgDateString(a.date, false) || 0) - (parseBgDateString(b.date, false) || 0));
   pastExams.sort((a, b) => (parseBgDateString(b.date, false) || 0) - (parseBgDateString(a.date, false) || 0));
 
-  document.getElementById('exams-tbody').innerHTML = activeExams.map((e, i) => `
-    <tr class="item-tier-new" style="${e.urgent ? 'background:rgba(239,68,68,0.2);' : e.klasna ? 'background:rgba(245,158,11,0.18);' : ''}">
-      <td>${i + 1}</td><td>${tierBadgeHTML(true, e._sourceDate)}</td><td><b>${e.date}</b></td><td>${e.subj}</td><td>${e.teacher}</td><td><b>${e.topic}</b></td>
-    </tr>`).join('');
+  document.getElementById('exams-cards-box').innerHTML = activeExams.map((e, i) => `
+    <div class="uni-card item-tier-new ${e.urgent ? 'urgent-exam' : ''} ${e.klasna ? 'klasna-exam' : ''}">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+        <span class="badge ${e.urgent ? 'b-red' : (e.klasna ? 'b-yellow' : 'b-blue')} no-read">#${i + 1} • ${e.urgent ? '🔥 СПЕШНО' : (e.klasna ? '🏆 КЛАСНА' : 'КОНТРОЛНА')}</span>
+        ${tierBadgeHTML(true, e._sourceDate)}
+      </div>
+      <h4>${e.subj} — ${e.date}</h4>
+      <p><b>Тема:</b> ${e.topic}</p>
+      <p style="color:var(--muted); font-size:0.79rem;">👩‍🏫 Преподавател: ${e.teacher}</p>
+    </div>`).join('');
 
   const exArchDrawer = document.getElementById('exams-arch-drawer');
   if (pastExams.length > 0) {
     exArchDrawer.style.display = 'block';
-    document.getElementById('exams-arch-tbody').innerHTML = pastExams.map((e, i) => `
-      <tr class="item-tier-rev">
-        <td>${i + 1}</td><td>${tierBadgeHTML(false, e._sourceDate)}</td><td><b>${e.date}</b></td><td>${e.subj}</td><td>${e.teacher}</td><td>${e.topic}</td>
-      </tr>`).join('');
-  } else {
-    exArchDrawer.style.display = 'none';
-  }
+    document.getElementById('exams-arch-cards-box').innerHTML = pastExams.map(e => `
+      <div class="uni-card item-tier-rev">
+        <h4>${e.subj} — ${e.date}</h4>
+        <p>${e.topic} <span style="color:var(--muted);">(${e.teacher})</span></p>
+      </div>`).join('');
+  } else exArchDrawer.style.display = 'none';
 
-  const activeTopics = [];
-  const archTopics = [];
-  (data.topics || []).forEach(t => {
-    const tMs = parseBgDateString(t.date, true);
-    if (t.archived || !t._isLatest || (tMs !== null && tMs < startOfRefDayMs)) {
-      archTopics.push(t);
-    } else {
-      activeTopics.push(t);
-    }
-  });
+  document.getElementById('pl-sec-topics').innerHTML = playerHTML('sec-topics', '▶️ Слушай');
+  const actTopics = (data.topics || []).filter(t => !t.archived && t._isLatest);
+  const archTopics = (data.topics || []).filter(t => t.archived || !t._isLatest);
 
-  document.getElementById('topics-box').innerHTML = activeTopics.map(t => `
-    <div class="hw-step item-tier-new">${tierBadgeHTML(true, t._sourceDate)} <b>${t.subj}:</b> ${t.text}</div>`).join('');
+  document.getElementById('topics-box').innerHTML = actTopics.map(t => `
+    <div class="uni-card item-tier-new">
+      <div style="margin-bottom:4px;">${tierBadgeHTML(true, t._sourceDate)}</div>
+      <h4>${t.subj}</h4>
+      <p>${t.text}</p>
+    </div>`).join('');
 
   const topArchDrawer = document.getElementById('topics-arch-drawer');
   if (archTopics.length > 0) {
     topArchDrawer.style.display = 'block';
     document.getElementById('topics-arch-box').innerHTML = archTopics.map(t => `
-      <div class="hw-step item-tier-rev">${tierBadgeHTML(false, t._sourceDate)} <b>${t.subj}:</b> ${t.text}</div>`).join('');
-  } else {
-    topArchDrawer.style.display = 'none';
-  }
-
-  document.getElementById('sched-box').innerHTML = (data.schedule || []).map(d => `
-    <div class="day-card"><h4>${d.day}</h4>${(d.classes || []).map(c => `<p>${c}</p>`).join('')}</div>`).join('');
+      <div class="uni-card item-tier-rev">
+        <div style="margin-bottom:4px;">${tierBadgeHTML(false, t._sourceDate)}</div>
+        <h4>${t.subj}</h4>
+        <p>${t.text}</p>
+      </div>`).join('');
+  } else topArchDrawer.style.display = 'none';
 
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
+  navBtns.innerHTML = ''; panesWrap.innerHTML = '';
 
   (data.subjects || []).forEach((s, idx) => {
-    const subjTierClass = s._isDropped ? 'item-tier-rev subj-btn-missing' : (s._isNewlyAdded ? 'item-tier-new subj-btn-new' : '');
-    const subjMiniBadge = s._isNewlyAdded
-      ? `<span class="subj-status-tag subj-tag-added no-read">НОВ</span>`
-      : (s._isDropped ? `<span class="subj-status-tag subj-tag-missing no-read">⚠️ ОТ СТАРА БАЗА</span>` : '');
+    const subjCards = getCardsForSubject(s, data.cards);
 
-    navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''} ${subjTierClass}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
-      <span class="no-read">${s.icon || '📘'} ${s.displayNum}.</span> ${s.shortName} ${subjMiniBadge}
+    navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
+      <span class="no-read">${s.icon || '📘'} ${s.displayNum}.</span> ${s.shortName}
+      <span class="s-btn-pct no-read" id="spct-${s.id}">0%</span>
     </button>`;
 
-    const vaultCards = (s.vault || []).map((v, vIdx) => {
+    const vaultCardsHTML = (s.vault || []).map((v, vIdx) => {
       const mStorageKey = makeMasteryStorageKey(s.id, v.title, vIdx + 1);
       const legacyKey = `${STORAGE_PREFIX}mast_mast_${s.id}_${vIdx + 1}`;
       const isMast = localStorage.getItem(mStorageKey) === '1' || localStorage.getItem(legacyKey) === '1';
@@ -1157,109 +1140,110 @@ function initApp(data, sourceName = 'data.js') {
       const domChkId = `mast_${s.id}_${vIdx + 1}`;
 
       return `<div class="memo-card ${tierCls} ${isMast ? 'mastered' : ''}">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
           ${tierBadgeHTML(v._isLatest, v._sourceDate)}
-          <span class="no-read" style="font-size:0.72rem; color:var(--muted);">#${vIdx + 1}</span>
+          <span class="no-read" style="font-size:0.72rem; color:var(--muted);">Правило #${vIdx + 1}</span>
         </div>
         <div class="visual-anchor no-read">${v.visual || ''}</div>
         <div><b>${v.title}:</b> ${formatMemoWords(v.text)}</div>
         <div class="mastery-bar">
-          ${v.wiki ? `<a class="memo-link no-read" href="${v.wiki}" target="_blank">${v.linkText || ui('vaultLinkText', '🔗 Линк')}</a>` : `<span></span>`}
-          <label class="no-read"><input type="checkbox" class="mast-chk" id="${domChkId}" data-storage-key="${mStorageKey}" ${isMast ? 'checked' : ''} onchange="saveMastery(this)"> ${ui('lblMastered', '✅')}</label>
+          ${v.wiki ? `<a class="memo-link no-read" href="${v.wiki}" target="_blank">${v.linkText || ui('vaultLinkText', '🔗 Ресурс')}</a>` : `<span></span>`}
+          <label class="no-read"><input type="checkbox" class="mast-chk" id="${domChkId}" data-subj="${s.id}" data-storage-key="${mStorageKey}" ${isMast ? 'checked' : ''} onchange="saveMastery(this)"> ${ui('lblMastered', '✅ Научих')}</label>
         </div>
       </div>`;
+    }).join('');
+
+    const cardsHTML = subjCards.map(c => {
+      const tierCls = c._isLatest ? 'item-tier-new' : 'item-tier-rev';
+      const algoHTML = c.algo ? `
+        <div class="algo-box">
+          <div class="algo-step">🎯 <b>${ui('algoStep1')}</b> ${c.algo.type}</div>
+          <div class="algo-step">🧠 <b>${ui('algoStep2')}</b> ${c.algo.know}</div>
+          <div class="algo-step">⚙️ <b>${ui('algoStep3')}</b> ${c.algo.rule}</div>
+        </div>` : '';
+
+      return `<div class="flip-card ${tierCls}" id="fc${c.uid}"><div class="flip-inner">
+        <div class="card-front">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span class="badge b-blue no-read">🃏 Карта за мислене #${c.id}</span>
+              ${tierBadgeHTML(c._isLatest, c._sourceDate)}
+            </div>
+            <h3>${c.title}</h3>
+            <div id="joker${c.uid}">${algoHTML}<div class="story-box">${c.joker}</div></div>
+          </div>
+          <div>
+            <div style="text-align:center; margin-bottom:5px;">${playerHTML('joker' + c.uid, ui('btnPlayJoker'))}</div>
+            <a class="btn btn-wiki" href="${c.wiki}" target="_blank" onclick="document.getElementById('btn${c.uid}').style.display='inline-flex'">${c.linkLabel || ui('cardLinkLabel')}</a>
+            <button id="btn${c.uid}" class="btn btn-unlock" onclick="document.getElementById('fc${c.uid}').classList.toggle('flipped')">${ui('btnUnlockQuestion')}</button>
+          </div>
+        </div>
+        <div class="card-back">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span class="badge b-yellow no-read">Практически въпрос #${c.id}</span>
+              ${tierBadgeHTML(c._isLatest, c._sourceDate)}
+            </div>
+            <h3>${c.q}</h3>
+            <select id="q${c.uid}" class="ans-select" data-subj="${s.id}" onchange="checkSingleCard(${c.uid})">
+              <option value="">${ui('selectPlaceholder')}</option>
+              ${(c.opts || []).map(o => `<option value="${o.k}">${o.t}</option>`).join('')}
+            </select>
+            <div id="fb${c.uid}" class="feedback"></div>
+          </div>
+          <button class="btn btn-speak" onclick="document.getElementById('fc${c.uid}').classList.toggle('flipped')">${ui('btnBackToFront')}</button>
+        </div>
+      </div></div>`;
     }).join('');
 
     const hwBlocksHTML = (s.homeworkBlocks || []).map((blk, bIdx) => {
       const blkId = `hwblk-${s.id}-${bIdx}`;
       const tierCls = blk._isLatest ? 'item-tier-new' : 'item-tier-rev';
-      return `<div class="hw-box ${tierCls}" id="${blkId}">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-          ${tierBadgeHTML(blk._isLatest, blk._sourceDate)}
-          ${playerHTML(blkId, blk._isLatest ? '▶️ Чуй новия урок' : '▶️ Чуй преговора')}
+      return `<div class="zone-box ${tierCls}" id="${blkId}" style="margin-top:12px;">
+        <div class="zone-title">
+          <span>✍️ РЕШЕНИ ЗАДАЧИ И УПРАЖНЕНИЯ ПО ТЕМАТА ${tierBadgeHTML(blk._isLatest, blk._sourceDate)}</span>
+          ${playerHTML(blkId, '▶️ Чуй урока')}
         </div>
-        <div class="hw-step ${tierCls}">${blk.html}</div>
+        <div style="font-size:0.86rem;">${blk.html}</div>
       </div>`;
     }).join('');
 
-    const archBlocksHTML = (s.archiveBlocks && s.archiveBlocks.length) ? `
-      <details class="archive-drawer item-tier-rev" open>
-        <summary>${ui('subjArchPrefix', '🗄️ ДОПЪЛНИТЕЛЕН АРХИВ ПО')} ${(s.shortName || '').toUpperCase()}</summary>
-        ${s.archiveBlocks.map(ab => `<div class="hw-box"><div class="hw-step item-tier-rev">${tierBadgeHTML(false, ab._sourceDate)}${ab.html}</div></div>`).join('')}
-      </details>` : '';
-
-    const subjHeaderBadge = s._isNewlyAdded
-      ? `<span class="tier-badge-new no-read">🆕 НОВ ПРЕДМЕТ В БАЗАТА</span>`
-      : (s._isDropped ? `<span class="tier-badge-warn no-read">⚠️ ЛИПСВА В НОВИТЕ ЧАСТИ (ЗАРЕДЕН ОТ СТАРАТА БАЗА ЗА ПРЕГОВОР)</span>` : '');
-
     panesWrap.innerHTML += `<div id="sp-${s.id}" class="subj-pane ${idx === 0 ? 'active' : ''}">
-      <div class="panel" id="p-${s.id}">
-        <h2>
-          <span><span class="no-read">${s.icon || '📘'} ${s.displayNum}.</span> ${s.fullName || s.shortName} ${subjHeaderBadge}</span>
-          ${playerHTML('p-' + s.id)}
-        </h2>
+      <div class="zone-box" id="p-${s.id}">
+        <div class="subj-prog-banner no-read">
+          <div>
+            <strong style="color:var(--accent); font-size:0.95rem;">${s.icon || '📘'} ${s.displayNum}. ${s.fullName || s.shortName}</strong>
+            <div id="sprog-detail-${s.id}" style="font-size:0.8rem; color:var(--muted); margin-top:2px;">Учене наизуст: 0/0 | Тренажор за мислене: 0/0</div>
+          </div>
+          ${playerHTML('p-' + s.id, '▶️ Слушай целия предмет')}
+        </div>
+
         <div class="memo-vault" id="vault-${s.id}">
           <div class="memo-head">
-            <h3>${ui('vaultPrefix', '🔐')} ${(s.shortName || '').toUpperCase()} (${(s.vault || []).length} правила)</h3>
+            <h3>${ui('vaultPrefix')} ${(s.shortName || '').toUpperCase()} (${(s.vault || []).length} правила)</h3>
             <div class="mini-player no-read">
-              <button class="btn btn-mask" onclick="maskVault('vault-${s.id}')">${ui('btnTestMemory', '🙈')}</button>
-              ${playerHTML('vault-' + s.id, ui('btnPlayVault', '▶️'))}
+              <button class="btn btn-mask" onclick="maskVault('vault-${s.id}')">${ui('btnTestMemory')}</button>
+              ${playerHTML('vault-' + s.id, ui('btnPlayVault'))}
             </div>
           </div>
-          <div class="memo-grid">${vaultCards}</div>
+          <div class="memo-grid">${vaultCardsHTML}</div>
         </div>
+
         ${s.extraHTML || ''}
+
+        ${subjCards.length > 0 ? `
+        <div class="zone-box" style="border-color:var(--accent); margin-top:12px;">
+          <div class="zone-title">
+            <span>🃏 АЛГОРИТЪМ ЗА МИСЛЕНЕ И ПРАКТИКА ПО ${(s.shortName \vert{}\vert{} '').toUpperCase()} (${subjCards.length} карти)</span>
+            <button class="btn btn-speak no-read" onclick="checkSubjectCards('${s.id}')">✅ Обърни и провери картите</button>
+          </div>
+          <div class="cards-container">${cardsHTML}</div>
+        </div>` : ''}
+
         ${hwBlocksHTML}
-        ${archBlocksHTML}
       </div>
     </div>`;
   });
-
-  document.getElementById('cards-wrap').innerHTML = (data.cards || []).map(c => {
-    const tierCls = c._isLatest ? 'item-tier-new' : 'item-tier-rev';
-    const algoHTML = c.algo ? `
-      <div class="algo-box">
-        <div class="algo-step">🎯 <b>${ui('algoStep1', '1. Тип задача:')}</b> ${c.algo.type}</div>
-        <div class="algo-step">🧠 <b>${ui('algoStep2', '2. Какво знаем:')}</b> ${c.algo.know}</div>
-        <div class="algo-step">⚙️ <b>${ui('algoStep3', '3. Правило:')}</b> ${c.algo.rule}</div>
-      </div>` : '';
-
-    return `<div class="flip-card ${tierCls}" id="fc${c.uid}"><div class="flip-inner">
-      <div class="card-front">
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px;">
-            <span class="badge b-blue no-read">${ui('cardBadgePrefix', 'Карта')} ${c.id} • ${c.subj}</span>
-            ${tierBadgeHTML(c._isLatest, c._sourceDate)}
-          </div>
-          <h3>${c.title}</h3>
-          <div id="joker${c.uid}">
-            ${algoHTML}
-            <div class="story-box">${c.joker}</div>
-          </div>
-        </div>
-        <div>
-          <div style="text-align:center; margin-bottom:6px;">${playerHTML('joker' + c.uid, ui('btnPlayJoker', '▶️'))}</div>
-          <a class="btn btn-wiki" href="${c.wiki}" target="_blank" onclick="document.getElementById('btn${c.uid}').style.display='inline-flex'">${c.linkLabel || ui('cardLinkLabel', '🔗 Външен ресурс')}</a>
-          <button id="btn${c.uid}" class="btn btn-unlock" onclick="document.getElementById('fc${c.uid}').classList.toggle('flipped')">${ui('btnUnlockQuestion', '❓')}</button>
-        </div>
-      </div>
-      <div class="card-back">
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <span class="badge b-yellow no-read">${ui('questionBadgePrefix', 'Въпрос')} ${c.id}</span>
-            ${tierBadgeHTML(c._isLatest, c._sourceDate)}
-          </div>
-          <h3>${c.q}</h3>
-          <select id="q${c.uid}" class="ans-select" onchange="checkSingleCard(${c.uid})">
-            <option value="">${ui('selectPlaceholder', '--')}</option>
-            ${(c.opts || []).map(o => `<option value="${o.k}">${o.t}</option>`).join('')}
-          </select>
-          <div id="fb${c.uid}" class="feedback"></div>
-        </div>
-        <button class="btn btn-speak" onclick="document.getElementById('fc${c.uid}').classList.toggle('flipped')">${ui('btnBackToFront', '↩️')}</button>
-      </div>
-    </div></div>`;
-  }).join('');
 
   (data.cards || []).forEach(c => {
     const storageKey = `${STORAGE_PREFIX}card_ans_${shortDateLabel(c._sourceDate)}_${c.id}`;
@@ -1270,77 +1254,110 @@ function initApp(data, sourceName = 'data.js') {
     }
   });
 
-  updateLiveScoreSummary();
+  document.getElementById('db-status-label').innerHTML = `✅ Активни <b>${(data.loadedMeta || []).length} файла/пача</b> | <b>${(data.subjects || []).length} предмета</b> | <b>${(data.homework || []).length} домашни</b> | <b>${(data.cards || []).length} карти за мислене</b>`;
+  document.getElementById('loaded-files-badges').innerHTML = (data.loadedMeta || []).map(m => `
+    <span class="file-Chip">${m.isLatest ? '🆕' : '⏪'} <b>${m.name}</b> (${m.generatedAt} • ${m.partDesc})</span>`).join('');
+
   updateProgress();
 }
 
-function cleanExplanation(expText) {
-  return (expText || '').replace(/^Вярно!\s*/i, '');
+function renderSavedFilesListInTab3() {
+  const savedList = getSavedSourcesList();
+  const disabledMap = getDisabledFilesMap();
+  const tab5List = document.getElementById('tab5-files-list');
+  if (!tab5List) return;
+  tab5List.innerHTML = savedList.map((s, idx) => {
+    const isOff = !!disabledMap[s.name];
+    return `<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:${isOff ? '#1e1b4b' : '#172554'}; opacity:${isOff ? '0.65' : '1'}; padding:7px 11px; border-radius:8px; margin-top:5px; font-size:0.8rem;">
+      <span>${isOff ? '⏸️ [ИЗКЛЮЧЕН]' : '🟢 [АКТИВЕН]'} 📄 <b>${s.name}</b> (${s.generatedAt || '—'})</span>
+      <div class="voice-bar">
+        <button class="btn ${isOff ? 'btn-file' : 'btn-mask'}" style="padding:3px 9px; font-size:0.73rem;" onclick="toggleSourceEnabled('${s.name.replace(/'/g, "\\'")}')">${isOff ? '▶️ Включи частта' : '⏸️ Изключи частта'}</button>
+        <button class="btn btn-stop" style="padding:3px 8px; font-size:0.73rem;" onclick="removeSingleSavedSource(${idx})">✖ Изтрий</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getDisabledFilesMap() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'DISABLED_FILES') || '{}'); } catch (e) { return {}; }
+}
+function toggleSourceEnabled(fileName) {
+  const map = getDisabledFilesMap();
+  if (map[fileName]) delete map[fileName];
+  else map[fileName] = true;
+  localStorage.setItem(STORAGE_PREFIX + 'DISABLED_FILES', JSON.stringify(map));
+  rebuildAndInitFromStorage();
 }
 
 function checkSingleCard(cardUid, silent = false) {
   if (!window.APP_DATA || !APP_DATA.cards) return false;
   const c = APP_DATA.cards.find(x => x.uid === cardUid);
   if (!c) return false;
-
-  const sel = document.getElementById('q' + c.uid).value;
+  const sel = document.getElementById('q' + c.uid)?.value;
   const fb = document.getElementById('fb' + c.uid);
   const correctOpt = (c.opts || []).find(o => o.k === c.ans);
   const correctFullText = correctOpt ? correctOpt.t : c.ans;
-  const cleanExp = cleanExplanation(c.exp);
+  const cleanExp = (c.exp || '').replace(/^Вярно!\s*/i, '');
   const storageKey = `${STORAGE_PREFIX}card_ans_${shortDateLabel(c._sourceDate)}_${c.id}`;
 
   if (!sel) {
     localStorage.removeItem(storageKey);
     fb.className = 'feedback warn';
-    fb.innerHTML = `⚠️ <b>${ui('msgNoAnswer', 'Не си избрал отговор на тази карта!')}</b> Избери вариант от падащото меню горе.`;
-    if (!silent) updateLiveScoreSummary();
+    fb.innerHTML = `⚠️ <b>${ui('msgNoAnswer')}</b>`;
+    if (!silent) updateProgress();
     return false;
   }
-
   localStorage.setItem(storageKey, sel);
   const isOk = sel === c.ans;
-
-  if (isOk) {
-    fb.className = 'feedback ok';
-    fb.innerHTML = `✅ <b>${ui('msgCorrect', 'Вярно!')}</b> ${cleanExp}`;
-  } else {
-    fb.className = 'feedback err';
-    fb.innerHTML = `❌ <b>${ui('msgWrong', 'Грешен избор!')}</b><br>👉 ${ui('msgCorrectIs', 'Правилният отговор е:')} <b>${correctFullText}</b><br>💡 ${cleanExp}`;
-  }
-
-  if (!silent) {
-    updateLiveScoreSummary();
-    updateAnalyticsTable();
-  }
+  fb.className = isOk ? 'feedback ok' : 'feedback err';
+  fb.innerHTML = isOk
+    ? `✅ <b>${ui('msgCorrect')}</b> ${cleanExp}`
+    : `❌ <b>${ui('msgWrong')}</b><br>👉 ${ui('msgCorrectIs')} <b>${correctFullText}</b><br>💡 ${cleanExp}`;
+  if (!silent) updateProgress();
   return isOk;
 }
 
-function updateLiveScoreSummary() {
-  if (!window.APP_DATA || !APP_DATA.cards) return;
-  let score = 0, answered = 0;
-  APP_DATA.cards.forEach(c => {
-    const val = document.getElementById('q' + c.uid)?.value;
-    if (val) {
-      answered++;
-      if (val === c.ans) score++;
-    }
-  });
-  const total = APP_DATA.cards.length || 1;
-  const grade = Math.max(2, (2 + (score / total) * 4)).toFixed(2);
-  document.getElementById('total-score').innerHTML = `🏆 ${ui('lblScore', 'Верни:')} <span class="no-read" style="color:var(--green)">${score} / ${total}</span> (${ui('lblAnswered', 'Попълнени:')} ${answered}/${total}) | ${ui('lblGrade', 'Оценка:')} <span class="no-read" style="color:var(--gold)">${grade}</span>`;
-  localStorage.setItem(STORAGE_PREFIX + 'last_score', `${score}/${total} (${grade})`);
-}
-
-function checkAnswers() {
-  if (!window.APP_DATA || !APP_DATA.cards) return;
-  APP_DATA.cards.forEach(c => {
-    document.getElementById('fc' + c.uid).classList.add('flipped');
+function checkSubjectCards(subjId) {
+  if (!window.APP_DATA) return;
+  const sObj = (APP_DATA.subjects || []).find(s => s.id === subjId);
+  if (!sObj) return;
+  getCardsForSubject(sObj, APP_DATA.cards).forEach(c => {
+    document.getElementById('fc' + c.uid)?.classList.add('flipped');
     checkSingleCard(c.uid, true);
   });
-  updateLiveScoreSummary();
-  updateAnalyticsTable();
-  speakDirect(ui('voiceCheckDone', 'Проверката приключи!'));
+  updateProgress();
+}
+
+function updateProgress() {
+  if (!window.APP_DATA) return;
+  (APP_DATA.subjects || []).forEach(s => {
+    const vEl = document.getElementById('vault-' + s.id);
+    const totM = vEl ? vEl.querySelectorAll('.mast-chk').length : 0;
+    const doneM = vEl ? vEl.querySelectorAll('.mast-chk:checked').length : 0;
+    const sCards = getCardsForSubject(s, APP_DATA.cards);
+    let okC = 0;
+    sCards.forEach(c => { if (document.getElementById('q' + c.uid)?.value === c.ans) okC++; });
+    const totSubj = totM + sCards.length;
+    const doneSubj = doneM + okC;
+    const pctSubj = totSubj ? Math.round((doneSubj / totSubj) * 100) : 0;
+
+    const badgeEl = document.getElementById('spct-' + s.id);
+    if (badgeEl) badgeEl.innerText = `${pctSubj}%`;
+    const detEl = document.getElementById('sprog-detail-' + s.id);
+    if (detEl) detEl.innerHTML = `🔐 Учене наизуст: <b style="color:var(--green)">${doneM}/${totM}</b> | 🃏 Мислене (3D карти): <b style="color:var(--gold)">${okC}/${sCards.length}</b> | Напредък по предмета: <b>${pctSubj}%</b>`;
+  });
+
+  const allChks = document.querySelectorAll('#tab-1 input[type="checkbox"], .mast-chk');
+  const doneChks = Array.from(allChks).filter(c => c.checked).length;
+  let cardsOk = 0;
+  const totalCards = (APP_DATA.cards || []).length;
+  (APP_DATA.cards || []).forEach(c => { if (document.getElementById('q' + c.uid)?.value === c.ans) cardsOk++; });
+
+  const grandTotal = allChks.length + totalCards;
+  const grandDone = doneChks + cardsOk;
+  const pct = grandTotal ? Math.round((grandDone / grandTotal) * 100) : 0;
+  document.getElementById('prog-text').innerText = `${pct}% (${grandDone}/${grandTotal})`;
+  document.getElementById('prog-fill').style.width = pct + '%';
 }
 
 function openTab(tabId, btn) {
@@ -1348,13 +1365,15 @@ function openTab(tabId, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (tabId === 'tab-4') updateAnalyticsTable();
 }
 function openPane(parentId, paneId, btn) {
   document.querySelectorAll(`#${parentId} .subj-pane`).forEach(p => p.classList.remove('active'));
   document.querySelectorAll(`#${parentId} .s-btn`).forEach(b => b.classList.remove('active'));
-  document.getElementById(paneId).classList.add('active');
-  btn.classList.add('active');
+  document.getElementById(paneId)?.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+function formatMemoWords(text) {
+  return (text || '').replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
 }
 function maskVault(vId) {
   const words = document.getElementById(vId).querySelectorAll('.memo-word');
@@ -1368,49 +1387,35 @@ function toggleAllMasks() {
 }
 function saveChk(chk) {
   localStorage.setItem(STORAGE_PREFIX + 'chk_' + chk.id, chk.checked ? '1' : '0');
+  chk.closest('.hw-smart-card')?.classList.toggle('done-card', chk.checked);
   updateProgress();
 }
 function saveMastery(chk) {
   const key = chk.getAttribute('data-storage-key') || (STORAGE_PREFIX + 'mast_' + chk.id);
   localStorage.setItem(key, chk.checked ? '1' : '0');
-  chk.closest('.memo-card').classList.toggle('mastered', chk.checked);
+  chk.closest('.memo-card')?.classList.toggle('mastered', chk.checked);
   updateProgress();
 }
-function toggleArchiveItem(btn) {
-  const li = btn.closest('li');
-  const toArch = li.parentElement.id === 'active-hw-list';
-  document.getElementById(toArch ? 'archive-list' : 'active-hw-list').appendChild(li);
-  btn.innerHTML = toArch ? ui('btnUnarchive', '📤') : ui('btnArchive', '📥');
-  localStorage.setItem(STORAGE_PREFIX + 'arch_' + li.id, toArch ? 'archived' : 'active');
-  updateAnalyticsTable();
-}
-function updateProgress() {
-  const all = document.querySelectorAll('#tab-1 input[type="checkbox"], .mast-chk');
-  const done = Array.from(all).filter(c => c.checked).length;
-  const pct = all.length ? Math.round((done / all.length) * 100) : 0;
-  document.getElementById('prog-text').innerText = `${pct}% (${done}/${all.length})`;
-  document.getElementById('prog-fill').style.width = pct + '%';
-  updateAnalyticsTable();
-}
 
+// БЪЛГАРСКИ ГЛАСОВ ЧЕТЕЦ
 let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
-
+function playerHTML(id, label) {
+  return `<span class="mini-player no-read">
+    <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${label || ui('btnListen')}</button>
+    <button class="btn btn-restart" onclick="startSpeech('${id}', 0)">🔄</button>
+    <button class="btn btn-stop" onclick="stopSpeech()">⏹️</button>
+  </span>`;
+}
 function stopSpeech() {
   stopped = true; paused = false;
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   document.querySelectorAll('.speaking-glow').forEach(e => e.classList.remove('speaking-glow'));
-  document.querySelectorAll('[id^="play-"]').forEach(b => {
-    if (b.id.startsWith('play-vault-')) b.innerHTML = ui('btnPlayVault', '▶️');
-    else if (b.id.startsWith('play-joker')) b.innerHTML = ui('btnPlayJoker', '▶️');
-    else b.innerHTML = ui('btnListen', '▶️');
-  });
   activeId = null; queue = []; idx = 0;
 }
 function playNext() {
   if (stopped || paused || !activeId || idx >= queue.length) { if (idx >= queue.length) stopSpeech(); return; }
   const u = new SpeechSynthesisUtterance(queue[idx]);
-  u.lang = ui('speechLang', 'bg-BG');
-  u.rate = 1.0;
+  u.lang = ui('speechLang', 'bg-BG'); u.rate = 1.0;
   u.onend = () => { if (!stopped && !paused) { idx++; playNext(); } };
   window.speechSynthesis.speak(u);
 }
@@ -1418,144 +1423,204 @@ function startSpeech(id, startIdx = 0) {
   const el = document.getElementById(id);
   if (!el) return;
   const clone = el.cloneNode(true);
-  const ignoreSel = ui('speechIgnoreSelectors', '.no-read, select, button, a, input, textarea');
-  clone.querySelectorAll(ignoreSel).forEach(n => n.remove());
+  clone.querySelectorAll(ui('speechIgnoreSelectors')).forEach(n => n.remove());
   const clean = (clone.innerText || '').replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
-  stopSpeech();
-  activeId = id;
+  stopSpeech(); activeId = id;
   queue = (clean.match(/[^.!?]+[.!?]*/g) || [clean]).map(s => s.trim()).filter(s => s.length > 1);
   idx = startIdx; stopped = false; paused = false;
   el.classList.add('speaking-glow');
-  const btn = document.getElementById('play-' + id);
-  if (btn) btn.innerHTML = ui('btnPause', '⏸️');
   playNext();
 }
 function toggleSpeak(id) {
   if (activeId === id && queue.length) {
     paused = !paused; stopped = paused;
     if (paused) window.speechSynthesis.cancel(); else playNext();
-    const btn = document.getElementById('play-' + id);
-    if (btn) btn.innerHTML = paused ? ui('btnResume', '▶️') : ui('btnPause', '⏸️');
   } else startSpeech(id, 0);
 }
 function speakDirect(txt) {
   if (!('speechSynthesis' in window) || !txt) return;
-  stopSpeech();
-  stopped = false;
+  stopSpeech(); stopped = false;
   const clean = txt.replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
-  const u = new SpeechSynthesisUtterance(clean);
-  u.lang = ui('speechLang', 'bg-BG');
+  const u = new SpeechSynthesisUtterance(clean); u.lang = 'bg-BG';
   window.speechSynthesis.speak(u);
 }
+function speakGreeting() { speakDirect(ui('voiceGreeting')); }
 
-function getCardsForSubject(s, allCards) {
-  const sShort = String(s.shortName || '').trim().toLowerCase();
-  const sId = String(s.id || '').trim().toLowerCase();
-  return (allCards || []).filter(c => {
-    if (c.subjId && String(c.subjId).trim().toLowerCase() === sId) return true;
-    const cSubj = String(c.subj || '').trim().toLowerCase();
-    return cSubj && (cSubj === sShort || sShort.includes(cSubj) || cSubj.includes(sShort));
+// УПРАВЛЕНИЕ НА ФАЙЛОВЕ И GOOGLE DRIVE AUTO-SYNC
+function getSavedSourcesList() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES') || '[]'); } catch (e) { return []; }
+}
+function rebuildAndInitFromStorage() {
+  const merged = buildMultiFileMergedAppData(getSavedSourcesList());
+  window.APP_DATA = merged;
+  initApp(merged);
+  return !!merged;
+}
+function saveAndRebuildMergedData(newEntries) {
+  const existing = getSavedSourcesList();
+  newEntries.forEach(entry => {
+    const i = existing.findIndex(x => x.name === entry.name);
+    if (i >= 0) existing[i] = entry; else existing.push(entry);
+  });
+  localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(existing));
+  return rebuildAndInitFromStorage();
+}
+function removeSingleSavedSource(index) {
+  const existing = getSavedSourcesList();
+  existing.splice(index, 1);
+  localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(existing));
+  rebuildAndInitFromStorage();
+}
+function loadDataFromFile(inputEl) {
+  const files = Array.from(inputEl.files || []);
+  if (!files.length) return;
+  const loadedEntries = []; let processed = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const ev = evalDataCodeWithRepair(e.target.result);
+        if (ev.parsed) loadedEntries.push({ name: file.name, generatedAt: ev.parsed.generatedAt || file.name, repaired: ev.repaired, code: e.target.result });
+      } catch (err) { alert(`Грешка във файл ${file.name}: ` + err.message); }
+      processed++;
+      if (processed === files.length && loadedEntries.length > 0) {
+        saveAndRebuildMergedData(loadedEntries);
+        openTab('tab-1', document.getElementById('tab-btn-1'));
+        inputEl.value = '';
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
   });
 }
-
-function updateAnalyticsTable() {
-  const tbody = document.getElementById('analytics-tbody');
-  if (!tbody || !window.APP_DATA || !APP_DATA.subjects) return;
-  tbody.innerHTML = APP_DATA.subjects.map(s => {
-    const chk = s.hwChk ? document.getElementById(s.hwChk) : null;
-    const li = s.hwLi ? document.getElementById(s.hwLi) : null;
-    const isDone = chk && chk.checked;
-    const isArch = li && li.parentElement && li.parentElement.id === 'archive-list';
-    const vEl = document.getElementById('vault-' + s.id);
-    const totM = vEl ? vEl.querySelectorAll('.mast-chk').length : 0;
-    const doneM = vEl ? vEl.querySelectorAll('.mast-chk:checked').length : 0;
-
-    const subjCards = getCardsForSubject(s, APP_DATA.cards);
-    let cardStatus = '—';
-    if (subjCards.length > 0) {
-      let okCount = 0, ansCount = 0;
-      subjCards.forEach(cObj => {
-        const val = document.getElementById('q' + cObj.uid)?.value;
-        if (val) {
-          ansCount++;
-          if (val === cObj.ans) okCount++;
-        }
-      });
-      if (ansCount === 0) cardStatus = `${ui('statusPending', '⏳ Не е решена')} (0/${subjCards.length})`;
-      else if (okCount === subjCards.length) cardStatus = `✅ Вярно (${okCount}/${subjCards.length})`;
-      else cardStatus = `⚠️ ${okCount}/${subjCards.length} верни`;
-    }
-
-    let subjStateBadge = `<span class="tier-badge-new">🟢 Активен</span>`;
-    if (s._isNewlyAdded) subjStateBadge = `<span class="tier-badge-new">🆕 Нов предмет</span>`;
-    else if (s._isDropped) subjStateBadge = `<span class="tier-badge-warn">⚠️ Само от стара база</span>`;
-
-    const hwCellText = chk
-      ? `${isDone ? ui('statusDone', '✅') : ui('statusActive', '⏳')} ${isArch ? ui('statusArchTag', '(🗄️)') : ''}`
-      : (s._isDropped ? '🗄️ От минал файл' : '—');
-
-    return `<tr class="${s._isDropped ? 'item-tier-rev' : 'item-tier-new'}">
-      <td>${s.displayNum}</td>
-      <td><b>${s.icon || '📘'} ${s.shortName}</b></td>
-      <td>${subjStateBadge}</td>
-      <td>${hwCellText}</td>
-      <td><span class="badge ${doneM === totM && totM > 0 ? 'b-green' : 'b-yellow'}">${doneM} / ${totM}</span></td>
-      <td>${cardStatus}</td>
-    </tr>`;
-  }).join('');
-}
-
-function generateSyncReport() {
-  if (!window.APP_DATA) return;
-  const done = [], pend = [], dropped = [];
-  APP_DATA.subjects.forEach(s => {
-    if (s._isDropped) {
-      dropped.push(s.shortName);
-    } else if (s.hwChk && document.getElementById(s.hwChk)) {
-      (document.getElementById(s.hwChk).checked ? done : pend).push(s.shortName);
-    } else {
-      done.push(s.shortName + ' (без тек. ДР)');
-    }
-  });
-  const mast = document.querySelectorAll('.mast-chk:checked').length;
-  const totM = document.querySelectorAll('.mast-chk').length;
-  const filesLoaded = (APP_DATA.loadedMeta || []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
-  const warnText = (APP_DATA.warnings && APP_DATA.warnings.length) ? `\n⚠️ Аларми: Липсват уроци за някои предмети от новата дата (${dropped.join(', ')})` : '';
-  const rep = `${ui('reportHeader', '=== ОТЧЕТ ===')}\n📂 Файлове/Части: ${filesLoaded || '—'}\n📚 Общо предмети: ${APP_DATA.subjects.length}\n✅ Изпълнени: ${done.join(', ') || '—'}\n⏳ Активни: ${pend.join(', ') || '—'}${dropped.length ? '\n⚠️ Само от стара база: ' + dropped.join(', ') : ''}${warnText}\n🔐 Златен сейф: ${mast} / ${totM}\n🃏 3D Тренажор: ${localStorage.getItem(STORAGE_PREFIX + 'last_score') || '—'}`;
-  const box = document.getElementById('sync-box');
-  box.value = rep; box.select();
-  if (navigator.clipboard) navigator.clipboard.writeText(rep);
-}
-
 function applyCustomDataJS() {
   const code = document.getElementById('custom-db-input').value.trim();
   if (!code) return;
   try {
     const ev = evalDataCodeWithRepair(code);
     if (ev.parsed) {
-      const stamp = ev.parsed.generatedAt || ('Ръчна част ' + new Date().toLocaleTimeString('bg-BG'));
-      if (saveAndRebuildMergedData([{ name: 'Ръчен код (' + describePartContent(ev.parsed) + ')', generatedAt: stamp, repaired: ev.repaired, code }])) {
-        document.getElementById('custom-db-input').value = '';
-        openTab('tab-1', document.getElementById('tab-btn-1'));
-      }
-    } else {
-      alert('Липсва валидна част от window.APP_DATA!');
+      const stamp = ev.parsed.generatedAt || ('Пач ' + new Date().toLocaleDateString('bg-BG') + ' ' + new Date().toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'}));
+      saveAndRebuildMergedData([{ name: 'Пач_' + Date.now() + '.js (' + describePartContent(ev.parsed) + ')', generatedAt: stamp, repaired: ev.repaired, code }]);
+      document.getElementById('custom-db-input').value = '';
+      openTab('tab-1', document.getElementById('tab-btn-1'));
     }
-  } catch (err) {
-    alert('Грешка: ' + err.message);
-  }
+  } catch (err) { alert('Грешка: ' + err.message); }
 }
-
 function resetToDefaultFileDB() {
   localStorage.removeItem(STORAGE_PREFIX + 'MERGED_SOURCES');
-  window.APP_DATA = null;
+  localStorage.removeItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
+  localStorage.removeItem(STORAGE_PREFIX + 'DISABLED_FILES');
   location.reload();
 }
 
+function getDriveUrl() {
+  return localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL') || DEFAULT_DRIVE_WEBAPP_URL;
+}
+function saveDriveUrlFromInput() {
+  const val = document.getElementById('drive-url-input').value.trim();
+  localStorage.setItem(STORAGE_PREFIX + 'DRIVE_URL', val);
+  document.getElementById('drive-sync-log').innerText = '✅ Линкът е запазен! Изпълнява се проверка...';
+  syncFromGoogleDrive(false);
+}
+
+function callDriveJsonp(url, mode, onSuccess, onError) {
+  const cbName = 'gd_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  const scriptEl = document.createElement('script');
+  const timer = setTimeout(() => {
+    if (window[cbName]) { delete window[cbName]; scriptEl.remove(); onError('Времето за връзка с Google Drive изтече.'); }
+  }, 8500);
+
+  window[cbName] = function(res) {
+    clearTimeout(timer); delete window[cbName]; scriptEl.remove();
+    onSuccess(res);
+  };
+  scriptEl.onerror = function() {
+    clearTimeout(timer); delete window[cbName]; scriptEl.remove();
+    onError('Уверете се, че сте влезли в браузъра със собственика на скрипта в Google.');
+  };
+  const sep = url.includes('?') ? '&' : '?';
+  scriptEl.src = `${url}${sep}mode=${mode}&callback=${cbName}&t=${Date.now()}`;
+  document.body.appendChild(scriptEl);
+}
+
+function syncFromGoogleDrive(isSilentAuto = true) {
+  const url = getDriveUrl();
+  const pill = document.getElementById('cloud-status-pill');
+  const logEl = document.getElementById('drive-sync-log');
+  if (!url) return;
+
+  if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '☁️ Проверка...'; }
+
+  callDriveJsonp(url, 'check', function(res) {
+    if (!res || res.status !== 'ok') {
+      if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive грешка'; }
+      if (!isSilentAuto) alert(res && res.message ? res.message : 'Грешка при връзка с Google Drive!');
+      return;
+    }
+    const lastSig = localStorage.getItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
+    const hasLocalData = getSavedSourcesList().length > 0;
+
+    if (isSilentAuto && hasLocalData && res.signature && res.signature === lastSig) {
+      if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = '☁️ Актуално'; }
+      if (logEl) logEl.innerText = '✅ Базата е напълно синхронизирана с Google Drive (няма разминаване).';
+      return;
+    }
+
+    if (pill) pill.innerText = '☁️ Обновяване...';
+    callDriveJsonp(url, 'full', function(fullRes) {
+      if (!fullRes || fullRes.status !== 'ok' || !Array.isArray(fullRes.files)) {
+        if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive грешка'; }
+        return;
+      }
+      const loadedEntries = [];
+      fullRes.files.forEach(f => {
+        if (f.name && f.name.startsWith('_')) return;
+        try {
+          const ev = evalDataCodeWithRepair(f.code);
+          if (ev.parsed) loadedEntries.push({ name: f.name, generatedAt: ev.parsed.generatedAt || f.name, repaired: ev.repaired, code: f.code });
+        } catch (e) { console.error(e); }
+      });
+
+      if (loadedEntries.length > 0) {
+        localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(loadedEntries));
+        if (fullRes.signature) localStorage.setItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE', fullRes.signature);
+        rebuildAndInitFromStorage();
+        if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = `☁️ Обновено (${loadedEntries.length})`; }
+        if (logEl) logEl.innerText = `✅ Успешно заредени и обединени ${loadedEntries.length} файла от Google Drive!`;
+      } else {
+        if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '📂 Drive папка празна'; }
+        if (logEl) logEl.innerText = '📂 Скриптът е свързан успешно, но в папката все още няма качени .js файлове!';
+      }
+    }, function() {
+      if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive проблем'; }
+    });
+  }, function(errMsg) {
+    if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Локален режим'; }
+    if (!isSilentAuto) {
+      document.getElementById('sync-problem-bar').style.display = 'flex';
+      document.getElementById('sync-problem-text').innerText = '⚠️ ' + errMsg;
+    }
+  });
+}
+
+function generateSyncReport() {
+  if (!window.APP_DATA) return;
+  const mast = document.querySelectorAll('.mast-chk:checked').length;
+  const totM = document.querySelectorAll('.mast-chk').length;
+  const filesLoaded = (APP_DATA.loadedMeta || []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
+  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.1) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
+  const box = document.getElementById('sync-box');
+  box.style.display = 'block'; box.value = rep; box.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(rep);
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  const savedUrl = getDriveUrl();
+  if (savedUrl) document.getElementById('drive-url-input').value = savedUrl;
   rebuildAndInitFromStorage();
+  if (savedUrl) syncFromGoogleDrive(true);
+  setInterval(() => { if (window.APP_DATA) initApp(window.APP_DATA); }, 60000);
 });
 </script>
 </body>
