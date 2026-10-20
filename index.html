@@ -752,8 +752,7 @@ function makeMasteryStorageKey(subjId, vaultTitle, fallbackIdx) {
 // УМЕН КЛАСИФИКАТОР НА ДОМАШНОТО В 3 КАТЕГОРИИ: 'must' (Задължително ДР / КР), 'greenbook' (Зелено помагало ИУЧ), 'review' (Няма ДР - само преговор)
 function classifyHomeworkType(h) {
   if (h.hwType === 'must' || h.hwType === 'greenbook' || h.hwType === 'review') return h.hwType;
-  const combined = `${valOr(h.id, '')}${valOr(h.badge, '')} ${valOr(h.title, '')}${valOr(h.text, '')}`.toLowerCase();
-
+const combined = `${valOr(h.id, '')} ${valOr(h.badge, '')} ${valOr(h.title, '')} ${valOr(h.text, '')}`.toLowerCase();
   if (
     combined.includes('зелено помагало') ||
     combined.includes('зеленото помагало') ||
@@ -1078,9 +1077,7 @@ function formatTimeRemaining(dueMs, nowMs) {
   if (hrs > 0) return `След ${hrs} ч. и ${mins % 60} мин.`;
   return `След ${mins} мин.!`;
 }
-  
-<!-- КРАЙ НА ЧАСТ 2 ОТ 3 -->
-<!-- НАЧАЛО НА ЧАСТ 3 ОТ 3 НА INDEX.HTML (ЯДРО 4.3 - 5-СТЪПКОВ РЕНДЕРЕР, РАДАР, ТАБ 2, ГЛАС И DRIVE) -->
+
 function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPastZone, domPrefix) {
   const pref = domPrefix ? domPrefix + '_' : '';
   const savedChk = localStorage.getItem(STORAGE_PREFIX + 'chk_' + h.chkId);
