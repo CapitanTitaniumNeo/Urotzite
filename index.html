@@ -3,24 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="page-title">Супер-Органайзер (Ядро 4.2)</title>
+<title id="page-title">Супер-Органайзер (Ядро 4.3 – Школо Мастер)</title>
 <style>
 :root {
-  --bg: #090d16;
-  --card: #131c2e;
+  --bg: #070b14;
+  --card: #111927;
   --card-alt: #1e293b;
   --accent: #38bdf8;
   --gold: #f59e0b;
   --green: #22c55e;
   --red: #ef4444;
   --purple: #a855f7;
+  --shkolo-blue: #0284c7;
+  --shkolo-red: #dc2626;
+  --shkolo-green: #16a34a;
+  --shkolo-amber: #d97706;
   --text: #f8fafc;
   --muted: #94a3b8;
   --border: #334155;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-body { background: var(--bg); color: var(--text); line-height: 1.55; padding: 10px; max-width: 1280px; margin: 0 auto; }
+body { background: var(--bg); color: var(--text); line-height: 1.55; padding: 10px; max-width: 1320px; margin: 0 auto; }
 
+/* ЗАГЛАВНА ЛЕНТА */
 header {
   background: linear-gradient(135deg, #0f172a, #1e3a8a);
   border: 2px solid var(--accent);
@@ -32,106 +37,82 @@ header {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.55);
 }
 header h1 { font-size: 1.18rem; color: var(--accent); letter-spacing: 0.3px; }
 header p { font-size: 0.8rem; color: var(--muted); }
 .sync-pill {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 0.74rem; font-weight: 800; padding: 4px 10px;
+  font-size: 0.75rem; font-weight: 800; padding: 5px 11px;
   border-radius: 20px; background: rgba(34,197,94,0.15);
   color: #4ade80; border: 1px solid var(--green); cursor: pointer;
 }
 .sync-pill.syncing { background: rgba(245,158,11,0.2); color: #fde047; border-color: var(--gold); }
 .sync-pill.err { background: rgba(239,68,68,0.2); color: #fca5a5; border-color: var(--red); }
 
-/* МОДАЛЕН ПРОЗОРЕЦ ЗА ВЪВЕЖДАНЕ НА ПАРОЛА (Показва се на всяко устройство) */
+/* МОДАЛЕН ПРОЗОРЕЦ ЗА ПАРОЛА */
 .pass-modal-overlay {
-  display: none;
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(9, 13, 22, 0.88);
-  z-index: 9999;
-  align-items: center;
-  justify-content: center;
-  padding: 15px;
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(7, 11, 20, 0.9); z-index: 9999;
+  align-items: center; justify-content: center; padding: 15px;
 }
 .pass-modal-box {
   background: linear-gradient(135deg, #131c2e, #1e1b4b);
-  border: 2px solid var(--gold);
-  border-radius: 16px;
-  padding: 22px;
-  max-width: 420px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 12px 35px rgba(0,0,0,0.8);
+  border: 2px solid var(--gold); border-radius: 16px;
+  padding: 22px; max-width: 430px; width: 100%;
+  text-align: center; box-shadow: 0 12px 35px rgba(0,0,0,0.85);
 }
-.pass-modal-box h3 { color: var(--gold); font-size: 1.1rem; margin-bottom: 8px; }
+.pass-modal-box h3 { color: var(--gold); font-size: 1.12rem; margin-bottom: 8px; }
 .pass-modal-box p { color: var(--text); font-size: 0.85rem; margin-bottom: 14px; }
 .pass-input-field {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: #090d16;
-  color: #fde047;
-  border: 2px solid var(--accent);
-  font-size: 1rem;
-  font-weight: 800;
-  text-align: center;
-  margin-bottom: 12px;
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  background: #090d16; color: #fde047; border: 2px solid var(--accent);
+  font-size: 1rem; font-weight: 800; text-align: center; margin-bottom: 12px;
 }
 
 .sync-alert-bar {
-  display: none;
-  background: linear-gradient(135deg, #451a03, #3b0764);
-  border: 2px solid var(--gold);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
-  color: #fde68a;
-  font-size: 0.83rem;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: none; background: linear-gradient(135deg, #451a03, #3b0764);
+  border: 2px solid var(--gold); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 10px; color: #fde68a;
+  font-size: 0.84rem; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
 }
 
+/* ПРОГРЕС И ГЛОБАЛЕН ФИЛТЪР */
 .prog-wrap {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 9px 14px;
-  margin-bottom: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 9px 14px; margin-bottom: 10px;
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: 10px;
 }
 .prog-bar-bg { flex: 1; min-width: 140px; height: 12px; background: #090d16; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
 .prog-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width 0.35s ease; }
 
+/* БУТОНИ И КОНТРОЛЕРИ */
 .voice-bar, .mini-player, .filter-bar { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .btn {
   border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer;
   font-weight: 800; font-size: 0.8rem; transition: 0.2s;
   display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
 }
+.btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .btn-speak { background: var(--gold); color: #000; }
 .btn-restart { background: #3b82f6; color: #fff; }
 .btn-stop { background: var(--red); color: #fff; }
 .btn-mask { background: var(--purple); color: #fff; }
-.btn-file { background: var(--green); color: #052e16; font-size: 0.84rem; padding: 9px 14px; }
-.btn-cloud { background: var(--accent); color: #090d16; font-size: 0.84rem; padding: 9px 14px; }
-.btn-arch { background: #1e293b; color: var(--text); border: 1px solid #475569; padding: 5px 10px; font-size: 0.75rem; }
+.btn-file { background: var(--green); color: #052e16; font-size: 0.83rem; padding: 8px 13px; }
+.btn-cloud { background: var(--accent); color: #090d16; font-size: 0.83rem; padding: 8px 13px; }
+.btn-arch { background: #1e293b; color: var(--text); border: 1px solid #475569; padding: 5px 10px; font-size: 0.76rem; }
 .btn-wiki { background: #2563eb; color: #fff; width: 100%; justify-content: center; margin-top: 6px; }
 .btn-unlock { background: var(--green); color: #052e16; width: 100%; justify-content: center; margin-top: 6px; display: none; }
 .speaking-glow { box-shadow: 0 0 18px var(--gold) !important; border-color: var(--gold) !important; }
 
-.tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 8px; margin-bottom: 12px; }
+/* ГЛАВНИ ТАБОВЕ */
+.tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .tab-btn {
   background: var(--card); color: var(--text); border: 1px solid var(--border);
   padding: 12px 10px; border-radius: 12px; cursor: pointer;
-  font-weight: 900; font-size: 0.85rem; text-align: center; transition: 0.2s;
+  font-weight: 900; font-size: 0.86rem; text-align: center; transition: 0.2s;
 }
 .tab-btn.active {
   background: var(--accent); color: #090d16; border-color: var(--accent);
@@ -140,44 +121,81 @@ header p { font-size: 0.8rem; color: var(--muted); }
 .tab-content, .subj-pane { display: none; }
 .tab-content.active, .subj-pane.active { display: block; }
 
-.smart-hero-bar {
-  background: linear-gradient(135deg, #064e3b, #0f172a);
-  border: 2px solid var(--green);
-  border-radius: 14px;
-  padding: 12px 15px;
+/* НОВ ШКОЛО РАДАР НА ДЕНЯ (ВЕДНАГА ОТГОВАРЯ НА "ИМАМ ЛИ УТРЕ ДОМАШНО И ПО КАКВО?") */
+.shkolo-day-radar {
+  background: linear-gradient(135deg, #0f172a, #172554);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 14px 16px;
   margin-bottom: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+}
+.radar-top-row {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: center; gap: 10px; padding-bottom: 10px;
+  border-bottom: 1px dashed #334155; margin-bottom: 12px;
 }
 .clock-badge {
   background: #090d16; border: 1px solid var(--gold); color: var(--gold);
-  padding: 5px 11px; border-radius: 9px; font-weight: 900; font-size: 0.84rem;
+  padding: 5px 12px; border-radius: 9px; font-weight: 900; font-size: 0.84rem;
 }
-.active-subj-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; width: 100%; }
-.subj-chip-jump {
-  background: #090d16; border: 1px solid var(--accent); color: var(--text);
-  padding: 5px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 800;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+.radar-status-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(265px, 1fr));
+  gap: 10px; margin-bottom: 10px;
 }
-.subj-chip-jump.urgent-chip { border-color: var(--red); background: rgba(239,68,68,0.18); color: #fecaca; }
+.radar-stat-box {
+  background: #090d16; border-radius: 12px; padding: 11px 13px;
+  border-left: 6px solid var(--border); display: flex; flex-direction: column; gap: 6px;
+}
+.radar-stat-box.rs-must { border-left-color: var(--shkolo-red); background: linear-gradient(90deg, rgba(220,38,38,0.16), #090d16); border: 1px solid rgba(239,68,68,0.45); border-left-width: 6px; }
+.radar-stat-box.rs-green { border-left-color: var(--shkolo-green); background: linear-gradient(90deg, rgba(22,163,74,0.16), #090d16); border: 1px solid rgba(34,197,94,0.45); border-left-width: 6px; }
+.radar-stat-box.rs-rev { border-left-color: var(--shkolo-blue); background: linear-gradient(90deg, rgba(2,132,199,0.16), #090d16); border: 1px solid rgba(56,189,248,0.4); border-left-width: 6px; }
+.radar-stat-head { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 0.86rem; }
+.radar-count-pill { padding: 2px 9px; border-radius: 12px; font-size: 0.8rem; font-weight: 900; }
+.radar-chips-list { display: flex; flex-wrap: wrap; gap: 5px; }
 
-.board-quick-nav {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+.subj-chip-jump {
+  background: #111927; border: 1px solid var(--accent); color: var(--text);
+  padding: 4px 9px; border-radius: 7px; font-size: 0.77rem; font-weight: 800;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: 0.15s;
+}
+.subj-chip-jump:hover { transform: scale(1.03); filter: brightness(1.15); }
+.subj-chip-jump.chip-must { border-color: #ef4444; background: rgba(220,38,38,0.22); color: #fecaca; }
+.subj-chip-jump.chip-green { border-color: #22c55e; background: rgba(22,163,74,0.22); color: #bbf7d0; }
+.subj-chip-jump.chip-rev { border-color: #38bdf8; background: rgba(2,132,199,0.18); color: #bae6fd; }
+
+/* ПОД-МЕНЮТА ЗА СЕКЦИИ И ЗА СТАТУС НА ДОМАШНИТЕ */
+.board-quick-nav, .hw-status-subnav {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
   background: #0c1322; padding: 8px; border-radius: 11px; border: 1px solid var(--border);
 }
-.q-nav-btn {
-  flex: 1; min-width: 130px; background: var(--card); color: var(--text);
-  border: 1px solid #475569; padding: 7px 10px; border-radius: 8px;
-  font-weight: 800; font-size: 0.77rem; cursor: pointer; text-align: center;
+.q-nav-btn, .hw-type-btn {
+  flex: 1; min-width: 135px; background: var(--card); color: var(--text);
+  border: 1px solid #475569; padding: 8px 10px; border-radius: 8px;
+  font-weight: 800; font-size: 0.78rem; cursor: pointer; text-align: center; transition: 0.2s;
 }
 .q-nav-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+.hw-type-btn.active-all { background: var(--accent); color: #090d16; border-color: var(--accent); }
+.hw-type-btn.active-must { background: var(--shkolo-red); color: #fff; border-color: #f87171; box-shadow: 0 0 12px rgba(239,68,68,0.4); }
+.hw-type-btn.active-green { background: var(--shkolo-green); color: #fff; border-color: #4ade80; box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+.hw-type-btn.active-rev { background: var(--shkolo-blue); color: #fff; border-color: #38bdf8; }
 
+body.hw-filter-must .hw-card-type-greenbook,
+body.hw-filter-must .hw-card-type-review { display: none !important; }
+body.hw-filter-greenbook .hw-card-type-must,
+body.hw-filter-greenbook .hw-card-type-review { display: none !important; }
+body.hw-filter-review .hw-card-type-must,
+body.hw-filter-review .hw-card-type-greenbook { display: none !important; }
+
+/* ЗОНИ НА ТАБЛОТО */
 .zone-box {
   background: var(--card); border: 1px solid var(--border);
   border-radius: 14px; padding: 14px; margin-bottom: 14px;
+}
+.zone-box.zone-must-urgent {
+  border: 2px solid #ef4444;
+  background: linear-gradient(180deg, rgba(127,29,29,0.22), var(--card));
+  box-shadow: 0 6px 24px rgba(239,68,68,0.18);
 }
 .zone-box.zone-focus { border: 2px solid var(--green); box-shadow: 0 6px 22px rgba(34,197,94,0.14); }
 .zone-box.zone-week { border-top: 4px solid var(--accent); }
@@ -185,73 +203,59 @@ header p { font-size: 0.8rem; color: var(--muted); }
 .zone-box.zone-past { border-top: 4px solid var(--gold); }
 
 .zone-title {
-  font-size: 1rem; font-weight: 900; color: var(--accent);
+  font-size: 0.98rem; font-weight: 900; color: var(--accent);
   margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--border);
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
 }
 
+/* КАРТИ ЗА ДОМАШНА РАБОТА И 5-СТЪПКОВИ КУТИЙКИ (УЕДНАКВЕНИ С ШКОЛО) */
 .hw-smart-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .hw-smart-card {
   background: #090d16; border: 1px solid #475569; border-left: 6px solid var(--green);
   border-radius: 12px; padding: 13px; transition: 0.2s;
 }
-.hw-smart-card.done-card { opacity: 0.82; border-left-color: var(--accent); }
-.hw-smart-card.overdue-card { border-left-color: var(--gold); }
+.hw-smart-card.hw-card-type-must { border-left: 7px solid #ef4444; border-color: rgba(239,68,68,0.5); }
+.hw-smart-card.hw-card-type-greenbook { border-left: 7px solid #22c55e; border-color: rgba(34,197,94,0.5); }
+.hw-smart-card.hw-card-type-review { border-left: 7px solid #38bdf8; border-color: rgba(56,189,248,0.4); }
+.hw-smart-card.done-card { opacity: 0.78; border-left-color: #64748b !important; }
 
-.hw-card-top {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  flex-wrap: wrap; gap: 8px; margin-bottom: 8px;
-}
-.hw-chk-wrap { display: flex; align-items: flex-start; gap: 9px; flex: 1; min-width: 230px; }
-.hw-chk-wrap input[type="checkbox"] { transform: scale(1.35); accent-color: var(--green); margin-top: 4px; cursor: pointer; }
+.hw-card-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+.hw-chk-wrap { display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 240px; }
+.hw-chk-wrap input[type="checkbox"] { transform: scale(1.4); accent-color: var(--green); margin-top: 5px; cursor: pointer; }
 
 .hw-meta-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; align-items: center; }
 .due-tag { font-size: 0.75rem; color: #fde047; background: #1e293b; border: 1px solid var(--gold); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
 .countdown-tag { font-size: 0.74rem; color: #86efac; background: rgba(34,197,94,0.16); border: 1px solid var(--green); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
 .exam-inline-alert { background: rgba(239,68,68,0.22); border: 1px solid var(--red); color: #fecaca; padding: 4px 9px; border-radius: 7px; font-size: 0.78rem; font-weight: 800; margin: 5px 0; display: inline-block; }
 
-.hw-work-drawer {
-  background: #111827; border: 1px dashed var(--accent);
-  border-radius: 10px; padding: 10px 12px; margin-top: 9px;
-}
-.hw-work-drawer summary {
-  cursor: pointer; font-weight: 900; color: var(--gold);
-  font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;
-}
-.hw-sol-body { margin-top: 9px; padding-top: 9px; border-top: 1px solid #1e293b; font-size: 0.86rem; }
-.mindmap-box {
-  background: #090d16; border-left: 4px solid var(--purple);
-  padding: 9px 11px; border-radius: 8px; margin-top: 8px; font-size: 0.83rem;
-}
+/* 5-ТЕ СТЪПКИ ВЪТРЕ В ДОМАШНОТО */
+.step-1-must { background: linear-gradient(90deg, rgba(220,38,38,0.32), rgba(15,23,42,0.95)); border-left: 5px solid #ef4444; color: #fecaca; font-weight: 900; padding: 6px 11px; border-radius: 7px; display: block; margin-bottom: 6px; font-size: 0.85rem; }
+.step-1-greenbook { background: linear-gradient(90deg, rgba(22,163,74,0.32), rgba(15,23,42,0.95)); border-left: 5px solid #22c55e; color: #bbf7d0; font-weight: 900; padding: 6px 11px; border-radius: 7px; display: block; margin-bottom: 6px; font-size: 0.85rem; }
+.step-1-none { background: linear-gradient(90deg, rgba(2,132,199,0.28), rgba(15,23,42,0.95)); border-left: 5px solid #38bdf8; color: #bae6fd; font-weight: 900; padding: 6px 11px; border-radius: 7px; display: block; margin-bottom: 6px; font-size: 0.85rem; }
+.step-2-cond { background: #172554; border: 1px solid #3b82f6; color: #eff6ff; padding: 8px 11px; border-radius: 8px; margin-top: 4px; display: block; font-size: 0.86rem; }
+.step-3-guide { background: #1e1b4b; border-left: 4px solid #a855f7; color: #e9d5ff; padding: 7px 11px; border-radius: 8px; margin-top: 6px; display: block; font-size: 0.83rem; }
+.step-4-copy { background: #052e16; border: 2px solid #22c55e; color: #f0fdf4; padding: 10px 12px; border-radius: 9px; margin-bottom: 8px; font-size: 0.86rem; }
+.step-5-deep { background: #090d16; border: 1px dashed #f59e0b; color: #fef08a; padding: 10px 12px; border-radius: 9px; margin-top: 6px; font-size: 0.84rem; }
 
+.hw-work-drawer { background: #111827; border: 1px dashed var(--accent); border-radius: 10px; padding: 10px 12px; margin-top: 9px; }
+.hw-work-drawer summary { cursor: pointer; font-weight: 900; color: var(--gold); font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+.hw-sol-body { margin-top: 9px; padding-top: 9px; border-top: 1px solid #1e293b; font-size: 0.86rem; }
+.mindmap-box { background: #090d16; border-left: 4px solid var(--purple); padding: 9px 11px; border-radius: 8px; margin-top: 8px; font-size: 0.83rem; }
+
+/* УНИВЕРСАЛНИ МРЕЖИ ЗА ГРАФИК, КОНТРОЛНИ, СЕЙФ И 3D КАРТИ */
 .uni-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: 11px; margin-top: 8px; }
-.uni-card {
-  background: #090d16; border: 1px solid var(--border);
-  border-top: 4px solid var(--accent); border-radius: 11px; padding: 12px; font-size: 0.84rem;
-}
+.uni-card { background: #090d16; border: 1px solid var(--border); border-top: 4px solid var(--accent); border-radius: 11px; padding: 12px; font-size: 0.84rem; }
 .uni-card.urgent-exam { border-top-color: var(--red); background: rgba(239,68,68,0.1); }
 .uni-card.klasna-exam { border-top-color: var(--gold); background: rgba(245,158,11,0.1); }
 .uni-card h4 { color: var(--gold); margin-bottom: 6px; font-size: 0.92rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
 
-.subj-nav {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
-  background: #0c1322; padding: 9px; border-radius: 12px; border: 1px solid var(--border);
-}
-.s-btn {
-  background: var(--card); color: var(--text); border: 1px solid #475569;
-  padding: 7px 11px; border-radius: 9px; cursor: pointer;
-  font-weight: 800; font-size: 0.79rem; display: inline-flex; align-items: center; gap: 5px;
-}
+.subj-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; background: #0c1322; padding: 9px; border-radius: 12px; border: 1px solid var(--border); }
+.s-btn { background: var(--card); color: var(--text); border: 1px solid #475569; padding: 7px 11px; border-radius: 9px; cursor: pointer; font-weight: 800; font-size: 0.79rem; display: inline-flex; align-items: center; gap: 5px; }
 .s-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
 .s-btn-pct { font-size: 0.68rem; padding: 1px 5px; border-radius: 5px; background: rgba(0,0,0,0.35); color: #86efac; }
 .s-btn.active .s-btn-pct { background: #090d16; color: var(--gold); }
 
-.subj-prog-banner {
-  background: #090d16; border: 1px solid var(--accent); border-radius: 11px;
-  padding: 10px 14px; margin-bottom: 12px; display: flex; flex-wrap: wrap;
-  justify-content: space-between; align-items: center; gap: 10px;
-}
-
+.subj-prog-banner { background: #090d16; border: 1px solid var(--accent); border-radius: 11px; padding: 10px 14px; margin-bottom: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
 .memo-vault { background: linear-gradient(135deg, #1c1917, #090d16); border: 2px solid var(--gold); border-radius: 13px; padding: 13px; margin: 11px 0; }
 .memo-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px dashed var(--gold); padding-bottom: 8px; margin-bottom: 10px; }
 .memo-grid, .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: 12px; margin: 10px 0; }
@@ -280,8 +284,29 @@ select.ans-select { width: 100%; padding: 9px; border-radius: 8px; background: #
 .feedback.err { display: block; background: rgba(239,68,68,0.2); border: 2px solid var(--red); color: #fca5a5; }
 .feedback.warn { display: block; background: rgba(245,158,11,0.2); border: 2px dashed var(--gold); color: #fde047; }
 
+/* ВГРАДЕНИ УЧЕБНИКАРСКИ ЕЛЕМЕНТИ (ПИРАМИДИ, ДРОБИ, ВАЛЕНТНОСТИ, ТОПО БУТОНИ) */
+.visual-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 10px 0; }
+.tri-card { background: #090d16; border: 2px solid #334155; border-radius: 12px; padding: 12px; text-align: center; }
+.tri-title { font-weight: 800; color: var(--gold); margin-bottom: 6px; font-size: 0.9rem; }
+.tri-box { width: 160px; margin: 0 auto 8px; border: 3px solid var(--accent); border-radius: 12px; overflow: hidden; background: #1e293b; }
+.tri-top { padding: 7px; font-size: 1.2rem; font-weight: 900; color: var(--gold); border-bottom: 3px solid var(--accent); background: #0f172a; }
+.tri-bot { display: flex; }
+.tri-bot div { flex: 1; padding: 7px; font-size: 1.1rem; font-weight: 900; color: var(--green); }
+.tri-bot div:first-child { border-right: 3px solid var(--accent); color: var(--accent); }
+.formula-pill { display: inline-flex; align-items: center; gap: 5px; background: #1e293b; border: 1px solid var(--accent); border-radius: 8px; padding: 4px 9px; margin: 3px; font-weight: 700; font-size: 0.92rem; }
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 0.9em; margin: 0 3px; line-height: 1.1; }
+.frac .top { border-bottom: 2px solid var(--text); padding: 0 4px; }
+.frac .bot { padding: 0 4px; }
+.math-expr { background: #0f172a; border: 1px solid #38bdf8; color: #fde047; padding: 2px 7px; border-radius: 6px; font-weight: 700; display: inline-block; margin: 2px 0; }
+ruby { ruby-align: center; font-weight: 800; font-size: 1.06em; margin: 0 2px; }
+rt { font-size: 0.7em; color: var(--gold); font-weight: 900; }
+.cross-box { display: inline-flex; flex-direction: column; align-items: center; background: #0f172a; border: 2px dashed var(--gold); padding: 8px 14px; border-radius: 10px; margin: 5px; font-weight: 700; }
+.topo-btn { display: inline-flex; align-items: center; gap: 4px; background: #0f172a; border: 1px solid #22c55e; color: #4ade80; border-radius: 7px; padding: 4px 9px; margin: 2px; font-size: 0.8rem; font-weight: 700; text-decoration: none; }
+.topo-btn:hover { background: #14532d; color: #ffffff; }
+.hw-alarm { display: inline-block; background: #451a03; border: 1px solid #f59e0b; color: #fde68a; border-radius: 6px; padding: 2px 6px; font-size: 0.78rem; font-weight: 800; margin-top: 3px; }
+
 .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.74rem; margin: 2px; }
-.b-red { background: var(--red); color: #fff; } .b-yellow { background: var(--gold); color: #000; } .b-green { background: var(--green); color: #000; } .b-blue { background: var(--accent); color: #000; } .b-purple { background: var(--purple); color: #fff; }
+.b-red { background: var(--shkolo-red); color: #fff; } .b-yellow { background: var(--gold); color: #000; } .b-green { background: var(--shkolo-green); color: #fff; } .b-blue { background: var(--shkolo-blue); color: #fff; } .b-purple { background: var(--purple); color: #fff; }
 .tier-badge-new { display: inline-flex; align-items: center; gap: 4px; background: rgba(34,197,94,0.18); color: #4ade80; border: 1px solid #22c55e; padding: 2px 7px; border-radius: 6px; font-size: 0.71rem; font-weight: 900; }
 .tier-badge-rev { display: inline-flex; align-items: center; gap: 4px; background: rgba(168,85,247,0.18); color: #d8b4fe; border: 1px solid #a855f7; padding: 2px 7px; border-radius: 6px; font-size: 0.71rem; font-weight: 900; }
 .filter-btn { background: #090d16; color: var(--muted); border: 1px solid #475569; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.76rem; }
@@ -297,7 +322,7 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 </head>
 <body>
 
-<!-- ПРОЗОРЕЦ ЗА ВЪВЕЖДАНЕ НА ПАРОЛА (Работи на 100% на iPhone, Android и PC) -->
+<!-- МОДАЛЕН ПРОЗОРЕЦ ЗА ПАРОЛА -->
 <div id="pass-modal" class="pass-modal-overlay no-read">
   <div class="pass-modal-box">
     <h3>🔑 Код за достъп до базата</h3>
@@ -312,8 +337,8 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 
 <header>
   <div>
-    <h1 id="header-title">🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.2)</h1>
-    <p id="header-subtitle">🎯 Умно Табло по Часове | 🧠 Учене + Мислене | ☁️ Защитен Облачен Синхрон</p>
+    <h1 id="header-title">🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.3 – ШКОЛО МАСТЕР)</h1>
+    <p id="header-subtitle">🎯 5-Стъпкови Домашни | 🚨 Явен Радар: Задължително ДР срещу Преговор | ☁️ Google Drive</p>
   </div>
   <div class="voice-bar">
     <span id="cloud-status-pill" class="sync-pill no-read" onclick="openPassModal()" title="Кликни за въвеждане/смяна на парола">🔑 Парола</span>
@@ -337,7 +362,7 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
     <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill"></div></div>
   </div>
   <div class="filter-bar no-read">
-    <span style="font-size:0.76rem; color:var(--muted); font-weight:700;">Филтър:</span>
+    <span style="font-size:0.76rem; color:var(--muted); font-weight:700;">Период:</span>
     <button class="filter-btn active-all" id="flt-all" onclick="setTierFilter('all')">📚 Всички</button>
     <button class="filter-btn" id="flt-new" onclick="setTierFilter('new')">🆕 Нови</button>
     <button class="filter-btn" id="flt-rev" onclick="setTierFilter('rev')">⏪ Преговор</button>
@@ -345,21 +370,54 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 </div>
 
 <div class="tabs">
-  <button class="tab-btn active" id="tab-btn-1" onclick="openTab('tab-1', this)">📱 1. ТАБЛО: ДОМАШНИ И ГРАФИК</button>
-  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">🧠 2. ПРЕДМЕТИ (УЧЕНЕ + МИСЛЕНЕ)</button>
-  <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">📥 3. ОБНОВИ ДАННИ</button>
+  <button class="tab-btn active" id="tab-btn-1" onclick="openTab('tab-1', this)">📱 1. ТАБЛО: РАДАР НА ДОМАШНИТЕ И ГРАФИК</button>
+  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">🧠 2. 15 ПРЕДМЕТА (СЕЙФ + 3D КАРТИ)</button>
+  <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">📥 3. ОБНОВИ ДАННИ (.JS / DRIVE)</button>
 </div>
 
+<!-- ТАБ 1: КОМАНДЕН РАДАР И ДОМАШНИ -->
 <div id="tab-1" class="tab-content active">
-  <div class="smart-hero-bar">
-    <div style="flex:1;">
-      <div style="font-size:0.98rem; font-weight:900; color:#4ade80;" id="smart-focus-headline">🎯 АКТИВЕН ФОКУС ПО ЧАСОВНИК: Зареждане...</div>
-      <div style="font-size:0.8rem; color:var(--text);" id="smart-focus-subline">Подредено автоматично по реда на предаване според учебната програма по часове.</div>
+  <!-- КОМАНДЕН РАДАР ЗА СЛЕДВАЩИЯ ДЕН (ОТГОВАРЯ ВЕДНАГА: ИМАМ ЛИ УТРЕ ДОМАШНО И ПО КАКВО?) -->
+  <div class="shkolo-day-radar" id="tomorrow-shkolo-radar">
+    <div class="radar-top-row">
+      <div>
+        <div style="font-size:1.03rem; font-weight:900; color:#4ade80;" id="smart-focus-headline">🎯 КОМАНДЕН РАДАР ЗА СЛЕДВАЩИЯ УЧЕБЕН ДЕН: Зареждане...</div>
+        <div style="font-size:0.8rem; color:var(--muted);" id="smart-focus-subline">Точно разграничение между задължителни писмени домашни от Школо, Зелени помагала (ИУЧ) и часове само на преговор.</div>
+      </div>
+      <div class="clock-badge no-read" id="live-sofia-clock">🕒 София: --:--</div>
     </div>
-    <div class="clock-badge no-read" id="live-sofia-clock">🕒 София: --:--</div>
-    <div class="active-subj-chips no-read" id="active-hw-chips"></div>
+
+    <div class="radar-status-grid no-read">
+      <div class="radar-stat-box rs-must">
+        <div class="radar-stat-head">
+          <span style="color:#fca5a5;">🔴 ЗАДЪЛЖИТЕЛНИ ДОМАШНИ / КР</span>
+          <span class="radar-count-pill b-red" id="count-must-pill">0</span>
+        </div>
+        <div style="font-size:0.75rem; color:#fecaca;">Изисква се писмена задача в тетрадката или тест:</div>
+        <div class="radar-chips-list" id="radar-chips-must"></div>
+      </div>
+
+      <div class="radar-stat-box rs-green">
+        <div class="radar-stat-head">
+          <span style="color:#86efac;">📗 ЗЕЛЕНИ ПОМАГАЛА (ИУЧ)</span>
+          <span class="radar-count-pill b-green" id="count-green-pill">0</span>
+        </div>
+        <div style="font-size:0.75rem; color:#bbf7d0;">Провери отбелязаните задачи в Зеленото помагало:</div>
+        <div class="radar-chips-list" id="radar-chips-green"></div>
+      </div>
+
+      <div class="radar-stat-box rs-rev">
+        <div class="radar-stat-head">
+          <span style="color:#7dd3fc;">🔵 НЯМА ДОМАШНО (САМО ПРЕГОВОР)</span>
+          <span class="radar-count-pill b-blue" id="count-rev-pill">0</span>
+        </div>
+        <div style="font-size:0.75rem; color:#bae6fd;">Няма писмено ДР в Школо – кара се на преговор:</div>
+        <div class="radar-chips-list" id="radar-chips-rev"></div>
+      </div>
+    </div>
   </div>
 
+  <!-- ПОД-МЕНЮ 1: ИЗБОР НА СЕКЦИЯ ОТ ТАБЛОТО -->
   <div class="board-quick-nav no-read">
     <button class="q-nav-btn active" onclick="filterBoardSection('all', this)">🌟 Всичко на един екран</button>
     <button class="q-nav-btn" onclick="filterBoardSection('sec-hw', this)">💼 Домашни по часове</button>
@@ -369,21 +427,41 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   </div>
 
   <div id="sec-hw" class="board-sec">
+    <!-- ПОД-МЕНЮ 2: ФИЛТЪР ПО ВИД ДОМАШНО (ЗАДЪЛЖИТЕЛНО / ЗЕЛЕНО ПОМАГАЛО / САМО ПРЕГОВОР) -->
+    <div class="hw-status-subnav no-read">
+      <button class="hw-type-btn active-all" id="hwt-all" onclick="setHwTypeFilter('all')">📋 Всички часове (Пълна картина)</button>
+      <button class="hw-type-btn" id="hwt-must" onclick="setHwTypeFilter('must')">🔴 САМО Задължителни ДР и КР (<span id="sub-cnt-must">0</span>)</button>
+      <button class="hw-type-btn" id="hwt-green" onclick="setHwTypeFilter('greenbook')">📗 САМО Зелени помагала ИУЧ (<span id="sub-cnt-green">0</span>)</button>
+      <button class="hw-type-btn" id="hwt-rev" onclick="setHwTypeFilter('review')">🔵 САМО Часове на преговор (<span id="sub-cnt-rev">0</span>)</button>
+    </div>
+
+    <!-- НОВА ЗОНА 0: ВСИЧКИ ЗАДЪЛЖИТЕЛНИ ПИСМЕНИ ДОМАШНИ И ЗЕЛЕНИ ПОМАГАЛА ЗА СЕДМИЦАТА НА ЕДНО МЯСТО -->
+    <div class="zone-box zone-must-urgent" id="zone-must-box">
+      <div class="zone-title">
+        <span id="zone-0-title" style="color:#fca5a5;">🚨 0. СПЕШЕН СПИСЪК: ЗАДЪЛЖИТЕЛНИ ПИСМЕНИ ДОМАШНИ И ЗЕЛЕНИ ПОМАГАЛА ЗА СЕДМИЦАТА</span>
+        <span id="pl-zone-must-box"></span>
+      </div>
+      <div class="hw-smart-grid" id="hw-zone-must"></div>
+    </div>
+
+    <!-- ЗОНА 1: СЛЕДВАЩ УЧЕБЕН ДЕН ПО РЕД НА ЧАСОВЕТЕ -->
     <div class="zone-box zone-focus" id="zone-focus-box">
       <div class="zone-title">
-        <span id="zone-1-title">🔥 1. ПРЕДСТОЯЩ УЧЕБЕН ДЕН / СЛЕДВАЩ ЧАС ЗА ПРЕДАВАНЕ</span>
+        <span id="zone-1-title">🔥 1. ПЪЛЕН ГРАФИК ЗА СЛЕДВАЩИЯ УЧЕБЕН ДЕН (ПО РЕД НА ЧАСОВЕТЕ)</span>
         <span id="pl-zone-focus-box"></span>
       </div>
       <div class="hw-smart-grid" id="hw-zone-focus"></div>
     </div>
 
+    <!-- ЗОНА 2: ДО КРАЯ НА СЕДМИЦАТА -->
     <div class="zone-box zone-week" id="zone-week-box">
       <div class="zone-title">
-        <span id="zone-2-title">📅 2. ПРЕДСТОЯЩИ ДО КРАЯ НА СЕДМИЦАТА</span>
+        <span id="zone-2-title">📅 2. ВСИЧКИ ЧАСОВЕ ДО КРАЯ НА СЕДМИЦАТА</span>
       </div>
       <div class="hw-smart-grid" id="hw-zone-week"></div>
     </div>
 
+    <!-- ЗОНА 3: СЛЕДВАЩА СЕДМИЦА -->
     <div class="zone-box zone-next" id="zone-next-box" style="display:none;">
       <div class="zone-title">
         <span id="zone-3-title">🚀 3. СЛЕДВАЩА СЕДМИЦА И ПО-НАТАТЪК</span>
@@ -391,10 +469,11 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
       <div class="hw-smart-grid" id="hw-zone-next"></div>
     </div>
 
+    <!-- ЗОНА 4: МИНАЛИ ДОМАШНИ -->
     <div class="zone-box zone-past" id="zone-past-box">
-      <details open>
+      <details>
         <summary style="cursor:pointer; font-weight:900; color:var(--gold); font-size:0.95rem;">
-          ✅ 4. МИНАЛИ ДОМАШНИ ПО ХРОНОЛОГИЯ (Провери дали са написани в тетрадката)
+          ✅ 4. АРХИВ НА МИНАЛИ ДОМАШНИ ПО ХРОНОЛОГИЯ (Кликни за преглед и проверка)
         </summary>
         <div class="hw-smart-grid" id="hw-zone-past" style="margin-top:10px;"></div>
       </details>
@@ -428,11 +507,13 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   </div>
 </div>
 
+<!-- ТАБ 2: 15 ПРЕДМЕТА -->
 <div id="tab-2" class="tab-content">
   <div class="subj-nav" id="subj-nav-btns"></div>
   <div id="subj-panes-wrap"></div>
 </div>
 
+<!-- ТАБ 3: ОБНОВЯВАНЕ НА ДАННИ -->
 <div id="tab-3" class="tab-content">
   <div class="zone-box" style="border-color:var(--green);">
     <div class="zone-title"><span>☁️ 1. ЗАЩИТЕНО ОБНОВЯВАНЕ ОТ GOOGLE DRIVE (С ПАРОЛА)</span></div>
@@ -465,17 +546,17 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
     <button class="btn btn-speak" onclick="applyCustomDataJS()">⚡ Добави и обедини код</button>
   </div>
 </div>
-<!-- КРАЙ НА ЧАСТ 1 ОТ 2 -->
-  <!-- НАЧАЛО НА ЧАСТ 2 ОТ 2 НА INDEX.HTML (ЯДРО 4.2 - ФИКС ЗА ЗАПАЗВАНЕ НА АКТИВЕН ПРЕДМЕТ И ТАБ) -->
+<!-- КРАЙ НА ЧАСТ 1 ОТ 3 -->
+<!-- НАЧАЛО НА ЧАСТ 2 ОТ 3 НА INDEX.HTML (ЯДРО 4.3 - КЛАСИФИКАТОР, ОБЕДИНИТЕЛ И 5-СТЪПКОВ ГЕНЕРАТОР) -->
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
 const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
 
 const DEFAULT_UI = {
-  pageTitle: "Супер-Органайзер (Ядро 4.2): Борис И. Банев (7Г)",
-  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.2): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
-  headerSubtitle: "🎯 Умно Табло по Часове | 🧠 Учене + Мислене | ☁️ Защитен Облачен Синхрон",
-  voiceGreeting: "Здравей, Борис! Най-отгоре на таблото са подредени предстоящите домашни по часове на предаване. Отвори решението и мисловната карта или премини към учене и мислене по предмети!",
+  pageTitle: "Супер-Органайзер (Ядро 4.3 – Школо Мастер): Борис И. Банев (7Г)",
+  headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.3 – ШКОЛО МАСТЕР): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
+  headerSubtitle: "🎯 5-Стъпкови Домашни | 🚨 Явен Радар: Задължително ДР срещу Преговор | ☁️ Google Drive",
+  voiceGreeting: "Здравей, Борис! Погледни Командния радар най-отгоре. В червено са задължителните писмени домашни и контролни от Школо, в зелено са Зелените помагала за избираемите часове, а в синьо са часовете без домашно, в които караш само на преговор!",
   speechLang: "bg-BG",
   speechIgnoreSelectors: ".no-read, .math-expr, .frac, .tri-box, .visual-anchor, ruby, select, button, a, input, textarea",
   vaultPrefix: "🔐 УЧЕНЕ НАИЗУСТ (ЗЛАТЕН СЕЙФ):",
@@ -490,7 +571,7 @@ const DEFAULT_UI = {
   algoStep2: "2. Какво знаем:",
   algoStep3: "3. Правило в действие:",
   btnPlayJoker: "▶️ Алгоритъм и Жокер",
-  cardLinkLabel: "🔗 Таен интерактивен ресурс",
+  cardLinkLabel: "🔗 Отвори задачата и решението в сайта",
   btnUnlockQuestion: "ОТКРИЙ ПРАКТИЧЕСКАТА ЗАДАЧА ❓",
   selectPlaceholder: "-- Избери отговор (Проверява се веднага!) --",
   btnBackToFront: "↩️ Назад към алгоритъма за мислене",
@@ -508,6 +589,7 @@ function ui(key, fallback) {
   return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fb;
 }
 
+// МОДАЛЕН ПРОЗОРЕЦ ЗА ПАРОЛА
 function openPassModal(customMsg) {
   const modal = document.getElementById('pass-modal');
   const msgEl = document.getElementById('pass-modal-msg');
@@ -529,10 +611,7 @@ function submitModalPassword() {
   const inp = document.getElementById('pass-modal-input');
   if (!inp) return;
   const val = inp.value.trim();
-  if (!val) {
-    alert('Моля, въведете паролата в полето!');
-    return;
-  }
+  if (!val) { alert('Моля, въведете паролата в полето!'); return; }
   localStorage.setItem(STORAGE_PREFIX + 'DRIVE_KEY', val);
   const tab3Pass = document.getElementById('tab3-pass-input');
   if (tab3Pass) tab3Pass.value = val;
@@ -570,6 +649,28 @@ function setTierFilter(mode) {
   if (mode === 'new') { document.body.classList.add('filter-mode-new'); document.getElementById('flt-new').classList.add('active-new'); }
   else if (mode === 'rev') { document.body.classList.add('filter-mode-rev'); document.getElementById('flt-rev').classList.add('active-rev'); }
   else { document.getElementById('flt-all').classList.add('active-all'); }
+}
+
+// ПОД-МЕНЮ ЗА ФИЛТРИРАНЕ ПО ТИП ДОМАШНО (ЗАДЪЛЖИТЕЛНО / ЗЕЛЕНО ПОМАГАЛО / САМО ПРЕГОВОР)
+function setHwTypeFilter(type) {
+  document.body.classList.remove('hw-filter-must', 'hw-filter-greenbook', 'hw-filter-review');
+  document.getElementById('hwt-all').className = 'hw-type-btn';
+  document.getElementById('hwt-must').className = 'hw-type-btn';
+  document.getElementById('hwt-green').className = 'hw-type-btn';
+  document.getElementById('hwt-rev').className = 'hw-type-btn';
+
+  if (type === 'must') {
+    document.body.classList.add('hw-filter-must');
+    document.getElementById('hwt-must').classList.add('active-must');
+  } else if (type === 'greenbook') {
+    document.body.classList.add('hw-filter-greenbook');
+    document.getElementById('hwt-green').classList.add('active-green');
+  } else if (type === 'review') {
+    document.body.classList.add('hw-filter-review');
+    document.getElementById('hwt-rev').classList.add('active-rev');
+  } else {
+    document.getElementById('hwt-all').classList.add('active-all');
+  }
 }
 
 function filterBoardSection(secId, btn) {
@@ -620,17 +721,17 @@ function guessSubjectKeyFromText(badgeOrTitle, subjects) {
     { k: 'math', w: ['математика', 'геометрия', 'алгебра'] },
     { k: 'maat', w: ['маат', 'филип'] },
     { k: 'beel', w: ['беел', 'петрова'] },
-    { k: 'lit', w: ['литература', 'ботев', 'чинтулов', 'прощаване'] },
-    { k: 'bg', w: ['български', 'бел', 'медиен'] },
+    { k: 'lit', w: ['литература', 'ботев', 'чинтулов', 'прощаване', 'регалия'] },
+    { k: 'bg', w: ['български', 'бел', 'медиен', 'художествен'] },
     { k: 'geo', w: ['география', 'контурна', 'opentopomap'] },
     { k: 'phy', w: ['физика', 'ом', 'напрежение', 'ток'] },
     { k: 'chm', w: ['химия', 'валентност', 'молекул'] },
-    { k: 'bio', w: ['биология', 'монера', 'протиста'] },
-    { k: 'eng', w: ['английски', 'unit', 'english'] },
-    { k: 'his', w: ['история', 'възраждане', 'паисий', 'будители'] },
+    { k: 'bio', w: ['биология', 'монера', 'протиста', 'еукариот'] },
+    { k: 'eng', w: ['английски', 'unit', 'english', 'test № 1'] },
+    { k: 'his', w: ['история', 'възраждане', 'паисий', 'будители', 'алафранга'] },
     { k: 'mus', w: ['музика', 'диез', 'бемол', 'канон'] },
     { k: 'it', w: ['кмит', 'компютър', 'информационни'] },
-    { k: 'art', w: ['изобразително', 'ии', 'технологии', 'фвс', 'час на класа', 'скицник'] },
+    { k: 'art', w: ['изобразително', 'ии', 'технологии', 'фвс', 'час на класа', 'скицник', 'импресионизъм'] },
     { k: 'box', w: ['бокс', 'денисов', 'кико'] }
   ];
   for (const item of map) {
@@ -648,15 +749,49 @@ function makeMasteryStorageKey(subjId, vaultTitle, fallbackIdx) {
   return `${STORAGE_PREFIX}mast_${subjId}_${cleanTitle}`;
 }
 
+// УМЕН КЛАСИФИКАТОР НА ДОМАШНОТО В 3 КАТЕГОРИИ: 'must' (Задължително ДР / КР), 'greenbook' (Зелено помагало ИУЧ), 'review' (Няма ДР - само преговор)
+function classifyHomeworkType(h) {
+  if (h.hwType === 'must' || h.hwType === 'greenbook' || h.hwType === 'review') return h.hwType;
+  const combined = `${valOr(h.id, '')}${valOr(h.badge, '')} ${valOr(h.title, '')}${valOr(h.text, '')}`.toLowerCase();
+
+  if (
+    combined.includes('зелено помагало') ||
+    combined.includes('зеленото помагало') ||
+    combined.includes('регалия 6') ||
+    combined.includes('step-1-greenbook') ||
+    String(h.id).includes('iuch')
+  ) {
+    return 'greenbook';
+  }
+  if (
+    combined.includes('няма домашно') ||
+    combined.includes('няма писмено домашно') ||
+    combined.includes('няма записано домашно') ||
+    combined.includes('няма ново домашно') ||
+    combined.includes('няма ново в школо') ||
+    combined.includes('само преговор') ||
+    combined.includes('step-1-none')
+  ) {
+    return 'review';
+  }
+  if (
+    combined.includes('задължително') ||
+    combined.includes('контролна работа') ||
+    combined.includes('опитайте вкъщи') ||
+    combined.includes('учебна тетрадка') ||
+    combined.includes('тест с. 44') ||
+    combined.includes('скицник') ||
+    combined.includes('step-1-must') ||
+    h.badgeClass === 'b-red'
+  ) {
+    return 'must';
+  }
+  return 'review';
+}
+
 function isValidAppDataPart(obj) {
   if (!obj || typeof obj !== 'object') return false;
-  if (Array.isArray(obj.subjects)) return true;
-  if (Array.isArray(obj.homework)) return true;
-  if (Array.isArray(obj.exams)) return true;
-  if (Array.isArray(obj.topics)) return true;
-  if (Array.isArray(obj.schedule)) return true;
-  if (Array.isArray(obj.cards)) return true;
-  if (Array.isArray(obj.disableIds)) return true;
+  if (Array.isArray(obj.subjects) || Array.isArray(obj.homework) || Array.isArray(obj.exams) || Array.isArray(obj.topics) || Array.isArray(obj.schedule) || Array.isArray(obj.cards) || Array.isArray(obj.disableIds)) return true;
   return Boolean(obj.ui);
 }
 
@@ -683,7 +818,7 @@ function autoCloseTruncatedJS(rawCode) {
   let suffix = '';
   if (inSingle) suffix += "'";
   if (inDouble) suffix += '"';
-  if (inBacktick) suffix += '`';
+  if (inBacktick) suffix += ' `';
   while (stack.length) suffix += stack.pop();
   return rawCode + suffix + ';';
 }
@@ -719,9 +854,7 @@ function buildMultiFileMergedAppData(entriesList) {
   const valid = [];
 
   entriesList.forEach(item => {
-    if (!item) return;
-    if (item.name && item.name.startsWith('_')) return;
-    if (disabledFiles[item.name]) return;
+    if (!item || (item.name && item.name.startsWith('_')) || disabledFiles[item.name]) return;
     try {
       let parsed = item.parsed, repaired = Boolean(item.repaired);
       if (!parsed && item.code) {
@@ -787,9 +920,7 @@ function buildMultiFileMergedAppData(entriesList) {
       const normId = normalizeSubjKey(s);
       if (disabledIds.has(normId)) return;
       const normName = s.shortName ? String(s.shortName).trim().toLowerCase() : normId;
-      let mapKey = aliasToKey.get(normId);
-      if (!mapKey) mapKey = aliasToKey.get(normName);
-      if (!mapKey) mapKey = normId;
+      let mapKey = aliasToKey.get(normId) || aliasToKey.get(normName) || normId;
       aliasToKey.set(normId, mapKey);
       if (s.shortName) aliasToKey.set(normName, mapKey);
 
@@ -822,20 +953,14 @@ function buildMultiFileMergedAppData(entriesList) {
 
         const newVaultItems = [];
         (s.vault ? s.vault : []).forEach(vItem => {
-          if (vItem.disabled) return;
-          if (vItem.id && disabledIds.has(vItem.id)) return;
+          if (vItem.disabled || (vItem.id && disabledIds.has(vItem.id))) return;
           const tKey = String(valOr(vItem.title, '')).trim().toLowerCase();
           const existIdx = existing.vault.findIndex(x => String(valOr(x.title, '')).trim().toLowerCase() === tKey);
           const enriched = Object.assign({}, vItem, { _isLatest: isLatest, _sourceDate: v.generatedAt });
-          if (existIdx >= 0) {
-            existing.vault[existIdx] = Object.assign({}, existing.vault[existIdx], enriched);
-          } else {
-            newVaultItems.push(enriched);
-          }
+          if (existIdx >= 0) existing.vault[existIdx] = Object.assign({}, existing.vault[existIdx], enriched);
+          else newVaultItems.push(enriched);
         });
-        if (newVaultItems.length > 0) {
-          existing.vault = [...newVaultItems, ...existing.vault];
-        }
+        if (newVaultItems.length > 0) existing.vault = [...newVaultItems, ...existing.vault];
 
         if (s.homeworkHTML && !existing.homeworkBlocks.some(b => b.html === s.homeworkHTML)) {
           existing.homeworkBlocks.unshift({ html: s.homeworkHTML, _isLatest: isLatest, _sourceDate: v.generatedAt });
@@ -854,27 +979,15 @@ function buildMultiFileMergedAppData(entriesList) {
   valid.forEach(v => {
     (v.data.homework ? v.data.homework : []).forEach(h => {
       const key = valOr(h.id, h.title + '_' + h.dueDate);
-      if (h.disabled || disabledIds.has(key)) {
-        hwMap.delete(key);
-        return;
-      }
+      if (h.disabled || disabledIds.has(key)) { hwMap.delete(key); return; }
       const subjId = valOr(h.subjId, guessSubjectKeyFromText(valOr(h.badge, '') + ' ' + valOr(h.title, ''), allSubjects));
-      if (!hwMap.has(key)) {
-        hwMap.set(key, Object.assign({}, h, {
-          id: key,
-          subjId: subjId,
-          _isLatest: v.isLatest && !h.archived,
-          _sourceDate: v.generatedAt
-        }));
-      } else {
-        const prev = hwMap.get(key);
-        hwMap.set(key, Object.assign({}, prev, h, {
-          id: key,
-          subjId: valOr(subjId, prev.subjId),
-          _isLatest: v.isLatest && !h.archived,
-          _sourceDate: v.generatedAt
-        }));
-      }
+      const prev = hwMap.has(key) ? hwMap.get(key) : {};
+      hwMap.set(key, Object.assign({}, prev, h, {
+        id: key,
+        subjId: valOr(subjId, prev.subjId),
+        _isLatest: v.isLatest && !h.archived,
+        _sourceDate: v.generatedAt
+      }));
     });
   });
 
@@ -902,10 +1015,7 @@ function buildMultiFileMergedAppData(entriesList) {
   valid.forEach(v => {
     (v.data.cards ? v.data.cards : []).forEach(c => {
       const uniqueKey = valOr(c.patchId, `${shortDateLabel(v.generatedAt)}_${c.id}_${String(valOr(c.title, '')).trim()}`);
-      if (c.disabled || disabledIds.has(String(c.id)) || disabledIds.has(uniqueKey)) {
-        cardMap.delete(uniqueKey);
-        return;
-      }
+      if (c.disabled || disabledIds.has(String(c.id)) || disabledIds.has(uniqueKey)) { cardMap.delete(uniqueKey); return; }
       const cSubjId = valOr(c.subjId, guessSubjectKeyFromText(valOr(c.subj, c.title), allSubjects));
       const prev = cardMap.has(uniqueKey) ? cardMap.get(uniqueKey) : {};
       cardMap.set(uniqueKey, Object.assign({}, prev, c, {
@@ -968,12 +1078,17 @@ function formatTimeRemaining(dueMs, nowMs) {
   if (hrs > 0) return `След ${hrs} ч. и ${mins % 60} мин.`;
   return `След ${mins} мин.!`;
 }
-
-function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPastZone) {
+  
+<!-- КРАЙ НА ЧАСТ 2 ОТ 3 -->
+<!-- НАЧАЛО НА ЧАСТ 3 ОТ 3 НА INDEX.HTML (ЯДРО 4.3 - 5-СТЪПКОВ РЕНДЕРЕР, РАДАР, ТАБ 2, ГЛАС И DRIVE) -->
+function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPastZone, domPrefix) {
+  const pref = domPrefix ? domPrefix + '_' : '';
   const savedChk = localStorage.getItem(STORAGE_PREFIX + 'chk_' + h.chkId);
   const isChk = savedChk !== null ? (savedChk === '1') : Boolean(h.checked);
   const dueMs = parseBgDateString(h.dueDate, true);
   const tierCls = h._isLatest ? 'item-tier-new' : 'item-tier-rev';
+  const hwType = classifyHomeworkType(h);
+  const typeClass = `hw-card-type-${hwType}`;
 
   const fallbackSol = (subjObj && subjObj.homeworkBlocks && subjObj.homeworkBlocks[0]) ? subjObj.homeworkBlocks[0].html : '';
   const solHTML = valOr(h.solutionHTML, fallbackSol);
@@ -998,34 +1113,82 @@ function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPa
 
   let resLabel = valOr(h.resourceLabel, '');
   if (!resLabel && firstCard) resLabel = valOr(firstCard.linkLabel, '');
-  if (!resLabel) resLabel = '🔗 Отвори интерактивен ресурс по темата';
+  if (!resLabel) resLabel = '🔗 Отвори задачата и интерактивния ресурс';
 
   const countdownBadge = (!isPastZone && dueMs)
     ? `<span class="countdown-tag no-read">⏳ ${formatTimeRemaining(dueMs, nowMs)}</span>`
     : `<span class="badge ${isChk ? 'b-green' : 'b-yellow'} no-read">${isChk ? '✅ Написано в тетрадката' : '⚠️ Провери дали е написано!'}</span>`;
 
+  let statusPillTop = '';
+  if (hwType === 'must') {
+    statusPillTop = `<span class="badge b-red no-read">🔴 ЗАДЪЛЖИТЕЛНО ДР / КР</span>`;
+  } else if (hwType === 'greenbook') {
+    statusPillTop = `<span class="badge b-green no-read">📗 ЗЕЛЕНО ПОМАГАЛО (ИУЧ)</span>`;
+  } else {
+    statusPillTop = `<span class="badge b-blue no-read">🔵 НЯМА ДР (САМО ПРЕГОВОР)</span>`;
+  }
+
   const examBanner = relatedExam
-    ? `<div class="exam-inline-alert no-read">🚨 КОНТРОЛНА РАБОТА: ${relatedExam.date} — ${relatedExam.topic}</div>`
+    ? `<div class="exam-inline-alert no-read">🚨 ПРЕДСТОЯЩА КОНТРОЛНА РАБОТА: ${relatedExam.date} — ${relatedExam.topic}</div>`
     : '';
 
   const jumpBtn = subjObj
-    ? `<button class="btn btn-arch no-read" onclick="jumpToSubject('${subjObj.id}')">🧠 Отвори Учене + Мислене (${subjObj.shortName})</button>`
+    ? `<button class="btn btn-arch no-read" onclick="jumpToSubject('${subjObj.id}')">🧠 Отвори Предмета (${subjObj.shortName})</button>`
+    : '';
+
+  // АВТОМАТИЧНО ОФОРМЯНЕ НА СТЪПКИ 1, 2 И 3 (Дори ако в .js файла не са сложени новите класове)
+  const hasNewStepsInText = String(valOr(h.text, '')).includes('step-1-');
+  let topBodyHTML = '';
+  if (hasNewStepsInText) {
+    topBodyHTML = `<div style="margin-top:4px;"><b>${h.title}</b><div style="margin-top:4px;">${h.text}</div></div>`;
+  } else {
+    let autoStep1 = '';
+    if (hwType === 'must') {
+      autoStep1 = `<span class="step-1-must">🔴 1. СТАТУС: ЗАДЪЛЖИТЕЛНО ДОМАШНО / КОНТРОЛНА РАБОТА (${valOr(h.dueDate, 'По график')})</span>`;
+    } else if (hwType === 'greenbook') {
+      autoStep1 = `<span class="step-1-greenbook">📗 1. СТАТУС: РАБОТА ПО ЗЕЛЕНОТО ПОМАГАЛО ИУЧ (${valOr(h.dueDate, 'По график')})</span>`;
+    } else {
+      autoStep1 = `<span class="step-1-none">🔵 1. СТАТУС: НЯМА ЗАПИСАНО ПИСМЕНО ДОМАШНО В ШКОЛО (Кара се на преговор!)</span>`;
+    }
+    const shortGuide = firstCard && firstCard.algo
+      ? `🎯 ${firstCard.algo.type} ➔ ⚙️ ${firstCard.algo.rule}`
+      : `Прегледай условието в Стъпка 2 и решението за тетрадката в Стъпка 4 по-долу.`;
+
+    topBodyHTML = `
+      <div style="margin-top:4px;">
+        ${autoStep1}
+        <span class="step-2-cond">📋 <b>2. САМОТО УСЛОВИЕ (${h.title}):</b> ${h.text}</span>
+        <span class="step-3-guide">🧭 <b>3. НАСОЧВАЩА МИСЛОВНА КАРТА:</b> ${shortGuide}</span>
+      </div>
+    `;
+  }
+
+  // АВТОМАТИЧНО ОФОРМЯНЕ НА СТЪПКА 4 (Кратко за преписване) И СТЪПКА 5 (Подробно обяснение с емотикони)
+  const hasStep4Class = String(solHTML).includes('step-4-copy');
+  const step4Formatted = hasStep4Class
+    ? solHTML
+    : `<div class="step-4-copy"><b>✍️ 4. КРАТКО ЗА ПРЕПИСВАНЕ В ТЕТРАДКАТА:</b><br>${valOr(solHTML, 'Виж условието в Стъпка 2 и приложи алгоритъма от Стъпка 5.')}</div>`;
+
+  const hasStep5Class = String(mindMapContent).includes('step-5-deep');
+  const step5Formatted = mindMapContent
+    ? (hasStep5Class ? mindMapContent : `<div class="step-5-deep"><b>🧠 5. ПО-ДЪЛГО ОБЯСНЕНИЕ С ЕМОТИКОНИ (Мисловна карта как стигнахме до решението):</b><br>${mindMapContent}</div>`)
     : '';
 
   const hasDrawer = Boolean(solHTML) || Boolean(mindMapContent) || Boolean(visualsHTML);
+  const solDomId = `sol-${pref}${h.id}`;
   const drawerHTML = hasDrawer ? `
     <details class="hw-work-drawer" ${!isPastZone && !isChk ? 'open' : ''}>
       <summary>
-        <span>💡 РЕШЕНИЕ ЗА ТЕТРАДКАТА + МИСЛОВНА КАРТА И ВИЗУАЛИЗАЦИЯ</span>
+        <span>✍️ СТЪПКА 4 (КРАТКО ЗА ПРЕПИСВАНЕ В ТЕТРАДКАТА) + 🧠 СТЪПКА 5 (ПОДРОБНА МИСЛОВНА КАРТА)</span>
         <span class="no-read" style="font-size:0.75rem; color:var(--accent);">[Разгъни / Свий]</span>
       </summary>
-      <div class="hw-sol-body" id="sol-${h.id}">
+      <div class="hw-sol-body" id="${solDomId}">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-          <b style="color:var(--green);">✍️ Пълно решение и насоки:</b>
-          ${playerHTML('sol-' + h.id, '▶️ Чуй решението')}
+          <b style="color:var(--green);">📖 Готово решение и обяснение стъпка по стъпка:</b>
+          ${playerHTML(solDomId, '▶️ Чуй решението')}
         </div>
-        <div>${valOr(solHTML, 'Виж заданието горе и приложи алгоритъма от мисловната карта.')}</div>
-        ${mindMapContent ? `<div class="mindmap-box"><b>🧭 Мисловна карта и правило:</b><br>${mindMapContent}</div>` : ''}
+        ${step4Formatted}
+        ${step5Formatted}
         ${visualsHTML ? `<div style="margin-top:8px;">${visualsHTML}</div>` : ''}
         <div class="voice-bar no-read" style="margin-top:8px;">
           ${resLink ? `<a class="btn btn-file" href="${resLink}" target="_blank">${resLabel}</a>` : ''}
@@ -1034,18 +1197,19 @@ function renderSmartHomeworkCard(h, subjObj, subjCards, relatedExam, nowMs, isPa
       </div>
     </details>` : `<div class="voice-bar no-read" style="margin-top:6px;">${jumpBtn}</div>`;
 
-  return `<div class="hw-smart-card ${tierCls} ${isChk ? 'done-card' : ''} ${isPastZone && !isChk ? 'overdue-card' : ''}" id="card-${h.id}">
+  return `<div class="hw-smart-card ${typeClass} ${tierCls} ${isChk ? 'done-card' : ''}" id="card-${pref}${h.id}">
     <div class="hw-card-top">
       <div class="hw-chk-wrap">
-        <input type="checkbox" id="${h.chkId}" ${isChk ? 'checked' : ''} onchange="saveChk(this)">
+        <input type="checkbox" id="${pref}${h.chkId}" data-real-chk="${h.chkId}" ${isChk ? 'checked' : ''} onchange="saveChk(this)">
         <div style="flex:1;">
           <div class="hw-meta-pills">
+            ${statusPillTop}
             ${tierBadgeHTML(h._isLatest, h._sourceDate)}
             <span class="badge ${valOr(h.badgeClass, 'b-blue')} no-read">${valOr(h.badge, 'Предмет')}</span>
-            ${h.dueDate ? `<span class="due-tag no-read">🕒 Предаване: ${h.dueDate}</span>` : ''}
+            ${h.dueDate ? `<span class="due-tag no-read">🕒 Срок/Час: ${h.dueDate}</span>` : ''}
             ${countdownBadge}
           </div>
-          <label for="${h.chkId}" style="cursor:pointer; font-size:0.9rem;"><b>${h.title}:</b> ${h.text}</label>
+          <label for="${pref}${h.chkId}" style="cursor:pointer;">${topBodyHTML}</label>
           ${examBanner}
         </div>
       </div>
@@ -1089,8 +1253,8 @@ function initApp(data) {
     st.innerHTML = data.extraCSS;
   }
 
-  document.title = ui('pageTitle', 'Супер-Органайзер Ядро 4.2');
-  document.getElementById('header-title').innerHTML = ui('headerTitle', '🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.2)');
+  document.title = ui('pageTitle', 'Супер-Органайзер Ядро 4.3');
+  document.getElementById('header-title').innerHTML = ui('headerTitle', '🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.3 – ШКОЛО МАСТЕР)');
 
   const nowMs = Date.now();
   const nowObj = new Date(nowMs);
@@ -1134,37 +1298,80 @@ function initApp(data) {
     pastHw.filter(h => shortDateLabel(h.dueDate) === latestPastDay).forEach(h => zone1.push(h));
   }
 
+  // ПОПЪЛВАНЕ НА КОМАНДНИЯ РАДАР ЗА СЛЕДВАЩИЯ ДЕН (3 КАТЕГОРИИ) И БУТОНИТЕ-ФИЛТРИ
+  const allActiveWeek = [...zone1, ...zone2];
+  const weekMustList = allActiveWeek.filter(h => classifyHomeworkType(h) === 'must');
+  const weekGreenList = allActiveWeek.filter(h => classifyHomeworkType(h) === 'greenbook');
+  const weekRevList = allActiveWeek.filter(h => classifyHomeworkType(h) === 'review');
+
+  document.getElementById('sub-cnt-must').innerText = weekMustList.length;
+  document.getElementById('sub-cnt-green').innerText = weekGreenList.length;
+  document.getElementById('sub-cnt-rev').innerText = weekRevList.length;
+
+  const dayMust = zone1.filter(h => classifyHomeworkType(h) === 'must');
+  const dayGreen = zone1.filter(h => classifyHomeworkType(h) === 'greenbook');
+  const dayRev = zone1.filter(h => classifyHomeworkType(h) === 'review');
+
+  document.getElementById('count-must-pill').innerText = `${dayMust.length} за ${focusDayStr || 'деня'} (${weekMustList.length} за седм.)`;
+  document.getElementById('count-green-pill').innerText = `${dayGreen.length} за ${focusDayStr || 'деня'} (${weekGreenList.length} за седм.)`;
+  document.getElementById('count-rev-pill').innerText = `${dayRev.length} за ${focusDayStr || 'деня'}`;
+
+  const makeRadarChip = (h, cls) => {
+    const sObj = (data.subjects ? data.subjects : []).find(s => s.id === h.subjId);
+    const lbl = sObj ? `${valOr(sObj.icon, '📘')} ${sObj.shortName}` : valOr(h.badge, 'Предмет');
+    const dShort = shortDateLabel(h.dueDate).slice(0, 5);
+    const tPart = valOr(valOr(h.dueDate, '').split(' ')[1], '');
+    return `<span class="subj-chip-jump ${cls}" onclick="document.getElementById('card-${h.id}')?.scrollIntoView({behavior:'smooth'})">
+      ${lbl} (${dShort}${tPart ? ' ' + tPart : ''})
+    </span>`;
+  };
+
+  document.getElementById('radar-chips-must').innerHTML = weekMustList.length
+    ? weekMustList.map(h => makeRadarChip(h, 'chip-must')).join('')
+    : `<span style="font-size:0.78rem; color:#86efac; font-weight:800;">🎉 Няма задължително писмено ДР!</span>`;
+
+  document.getElementById('radar-chips-green').innerHTML = weekGreenList.length
+    ? weekGreenList.map(h => makeRadarChip(h, 'chip-green')).join('')
+    : `<span style="font-size:0.78rem; color:var(--muted);">Няма часове по Зелено помагало.</span>`;
+
+  document.getElementById('radar-chips-rev').innerHTML = dayRev.length
+    ? dayRev.map(h => makeRadarChip(h, 'chip-rev')).join('')
+    : `<span style="font-size:0.78rem; color:var(--muted);">Всички часове имат задачи.</span>`;
+
   document.getElementById('smart-focus-headline').innerHTML = focusDayStr
-    ? `🎯 ПРЕДСТОЯЩ ДЕН ЗА ПРЕДАВАНЕ: ${focusDayStr} (${zone1.length} домашни по часове)`
-    : `🎯 ВСИЧКИ ЗАРЕДЕНИ ДОМАШНИ СА ПРЕГЛЕДАНИ (${pastHw.length} в архива)`;
+    ? `🎯 КОМАНДЕН РАДАР ЗА ${focusDayStr}: 🔴 ${dayMust.length} Задължителни ДР | 📗 ${dayGreen.length} Зелено помагало | 🔵 ${dayRev.length} Само на преговор`
+    : `🎯 ВСИЧКИ ЗАДАЧИ СА ПРЕГЛЕДАНИ (${pastHw.length} в архива)`;
 
   document.getElementById('zone-1-title').innerHTML = focusDayStr
-    ? `🔥 1. АКТИВНИ ЗА ПРЕДАВАНЕ НА ${focusDayStr} (ПО РЕД НА ЧАСОВЕТЕ)`
+    ? `🔥 1. ПЪЛЕН ГРАФИК ЗА ${focusDayStr} ПО ЧАСОВЕ (${zone1.length} предмета)`
     : `🔥 1. ПОСЛЕДНИ АКТИВНИ ДОМАШНИ`;
 
-  document.getElementById('active-hw-chips').innerHTML = zone1.map(h => {
-    const sObj = (data.subjects ? data.subjects : []).find(s => s.id === h.subjId);
-    const lbl = sObj ? `${valOr(sObj.icon, '📘')} ${sObj.shortName}` : h.badge;
-    const timePart = valOr(valOr(h.dueDate, '').split(' ')[1], '');
-    return `<span class="subj-chip-jump ${h.badgeClass === 'b-red' ? 'urgent-chip' : ''}" onclick="document.getElementById('card-${h.id}')?.scrollIntoView({behavior:'smooth'})">
-      ${lbl} ${timePart ? `(${timePart} ч.)` : ''}
-    </span>`;
-  }).join('');
-
-  const mapHwList = (list, isPast) => list.map(h => {
+  const mapHwList = (list, isPast, prefix) => list.map(h => {
     const sObj = (data.subjects ? data.subjects : []).find(s => s.id === h.subjId);
     const sCards = sObj ? getCardsForSubject(sObj, data.cards) : [];
     const relExam = (data.exams ? data.exams : []).find(e => !e.archived && sObj && String(valOr(e.subj, '')).toLowerCase().includes(sObj.shortName.toLowerCase()));
-    return renderSmartHomeworkCard(h, sObj, sCards, relExam, nowMs, isPast);
+    return renderSmartHomeworkCard(h, sObj, sCards, relExam, nowMs, isPast, prefix);
   }).join('');
 
+  // ПОПЪЛВАНЕ НА СПЕШНАТА ЗОНА 0 (ВСИЧКИ ЗАДЪЛЖИТЕЛНИ ДР И ЗЕЛЕНИ ПОМАГАЛА ЗА СЕДМИЦАТА)
+  const urgentMustAndGreen = [...weekMustList, ...weekGreenList];
+  const zoneMustBox = document.getElementById('zone-must-box');
+  if (urgentMustAndGreen.length > 0) {
+    zoneMustBox.style.display = 'block';
+    document.getElementById('zone-0-title').innerHTML = `🚨 0. СПЕШЕН СПИСЪК: САМО ЗАДЪЛЖИТЕЛНИТЕ ДОМАШНИ (${weekMustList.length}) И ЗЕЛЕНИТЕ ПОМАГАЛА (${weekGreenList.length}) ЗА СЕДМИЦАТА`;
+    document.getElementById('pl-zone-must-box').innerHTML = playerHTML('zone-must-box', '▶️ Слушай задължителните');
+    document.getElementById('hw-zone-must').innerHTML = mapHwList(urgentMustAndGreen, false, 'z0');
+  } else {
+    zoneMustBox.style.display = 'none';
+  }
+
   document.getElementById('pl-zone-focus-box').innerHTML = playerHTML('zone-focus-box', '▶️ Слушай');
-  document.getElementById('hw-zone-focus').innerHTML = valOr(mapHwList(zone1, false), `<p style="color:var(--muted);">Няма предстоящи задачи за този ден.</p>`);
-  document.getElementById('hw-zone-week').innerHTML = mapHwList(zone2, false);
+  document.getElementById('hw-zone-focus').innerHTML = valOr(mapHwList(zone1, false, ''), `<p style="color:var(--muted);">Няма предстоящи задачи за този ден.</p>`);
+  document.getElementById('hw-zone-week').innerHTML = mapHwList(zone2, false, '');
   document.getElementById('zone-week-box').style.display = zone2.length ? 'block' : 'none';
   document.getElementById('zone-next-box').style.display = zone3.length ? 'block' : 'none';
-  document.getElementById('hw-zone-next').innerHTML = mapHwList(zone3, false);
-  document.getElementById('hw-zone-past').innerHTML = mapHwList(pastHw, true);
+  document.getElementById('hw-zone-next').innerHTML = mapHwList(zone3, false, '');
+  document.getElementById('hw-zone-past').innerHTML = mapHwList(pastHw, true, '');
 
   document.getElementById('sched-box').innerHTML = (data.schedule ? data.schedule : []).map(d => `
     <div class="uni-card"><h4>${d.day}</h4>${(d.classes ? d.classes : []).map(c => `<p style="margin:4px 0;">${c}</p>`).join('')}</div>`).join('');
@@ -1223,24 +1430,15 @@ function initApp(data) {
 
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
-  const currentActivePane = document.querySelector('#subj-panes-wrap .subj-pane.active');
-  const savedSubjId = currentActivePane
-    ? currentActivePane.id.replace('sp-', '')
-    : localStorage.getItem(STORAGE_PREFIX + 'ACTIVE_SUBJ');
-
   navBtns.innerHTML = ''; panesWrap.innerHTML = '';
 
-  const subjectsList = data.subjects ? data.subjects : [];
-  const hasSavedSubj = subjectsList.some(x => x.id === savedSubjId);
-
-  subjectsList.forEach((s, idx) => {
-    const isSubjActive = hasSavedSubj ? (s.id === savedSubjId) : (idx === 0);
+  (data.subjects ? data.subjects : []).forEach((s, idx) => {
     const subjCards = getCardsForSubject(s, data.cards);
     const sIcon = valOr(s.icon, '📘');
     const sShort = valOr(s.shortName, 'Предмет');
     const sFull = valOr(s.fullName, sShort);
 
-    navBtns.innerHTML += `<button class="s-btn ${isSubjActive ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
+    navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
       <span class="no-read">${sIcon} ${s.displayNum}.</span> ${sShort}
       <span class="s-btn-pct no-read" id="spct-${s.id}">0%</span>
     </button>`;
@@ -1321,7 +1519,7 @@ function initApp(data) {
       </div>`;
     }).join('');
 
-    panesWrap.innerHTML += `<div id="sp-${s.id}" class="subj-pane ${isSubjActive ? 'active' : ''}">
+    panesWrap.innerHTML += `<div id="sp-${s.id}" class="subj-pane ${idx === 0 ? 'active' : ''}">
       <div class="zone-box" id="p-${s.id}">
         <div class="subj-prog-banner no-read">
           <div>
@@ -1460,7 +1658,7 @@ function updateProgress() {
     if (detEl) detEl.innerHTML = `🔐 Учене наизуст: <b style="color:var(--green)">${doneM}/${totM}</b> | 🃏 Мислене (3D карти): <b style="color:var(--gold)">${okC}/${sCards.length}</b> | Напредък по предмета: <b>${pctSubj}%</b>`;
   });
 
-  const allChks = document.querySelectorAll('#tab-1 input[type="checkbox"], .mast-chk');
+  const allChks = document.querySelectorAll('#hw-zone-focus input[type="checkbox"], #hw-zone-week input[type="checkbox"], #hw-zone-past input[type="checkbox"], .mast-chk');
   const doneChks = Array.from(allChks).filter(c => c.checked).length;
   let cardsOk = 0;
   const totalCards = (APP_DATA.cards ? APP_DATA.cards : []).length;
@@ -1484,9 +1682,6 @@ function openPane(parentId, paneId, btn) {
   document.querySelectorAll(`#${parentId} .s-btn`).forEach(b => b.classList.remove('active'));
   document.getElementById(paneId)?.classList.add('active');
   if (btn) btn.classList.add('active');
-  if (paneId && paneId.startsWith('sp-')) {
-    localStorage.setItem(STORAGE_PREFIX + 'ACTIVE_SUBJ', paneId.replace('sp-', ''));
-  }
 }
 function formatMemoWords(text) {
   return String(valOr(text, '')).replace(/\[\[(.*?)\]\]/g, `<span class="memo-word" onclick="this.classList.toggle('masked')">$1</span>`);
@@ -1502,8 +1697,12 @@ function toggleAllMasks() {
   words.forEach(w => w.classList.toggle('masked', hide));
 }
 function saveChk(chk) {
-  localStorage.setItem(STORAGE_PREFIX + 'chk_' + chk.id, chk.checked ? '1' : '0');
-  chk.closest('.hw-smart-card')?.classList.toggle('done-card', chk.checked);
+  const realKey = valOr(chk.getAttribute('data-real-chk'), chk.id);
+  localStorage.setItem(STORAGE_PREFIX + 'chk_' + realKey, chk.checked ? '1' : '0');
+  document.querySelectorAll(`input[data-real-chk="${realKey}"]`).forEach(el => {
+    el.checked = chk.checked;
+    el.closest('.hw-smart-card')?.classList.toggle('done-card', chk.checked);
+  });
   updateProgress();
 }
 function saveMastery(chk) {
@@ -1631,12 +1830,8 @@ function resetToDefaultFileDB() {
   location.reload();
 }
 
-function getDriveUrl() {
-  return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL'), DEFAULT_DRIVE_WEBAPP_URL);
-}
-function getDriveSecretKey() {
-  return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_KEY'), '');
-}
+function getDriveUrl() { return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL'), DEFAULT_DRIVE_WEBAPP_URL); }
+function getDriveSecretKey() { return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_KEY'), ''); }
 function saveDriveSettingsFromTab3() {
   const urlVal = document.getElementById('drive-url-input').value.trim();
   const passVal = document.getElementById('tab3-pass-input').value.trim();
@@ -1692,11 +1887,8 @@ function syncFromGoogleDrive(isSilentAuto) {
     if (!res || res.status !== 'ok') {
       if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '🔒 Грешна парола'; }
       if (logEl && res && res.message) logEl.innerText = res.message;
-      if (res && res.authError) {
-        openPassModal('🔒 Невалидна парола! Моля, въведете вярната парола за достъп до базата:');
-      } else if (!isSilentAuto) {
-        alert(res && res.message ? res.message : 'Грешка при връзка с Google Drive!');
-      }
+      if (res && res.authError) openPassModal('🔒 Невалидна парола! Моля, въведете вярната парола за достъп до базата:');
+      else if (!isSilentAuto) alert(res && res.message ? res.message : 'Грешка при връзка с Google Drive!');
       return;
     }
 
@@ -1734,7 +1926,6 @@ function syncFromGoogleDrive(isSilentAuto) {
       } else {
         if (pill) { pill.className = 'sync-pill syncing no-read'; pill.innerText = '📂 Папката е празна'; }
         if (logEl) logEl.innerText = '📂 Паролата е вярна, но в папката в Google Drive все още няма качени .js файлове!';
-        if (!isSilentAuto) alert('Паролата е вярна, но в папката в Google Drive няма качени .js файлове!');
       }
     }, function(errMsg) {
       if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive проблем'; }
@@ -1751,29 +1942,10 @@ function generateSyncReport() {
   const mast = document.querySelectorAll('.mast-chk:checked').length;
   const totM = document.querySelectorAll('.mast-chk').length;
   const filesLoaded = (APP_DATA.loadedMeta ? APP_DATA.loadedMeta : []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
-  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.2) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
+  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.3 – ШКОЛО МАСТЕР) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
   const box = document.getElementById('sync-box');
   box.style.display = 'block'; box.value = rep; box.select();
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
-}
-
-function updateLiveClocks() {
-  const nowMs = Date.now();
-  const nowObj = new Date(nowMs);
-  const clockEl = document.getElementById('live-sofia-clock');
-  if (clockEl) {
-    clockEl.innerText = `🕒 София: ${nowObj.toLocaleDateString('bg-BG')} ${nowObj.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'})}`;
-  }
-  if (!window.APP_DATA || !Array.isArray(window.APP_DATA.homework)) return;
-  window.APP_DATA.homework.forEach(h => {
-    const cardEl = document.getElementById('card-' + h.id);
-    if (!cardEl) return;
-    const tagEl = cardEl.querySelector('.countdown-tag');
-    const dueMs = parseBgDateString(h.dueDate, true);
-    if (tagEl && dueMs) {
-      tagEl.innerHTML = `⏳ ${formatTimeRemaining(dueMs, nowMs)}`;
-    }
-  });
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -1784,7 +1956,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
   rebuildAndInitFromStorage();
   if (savedUrl) syncFromGoogleDrive(true);
-  setInterval(updateLiveClocks, 60000);
+  setInterval(() => { if (window.APP_DATA) initApp(window.APP_DATA); }, 60000);
 });
 </script>
 </body>
