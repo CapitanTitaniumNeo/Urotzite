@@ -128,24 +128,19 @@ header p { font-size: 0.79rem; color: #bae6fd; font-weight: 600; }
 .tab-content, .subj-pane { display: none; }
 .tab-content.active, .subj-pane.active { display: block; }
 
-/* КОМПАКТЕН КОМАНДЕН РАДАР НАЙ-ОТГОРЕ */
+/* КОМПАКТЕН КОМАНДЕН РАДАР НАЙ-ОТГОРЕ (БЕЗ ИЗЛИШНИЯ ЗЕЛЕН БАНЕР) */
 .shkolo-day-radar {
   background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(23, 37, 84, 0.92));
   border: 2px solid var(--accent); border-radius: 16px; padding: 12px 15px;
-  margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  margin-bottom: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 .radar-top-row {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
-  gap: 10px; padding-bottom: 9px; border-bottom: 1px dashed rgba(148,163,184,0.35); margin-bottom: 10px;
+  gap: 10px; padding-bottom: 8px; border-bottom: 1px dashed rgba(148,163,184,0.35); margin-bottom: 9px;
 }
 .clock-badge {
   background: #070b14; border: 1px solid var(--gold); color: var(--gold);
   padding: 5px 12px; border-radius: 9px; font-weight: 900; font-size: 0.82rem;
-}
-.next-up-banner {
-  background: rgba(7, 11, 20, 0.9); border: 1px solid var(--green); border-left: 6px solid var(--green);
-  border-radius: 11px; padding: 9px 13px; display: flex; flex-wrap: wrap;
-  justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px;
 }
 .board-quick-nav, .hw-status-subnav {
   display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
@@ -173,7 +168,7 @@ body.hw-filter-review .slot-type-greenbook { display: none !important; }
 .day-divider {
   background: linear-gradient(90deg, #0f172a, #1e3a8a, #0f172a);
   border: 1px solid var(--accent); border-left: 6px solid var(--gold);
-  border-radius: 11px; padding: 8px 14px; margin: 14px 0 8px 0;
+  border-radius: 11px; padding: 8px 14px; margin: 12px 0 8px 0;
   display: flex; justify-content: space-between; align-items: center;
   flex-wrap: wrap; gap: 8px; font-weight: 900; font-size: 0.9rem; color: #fff;
   box-shadow: 0 4px 14px rgba(0,0,0,0.45);
@@ -385,7 +380,7 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">📥 3. ОБНОВИ ДАННИ (.JS / DRIVE)</button>
 </div>
 
-<!-- ТАБ 1: ЕДИНЕН ВЪРТЯЩ СЕ РАДАР ПО ПРОГРАМАТА (БЕЗ ПОВТОРЕНИЯ) -->
+<!-- ТАБ 1: ЕДИНЕН ВЪРТЯЩ СЕ РАДАР ПО ПРОГРАМАТА (БЕЗ ИЗЛИШНИЯ БАНЕР И БЕЗ ПОВТОРЕНИЯ) -->
 <div id="tab-1" class="tab-content active">
   <div class="shkolo-day-radar">
     <div class="radar-top-row">
@@ -396,18 +391,13 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
       <div class="clock-badge no-read" id="live-sofia-clock">🕒 София: --:--</div>
     </div>
 
-    <div class="next-up-banner" id="next-up-live-box">
-      <div id="next-up-text" style="font-size:0.88rem; font-weight:800;">⏳ Изчисляване на текущия и следващия учебен час...</div>
-      <div id="next-up-actions" class="voice-bar no-read"></div>
-    </div>
-
     <div class="board-quick-nav no-read" style="margin-bottom:0;">
       <button class="q-nav-btn active" onclick="switchRadarView('rot', this)">🔄 1. Жива въртяща се програма (Текущи часове + Домашни + Теми)</button>
       <button class="q-nav-btn" onclick="switchRadarView('long', this)">📅 2. Дългосрочен календар: Всички Контролни, Класни и Пълна програма</button>
     </div>
   </div>
 
-  <!-- ИЗГЛЕД 1: РОТАЦИОННАТА ПРОГРАМА ПО ДНИ И ЧАСОВЕ (БЕЗ ДУБЛИРАНЕ) -->
+  <!-- ИЗГЛЕД 1: РОТАЦИОННАТА ПРОГРАМА ПО ДНИ И ЧАСОВЕ -->
   <div id="radar-view-rot">
     <div class="hw-status-subnav no-read">
       <button class="hw-type-btn active-all" id="hwt-all" onclick="setHwTypeFilter('all')">📋 Всички часове по ред</button>
@@ -486,16 +476,16 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   </div>
 </div>
 
-<!-- НАЧАЛО НА СКРИПТА (ЧАСТ 1 ОТ 2) -->
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
 const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
+const openDrawerIds = new Set();
 
 const DEFAULT_UI = {
   pageTitle: "Супер-Органайзер (Ядро 4.4 – Ротационен Школо-Радар): Борис И. Банев (7Г)",
   headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.4 – РОТАЦИОНЕН РАДАР): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
   headerSubtitle: "🔄 Жива Въртяща се Програма по Часове и Дни | 🎯 Кликни за Домашно, Контролно и Теми | ☁️ Drive",
-  voiceGreeting: "Здравей, Борис! Програмата ти вече се върти автоматично спрямо часа. Най-отгоре виждаш текущия и следващия предмет. Ако свети в червено или жълто, кликни върху бутона, за да видиш условието и решението за тетрадката!",
+  voiceGreeting: "Здравей, Борис! Програмата ти се върти автоматично спрямо часа. Най-отгоре виждаш текущия и следващия предмет. Ако свети в червено или жълто, кликни върху бутона, за да видиш условието и решението за тетрадката!",
   speechLang: "bg-BG",
   speechIgnoreSelectors: ".no-read, .math-expr, .frac, .tri-box, .visual-anchor, ruby, select, button, a, input, textarea",
   vaultPrefix: "🔐 УЧЕНЕ НАИЗУСТ (ЗЛАТЕН СЕЙФ):",
@@ -518,7 +508,6 @@ const DEFAULT_UI = {
   msgNoAnswer: "Избери отговор от падащото меню!"
 };
 
-// СТАНДАРТНА СЕДМИЧНА МАТРИЦА ПО ДНИ И ЧАСОВЕ (Използва се за автоматичното въртене на предметите)
 const WEEKLY_SLOTS_TEMPLATE = [
   { dow: 1, dayName: "ПОНЕДЕЛНИК", slots: [
     { num: "Сутрин", start: "11:15", end: "12:15", subjId: "maat", title: "МААТ (уроци) – НВО Математика", teacher: "Филип", room: "Школа / Онлайн" },
@@ -649,7 +638,10 @@ function switchRadarView(viewMode, btn) {
 
 function toggleSlotDrawer(drawerId) {
   const el = document.getElementById(drawerId);
-  if (el) el.classList.toggle('open');
+  if (!el) return;
+  const isNowOpen = el.classList.toggle('open');
+  if (isNowOpen) openDrawerIds.add(drawerId);
+  else openDrawerIds.delete(drawerId);
 }
 
 function parseBgDateString(str, endOfDayIfNoTime) {
@@ -1034,7 +1026,6 @@ function getCardsForSubject(s, allCards) {
   });
 }
 
-// ИЗГРАЖДАНЕ НА РОТАЦИОННИЯ ПОТОК ПО ПРОГРАМАТА (БЕЗ НИКАКВО ПОВТАРЯНЕ НА ЕДИН И СЪЩ ЧАС)
 function buildRotatingScheduleStream(data, nowMs) {
   const nowObj = new Date(nowMs);
   const todayStartMs = new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate(), 0, 0, 0).getTime();
@@ -1042,7 +1033,6 @@ function buildRotatingScheduleStream(data, nowMs) {
   const allSlots = [];
   const usedHwIds = new Set();
 
-  // Генерираме 8 дни напред (така че днешните минали часове или миналите дни да застанат отдолу със следващата си дата!)
   for (let offset = 0; offset <= 7; offset++) {
     const dObj = new Date(todayStartMs + offset * 86400000);
     const dow = dObj.getDay();
@@ -1051,7 +1041,6 @@ function buildRotatingScheduleStream(data, nowMs) {
     if (!dayTpl) continue;
 
     dayTpl.slots.forEach((slotTpl, sIdx) => {
-      // Корекция за намалените часове в петък 23.10.2026 г.
       let startStr = slotTpl.start;
       let endStr = slotTpl.end;
       if (dateStr === '23.10.2026') {
@@ -1074,11 +1063,9 @@ function buildRotatingScheduleStream(data, nowMs) {
       const slotStartMs = new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate(), sh, sm, 0).getTime();
       const slotEndMs = new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate(), eh, em, 0).getTime();
 
-      // Ако е същият ден от седмицата след 7 дни (offset === 7), включваме САМО часовете, които днес вече са минали!
       if (offset === 0 && slotEndMs < nowMs) return;
       if (offset === 7 && slotEndMs >= (nowMs + 7 * 86400000)) return;
 
-      // Търсим дали за тази дата и този предмет има записано Домашно или Контролна работа в базата
       const matchingHw = (data.homework || []).find(h => {
         if (h.archived || usedHwIds.has(h.id)) return false;
         const hDate = shortDateLabel(h.dueDate);
@@ -1119,7 +1106,6 @@ function buildRotatingScheduleStream(data, nowMs) {
     });
   }
 
-  // Добавяме евентуални активни домашни от базата, които имат точен срок, но не са попаднали в стандартен слот
   (data.homework || []).forEach(h => {
     if (h.archived || usedHwIds.has(h.id)) return;
     const dueMs = parseBgDateString(h.dueDate, true);
@@ -1178,8 +1164,9 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
 
   const drawerHwId = `drw_hw_${slot.uid}`;
   const drawerTopId = `drw_top_${slot.uid}`;
+  const hwOpenCls = openDrawerIds.has(drawerHwId) ? 'open' : '';
+  const topOpenCls = openDrawerIds.has(drawerTopId) ? 'open' : '';
 
-  // Бутони вдясно според това дали има Домашно, Контролно, Зелено помагало или няма нищо специално
   let rightButtonsHTML = '';
   if (ex) {
     rightButtonsHTML += `<button class="act-pill pill-exam no-read" onclick="toggleSlotDrawer('${drawerHwId}')">🚨 КОНТРОЛНА РАБОТА: Виж най-важното ▾</button>`;
@@ -1200,7 +1187,6 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
     rightButtonsHTML += `<button class="act-pill pill-topic no-read" onclick="toggleSlotDrawer('${drawerTopId}')" title="Виж взетите и следващите теми по предмета">📖 Взети теми ▾</button>`;
   }
 
-  // Съдържание на падащия панел за Домашно / Контролно / Зелено помагало
   let hwDrawerInner = '';
   if (ex) {
     hwDrawerInner += `<div class="step-1-must">🚨 ПРЕДСТОЯЩА КОНТРОЛНА РАБОТА (${ex.date}): ${ex.topic} (${ex.teacher})</div>`;
@@ -1252,7 +1238,6 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
     `;
   }
 
-  // Съдържание на падащия панел за Взети и следващи теми (При клик върху името на предмета или бутона „Взети теми“)
   const topicDrawerInner = `
     <div>
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
@@ -1281,8 +1266,8 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
         ${rightButtonsHTML}
       </div>
     </div>
-    ${hwDrawerInner ? `<div class="slot-expand-drawer" id="${drawerHwId}">${hwDrawerInner}</div>` : ''}
-    <div class="slot-expand-drawer" id="${drawerTopId}">${topicDrawerInner}</div>
+    ${hwDrawerInner ? `<div class="slot-expand-drawer ${hwOpenCls}" id="${drawerHwId}">${hwDrawerInner}</div>` : ''}
+    <div class="slot-expand-drawer ${topOpenCls}" id="${drawerTopId}">${topicDrawerInner}</div>
   </div>`;
 }
 
@@ -1313,7 +1298,6 @@ function initApp(data) {
   const nowObj = new Date(nowMs);
   document.getElementById('live-sofia-clock').innerText = `🕒 София: ${nowObj.toLocaleDateString('bg-BG')} ${nowObj.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'})}`;
 
-  // 1. ГЕНЕРИРАНЕ НА РОТАЦИОННИЯ ПОТОК ПО ЧАСОВЕ И ДНИ
   const streamSlots = buildRotatingScheduleStream(data, nowMs);
   let cntMust = 0, cntGreen = 0, cntRev = 0;
 
@@ -1330,25 +1314,6 @@ function initApp(data) {
   document.getElementById('sub-cnt-green').innerText = cntGreen;
   document.getElementById('sub-cnt-rev').innerText = cntRev;
 
-  // Топ банер за текущия / следващия час по програма
-  if (streamSlots.length > 0) {
-    const first = streamSlots[0];
-    const hasMust = Boolean(first.exam || (first.hw && classifyHomeworkType(first.hw) === 'must'));
-    const hasGreen = Boolean(first.forceGreenbook || (first.hw && classifyHomeworkType(first.hw) === 'greenbook'));
-    const statusText = first.exam
-      ? `<span class="badge b-red">🚨 КОНТРОЛНА РАБОТА!</span>`
-      : (hasMust ? `<span class="badge b-red">🔴 ИМА ЗАДЪЛЖИТЕЛНО ДР</span>` : (hasGreen ? `<span class="badge b-green">📗 ЗЕЛЕНО ПОМАГАЛО</span>` : `<span class="badge b-blue">🔵 Няма писмено ДР</span>`));
-
-    document.getElementById('next-up-text').innerHTML = `
-      ⏭️ <b>СЛЕДВА ПО ПРОГРАМА (${first.dayName} • ${first.dateStr} • ${first.startStr} ч.):</b>
-      <span style="color:var(--gold);">${first.title}</span> ${statusText}
-    `;
-    document.getElementById('next-up-actions').innerHTML = `
-      <button class="btn btn-speak" onclick="document.getElementById('slot_card_${first.uid}')?.scrollIntoView({behavior:'smooth'}); toggleSlotDrawer('drw_hw_${first.uid}')">🎯 Покажи часа и задачата</button>
-    `;
-  }
-
-  // Групиране с Делители по Дни
   let currentDayKey = '';
   let streamHTML = '';
   streamSlots.forEach((sl, idx) => {
@@ -1372,7 +1337,6 @@ function initApp(data) {
 
   document.getElementById('rotating-schedule-stream').innerHTML = streamHTML;
 
-  // 2. АРХИВ НА МИНАЛИ ДОМАШНИ
   const pastHw = (data.homework || []).filter(h => {
     const dMs = parseBgDateString(h.dueDate, true);
     return h.archived || (dMs !== null && dMs < nowMs);
@@ -1386,7 +1350,6 @@ function initApp(data) {
     </div>
   `).join('');
 
-  // 3. ДЪЛГОСРОЧНИ КОНТРОЛНИ, КЛАСНИ И СТАНДАРТНО РАЗПИСАНИЕ (Изглед 2)
   const activeExams = [], pastExams = [];
   (data.exams || []).forEach(e => {
     const eMs = parseBgDateString(e.date, true);
@@ -1420,7 +1383,6 @@ function initApp(data) {
   document.getElementById('sched-box').innerHTML = (data.schedule || []).map(d => `
     <div class="uni-card"><h4>${d.day}</h4>${(d.classes || []).map(c => `<p style="margin:4px 0;">${c}</p>`).join('')}</div>`).join('');
 
-  // 4. ТАБ 2: 15 ПРЕДМЕТА (ЗЛАТЕН СЕЙФ + 3D КАРТИ)
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
   navBtns.innerHTML = ''; panesWrap.innerHTML = '';
@@ -1944,7 +1906,13 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
   rebuildAndInitFromStorage();
   if (savedUrl) syncFromGoogleDrive(true);
-  setInterval(() => { if (window.APP_DATA) initApp(window.APP_DATA); }, 60000);
+  setInterval(() => {
+    const clk = document.getElementById('live-sofia-clock');
+    if (clk) {
+      const nowObj = new Date();
+      clk.innerText = `🕒 София: ${nowObj.toLocaleDateString('bg-BG')} ${nowObj.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'})}`;
+    }
+  }, 60000);
 });
 </script>
 </body>
