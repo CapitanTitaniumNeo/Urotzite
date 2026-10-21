@@ -204,6 +204,10 @@ body.hw-filter-review .slot-type-greenbook { display: none !important; }
   background: #172554; color: #bae6fd; border: 1px solid rgba(56,189,248,0.4);
   padding: 3px 8px; border-radius: 7px; font-size: 0.75rem; font-weight: 900; white-space: nowrap;
 }
+.slot-code-pill {
+  background: rgba(15, 23, 42, 0.95); color: #fde047; border: 1px solid rgba(251, 191, 36, 0.55);
+  padding: 2px 7px; border-radius: 6px; font-size: 0.69rem; font-weight: 900; white-space: nowrap;
+}
 .slot-subj-title {
   font-weight: 900; font-size: 0.88rem; color: #fff; cursor: pointer;
   display: inline-flex; align-items: center; gap: 5px;
@@ -343,7 +347,7 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 <header>
   <div>
     <h1 id="header-title">🚀 СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.4 – РОТАЦИОНЕН РАДАР)</h1>
-    <p id="header-subtitle">🔄 Жива Въртяща се Програма по Часове и Дни | 🎯 Кликни за Домашно, Контролно и Теми | ☁️ Drive</p>
+    <p id="header-subtitle">🔄 Жива Въртяща се Програма по Часове и Дни | 🏷️ Идентификатори 7. клас (G07) | ☁️ Drive</p>
   </div>
   <div class="voice-bar">
     <span id="cloud-status-pill" class="sync-pill no-read" onclick="openPassModal()">🔑 Парола</span>
@@ -363,20 +367,20 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 
 <div class="prog-wrap">
   <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:210px;">
-    <strong><span class="no-read">📊</span> Напредък: <span id="prog-text" class="no-read" style="color:var(--green)">0%</span></strong>
+    <strong><span class="no-read">📊</span> Напредък (<span id="active-grade-lbl" class="no-read" style="color:var(--gold);">7. клас</span>): <span id="prog-text" class="no-read" style="color:var(--green)">0%</span></strong>
     <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill"></div></div>
   </div>
   <div class="filter-bar no-read">
     <span style="font-size:0.76rem; color:var(--muted); font-weight:700;">Слой:</span>
     <button class="filter-btn active-all" id="flt-all" onclick="setTierFilter('all')">📚 Всички</button>
-    <button class="filter-btn" id="flt-new" onclick="setTierFilter('new')">🆕 Нови</button>
-    <button class="filter-btn" id="flt-rev" onclick="setTierFilter('rev')">⏪ Преговор</button>
+    <button class="filter-btn" id="flt-new" onclick="setTierFilter('new')">🆕 7. клас (Актуални)</button>
+    <button class="filter-btn" id="flt-rev" onclick="setTierFilter('rev')">🗄️ Архив</button>
   </div>
 </div>
 
 <div class="tabs">
   <button class="tab-btn active" id="tab-btn-1" onclick="openTab('tab-1', this)">🔄 1. РОТАЦИОНЕН РАДАР (ПРОГРАМА + ДОМАШНИ + КР)</button>
-  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">🧠 2. 15 ПРЕДМЕТА (ЗЛАТЕН СЕЙФ + 3D КАРТИ)</button>
+  <button class="tab-btn" id="tab-btn-2" onclick="openTab('tab-2', this)">🧠 2. 15 ПРЕДМЕТА (7. КЛАС • G07 СЕЙФ + 3D КАРТИ)</button>
   <button class="tab-btn" id="tab-btn-3" onclick="openTab('tab-3', this)">📥 3. ОБНОВИ ДАННИ (.JS / DRIVE)</button>
 </div>
 
@@ -385,8 +389,8 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
   <div class="shkolo-day-radar">
     <div class="radar-top-row">
       <div>
-        <div style="font-size:1.02rem; font-weight:900; color:#4ade80;" id="smart-focus-headline">🔄 ЖИВА ПРОГРАМА-РАДАР ПО ЧАСОВЕ И ДНИ</div>
-        <div style="font-size:0.79rem; color:var(--muted);" id="smart-focus-subline">Текущият и следващият предмет са най-отгоре. Като мине часът или денят, автоматично се завърта най-отдолу за следващата седмица!</div>
+        <div style="font-size:1.02rem; font-weight:900; color:#4ade80;" id="smart-focus-headline">🔄 ЖИВА ПРОГРАМА-РАДАР ПО ЧАСОВЕ И ДНИ (7. КЛАС • 2026/2027)</div>
+        <div style="font-size:0.79rem; color:var(--muted);" id="smart-focus-subline">Текущият и следващият предмет са най-отгоре. Всеки час има уникален идентификатор (G07-...) за точно сдвояване с Школо!</div>
       </div>
       <div class="clock-badge no-read" id="live-sofia-clock">🕒 София: --:--</div>
     </div>
@@ -411,7 +415,7 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
     <div class="zone-box" style="margin-top:14px; border-top:4px solid var(--gold);">
       <details>
         <summary style="cursor:pointer; font-weight:900; color:var(--gold); font-size:0.9rem;">
-          🗄️ АРХИВ НА ВСИЧКИ МИНАЛИ ДОМАШНИ РАБОТИ ОТ НАЧАЛОТО НА ГОДИНАТА (Кликни за проверка)
+          🗄️ АРХИВ НА ВСИЧКИ МИНАЛИ ДОМАШНИ РАБОТИ (7. КЛАС • Кликни за проверка)
         </summary>
         <div id="hw-zone-past" style="margin-top:10px;"></div>
       </details>
@@ -429,11 +433,11 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
     <!-- ПОД-СЕКЦИЯ 1: СПЕШНИ КОНТРОЛНИ И КЛАСНИ РАБОТИ -->
     <div id="long-sec-exams" class="zone-box" style="border-top: 4px solid var(--red);">
       <div class="zone-title">
-        <span style="color:#fca5a5;">🔥 СПЕШНИ И ПРЕДСТОЯЩИ КОНТРОЛНИ И КЛАСНИ РАБОТИ ЗА СРОКА</span>
+        <span style="color:#fca5a5;">🔥 СПЕШНИ И ПРЕДСТОЯЩИ КОНТРОЛНИ И КЛАСНИ РАБОТИ (7. КЛАС)</span>
       </div>
       <div id="exams-cards-box"></div>
       <details class="archive-drawer" id="exams-arch-drawer" style="display:none;">
-        <summary>🗄️ АРХИВ НА МИНАЛИ КОНТРОЛНИ И ВХОДНИ НИВА (Кликни за преглед)</summary>
+        <summary>🗄️ АРХИВ НА МИНАЛИ КОНТРОЛНИ И ВХОДНИ НИВА (7. КЛАС • Кликни за преглед)</summary>
         <div class="uni-grid" id="exams-arch-cards-box" style="margin-top:8px;"></div>
       </details>
     </div>
@@ -441,9 +445,9 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
     <!-- ПОД-СЕКЦИЯ 2: СЕДМИЧНА ПРОГРАМА -->
     <div id="long-sec-sched" class="zone-box" style="display:none; border-top: 4px solid var(--accent);">
       <div class="zone-title">
-        <span>🗓️ СЕДМИЧНА ПРОГРАМА ПО ДНИ И ЧАСОВЕ (ПОНЕДЕЛНИК – НЕДЕЛЯ)</span>
+        <span>🗓️ СЕДМИЧНА ПРОГРАМА ПО ДНИ И ЧАСОВЕ С ИДЕНТИФИКАТОРИ (7. КЛАС • G07)</span>
       </div>
-      <div class="uni-grid" id="sched-box"></div>
+      <div id="sched-box"></div>
     </div>
   </div>
 </div>
@@ -491,13 +495,33 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
 const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
+const CURRENT_SCHOOL_GRADE = 7;
+const CURRENT_SCHOOL_YEAR = "2026/2027";
 const openDrawerIds = new Set();
+
+const SUBJ_CODE_MAP = {
+  math: "G07-MATH",
+  bg: "G07-BG",
+  lit: "G07-LIT",
+  geo: "G07-GEO",
+  phy: "G07-PHY",
+  chm: "G07-CHM",
+  bio: "G07-BIO",
+  eng: "G07-ENG",
+  his: "G07-HIS",
+  mus: "G07-MUS",
+  it: "G07-IT",
+  art: "G07-ART",
+  beel: "G07-BEEL",
+  maat: "G07-MAAT",
+  box: "G07-BOX"
+};
 
 const DEFAULT_UI = {
   pageTitle: "Супер-Органайзер (Ядро 4.4 – Ротационен Школо-Радар): Борис И. Банев (7Г)",
   headerTitle: "<span class='no-read'>🚀</span> СУПЕР-ОРГАНАЙЗЕР (ЯДРО 4.4 – РОТАЦИОНЕН РАДАР): БОРИС И. БАНЕВ <span class='no-read'>(7Г)</span>",
-  headerSubtitle: "🔄 Жива Въртяща се Програма по Часове и Дни | 🎯 Кликни за Домашно, Контролно и Теми | ☁️ Drive",
-  voiceGreeting: "Здравей, Борис! Програмата ти се върти автоматично спрямо часа. Най-отгоре виждаш текущия и следващия предмет. Ако свети в червено или жълто, кликни върху бутона, за да видиш условието и решението за тетрадката!",
+  headerSubtitle: "🔄 Жива Въртяща се Програма по Часове и Дни | 🏷️ Идентификатори 7. клас (G07) | ☁️ Drive",
+  voiceGreeting: "Здравей, Борис! Програмата ти за седми клас се върти автоматично спрямо часа. Най-отгоре виждаш текущия и следващия предмет. Ако свети в червено или жълто, кликни върху бутона, за да видиш условието и решението за тетрадката!",
   speechLang: "bg-BG",
   speechIgnoreSelectors: ".no-read, .math-expr, .frac, .tri-box, .visual-anchor, ruby, select, button, a, input, textarea",
   vaultPrefix: "🔐 УЧЕНЕ НАИЗУСТ (ЗЛАТЕН СЕЙФ):",
@@ -522,55 +546,55 @@ const DEFAULT_UI = {
 
 const WEEKLY_SLOTS_TEMPLATE = [
   { dow: 1, dayName: "ПОНЕДЕЛНИК", slots: [
-    { num: "Сутрин", start: "11:15", end: "12:15", subjId: "maat", title: "МААТ (уроци) – НВО Математика", teacher: "Филип", room: "Школа / Онлайн" },
-    { num: "1 час", start: "13:00", end: "13:40", subjId: "art", title: "Час на класа / ГО", teacher: "Поля Борисова", room: "каб. 303, ет. 3" },
-    { num: "2 час", start: "13:50", end: "14:30", subjId: "eng", title: "Английски език", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
-    { num: "3 час", start: "14:40", end: "15:20", subjId: "math", title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
-    { num: "4 час", start: "15:40", end: "16:20", subjId: "his", title: "История и цивилизации", teacher: "Елена Николова", room: "каб. 003, Приземен" },
-    { num: "5 час", start: "16:25", end: "17:05", subjId: "art", title: "ФВС", teacher: "Поля Борисова", room: "Салон, ет. 1", noHwSlot: true },
-    { num: "6 час", start: "17:10", end: "17:50", subjId: "bg", title: "БЕЛ (Български език)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
-    { num: "7 час", start: "17:55", end: "18:35", subjId: "phy", title: "Физика и астрономия", teacher: "Нели Шипочка", room: "каб. 206, ет. 2" }
+    { num: "Сутрин", start: "11:15", end: "12:15", subjId: "maat", slotCode: "G07-MAAT", grade: 7, title: "МААТ (уроци) – НВО Математика", teacher: "Филип", room: "Школа / Онлайн" },
+    { num: "1 час", start: "13:00", end: "13:40", subjId: "art", slotCode: "G07-ART", grade: 7, title: "Час на класа / ГО", teacher: "Поля Борисова", room: "каб. 303, ет. 3" },
+    { num: "2 час", start: "13:50", end: "14:30", subjId: "eng", slotCode: "G07-ENG", grade: 7, title: "Английски език", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
+    { num: "3 час", start: "14:40", end: "15:20", subjId: "math", slotCode: "G07-MATH", grade: 7, title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
+    { num: "4 час", start: "15:40", end: "16:20", subjId: "his", slotCode: "G07-HIS", grade: 7, title: "История и цивилизации", teacher: "Елена Николова", room: "каб. 003, Приземен" },
+    { num: "5 час", start: "16:25", end: "17:05", subjId: "art", slotCode: "G07-ART", grade: 7, title: "ФВС", teacher: "Поля Борисова", room: "Салон, ет. 1", noHwSlot: true },
+    { num: "6 час", start: "17:10", end: "17:50", subjId: "bg", slotCode: "G07-BG", grade: 7, title: "БЕЛ (Български език)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
+    { num: "7 час", start: "17:55", end: "18:35", subjId: "phy", slotCode: "G07-PHY", grade: 7, title: "Физика и астрономия", teacher: "Нели Шипочка", room: "каб. 206, ет. 2" }
   ]},
   { dow: 2, dayName: "ВТОРНИК", slots: [
-    { num: "1 час", start: "13:00", end: "13:40", subjId: "art", title: "Изобразително изкуство (Скицник!)", teacher: "Надежда Недялкова", room: "каб. 209, ет. 2" },
-    { num: "2 час", start: "13:50", end: "14:30", subjId: "bio", title: "Биология и ЗО", teacher: "Петя Кайрякова", room: "каб. 206, ет. 2" },
-    { num: "3 час", start: "14:40", end: "15:20", subjId: "geo", title: "География и икономика", teacher: "Борислав Лозанов", room: "каб. 208, ет. 2" },
-    { num: "4 час", start: "15:40", end: "16:20", subjId: "it", title: "КМИТ (Група 1)", teacher: "Нели Шипочка", room: "каб. 210, ет. 2" },
-    { num: "5 час", start: "16:25", end: "17:05", subjId: "lit", title: "БЕЛ (Литература – 1 час)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
-    { num: "6 час", start: "17:10", end: "17:50", subjId: "lit", title: "БЕЛ (Литература – 2 час)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
-    { num: "7 час", start: "17:55", end: "18:35", subjId: "math", title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
-    { num: "Вечер", start: "20:00", end: "21:15", subjId: "box", title: "Бокс – Тренировка", teacher: "Кико Бонев", room: "Зала „Люлин Олимпия“" }
+    { num: "1 час", start: "13:00", end: "13:40", subjId: "art", slotCode: "G07-ART", grade: 7, title: "Изобразително изкуство (Скицник!)", teacher: "Надежда Недялкова", room: "каб. 209, ет. 2" },
+    { num: "2 час", start: "13:50", end: "14:30", subjId: "bio", slotCode: "G07-BIO", grade: 7, title: "Биология и ЗО", teacher: "Петя Кайрякова", room: "каб. 206, ет. 2" },
+    { num: "3 час", start: "14:40", end: "15:20", subjId: "geo", slotCode: "G07-GEO", grade: 7, title: "География и икономика", teacher: "Борислав Лозанов", room: "каб. 208, ет. 2" },
+    { num: "4 час", start: "15:40", end: "16:20", subjId: "it", slotCode: "G07-IT", grade: 7, title: "КМИТ (Група 1)", teacher: "Нели Шипочка", room: "каб. 210, ет. 2" },
+    { num: "5 час", start: "16:25", end: "17:05", subjId: "lit", slotCode: "G07-LIT", grade: 7, title: "БЕЛ (Литература – 1 час)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
+    { num: "6 час", start: "17:10", end: "17:50", subjId: "lit", slotCode: "G07-LIT", grade: 7, title: "БЕЛ (Литература – 2 час)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
+    { num: "7 час", start: "17:55", end: "18:35", subjId: "math", slotCode: "G07-MATH", grade: 7, title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
+    { num: "Вечер", start: "20:00", end: "21:15", subjId: "box", slotCode: "G07-BOX", grade: 7, title: "Бокс – Тренировка", teacher: "Кико Бонев", room: "Зала „Люлин Олимпия“" }
   ]},
   { dow: 3, dayName: "СРЯДА", slots: [
-    { num: "1 час", start: "13:00", end: "13:40", subjId: "math", title: "Математика (ООП)", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
-    { num: "2 час", start: "13:50", end: "14:30", subjId: "math", title: "Математика ИУЧ (Зелено помагало)", teacher: "Регина Бабенко", room: "каб. 204, ет. 2", forceGreenbook: true },
-    { num: "3 час", start: "14:40", end: "15:20", subjId: "mus", title: "Музика", teacher: "Веселинка Стоилчева", room: "каб. 206, ет. 2" },
-    { num: "4 час", start: "15:40", end: "16:20", subjId: "eng", title: "Английски език", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
-    { num: "5 час", start: "16:25", end: "17:05", subjId: "chm", title: "Химия и ООС", teacher: "Петя Кайрякова", room: "каб. 209, ет. 2" },
-    { num: "6 час", start: "17:10", end: "17:50", subjId: "geo", title: "География и икономика", teacher: "Борислав Лозанов", room: "каб. 208, ет. 2" },
-    { num: "7 час", start: "17:55", end: "18:35", subjId: "bg", title: "БЕЛ (Български език)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" }
+    { num: "1 час", start: "13:00", end: "13:40", subjId: "math", slotCode: "G07-MATH", grade: 7, title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
+    { num: "2 час", start: "13:50", end: "14:30", subjId: "math", slotCode: "G07-MATH-IUCH", grade: 7, title: "Математика ИУЧ (Зелено помагало)", teacher: "Регина Бабенко", room: "каб. 204, ет. 2", forceGreenbook: true },
+    { num: "3 час", start: "14:40", end: "15:20", subjId: "mus", slotCode: "G07-MUS", grade: 7, title: "Музика", teacher: "Веселинка Стоилчева", room: "каб. 206, ет. 2" },
+    { num: "4 час", start: "15:40", end: "16:20", subjId: "eng", slotCode: "G07-ENG", grade: 7, title: "Английски език", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
+    { num: "5 час", start: "16:25", end: "17:05", subjId: "chm", slotCode: "G07-CHM", grade: 7, title: "Химия и ООС", teacher: "Петя Кайрякова", room: "каб. 209, ет. 2" },
+    { num: "6 час", start: "17:10", end: "17:50", subjId: "geo", slotCode: "G07-GEO", grade: 7, title: "География и икономика", teacher: "Борислав Лозанов", room: "каб. 208, ет. 2" },
+    { num: "7 час", start: "17:55", end: "18:35", subjId: "bg", slotCode: "G07-BG", grade: 7, title: "БЕЛ (Български език)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" }
   ]},
   { dow: 4, dayName: "ЧЕТВЪРТЪК", slots: [
-    { num: "Сутрин", start: "11:15", end: "12:15", subjId: "maat", title: "МААТ (уроци) – НВО Математика", teacher: "Филип", room: "Школа / Онлайн" },
-    { num: "1 час", start: "13:00", end: "13:40", subjId: "math", title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
-    { num: "2 час", start: "13:50", end: "14:30", subjId: "art", title: "Технологии и предприемачество", teacher: "Никита Йорданов", room: "каб. 303, ет. 3", noHwSlot: true },
-    { num: "3 час", start: "14:40", end: "15:20", subjId: "eng", title: "Английски език (ООП)", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
-    { num: "4 час", start: "15:40", end: "16:20", subjId: "eng", title: "Английски език ИУЧ (Science)", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
-    { num: "5 час", start: "16:25", end: "17:05", subjId: "art", title: "Спортни дейности (Волейбол)", teacher: "Поля Борисова", room: "Салон, ет. 1", noHwSlot: true },
-    { num: "6 час", start: "17:10", end: "17:50", subjId: "lit", title: "БЕЛ (Литература)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
-    { num: "7 час", start: "17:55", end: "18:35", subjId: "bio", title: "Биология и ЗО", teacher: "Петя Кайрякова", room: "каб. 205, ет. 2" },
-    { num: "Вечер", start: "20:00", end: "21:15", subjId: "box", title: "Бокс – Тренировка", teacher: "Кико Бонев", room: "Зала „Люлин Олимпия“" }
+    { num: "Сутрин", start: "11:15", end: "12:15", subjId: "maat", slotCode: "G07-MAAT", grade: 7, title: "МААТ (уроци) – НВО Математика", teacher: "Филип", room: "Школа / Онлайн" },
+    { num: "1 час", start: "13:00", end: "13:40", subjId: "math", slotCode: "G07-MATH", grade: 7, title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
+    { num: "2 час", start: "13:50", end: "14:30", subjId: "art", slotCode: "G07-ART", grade: 7, title: "Технологии и предприемачество", teacher: "Никита Йорданов", room: "каб. 303, ет. 3", noHwSlot: true },
+    { num: "3 час", start: "14:40", end: "15:20", subjId: "eng", slotCode: "G07-ENG", grade: 7, title: "Английски език", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
+    { num: "4 час", start: "15:40", end: "16:20", subjId: "eng", slotCode: "G07-ENG-IUCH", grade: 7, title: "Английски език ИУЧ (Science)", teacher: "Венета Терзиева", room: "каб. 201, ет. 2" },
+    { num: "5 час", start: "16:25", end: "17:05", subjId: "art", slotCode: "G07-ART", grade: 7, title: "Спортни дейности (Волейбол)", teacher: "Поля Борисова", room: "Салон, ет. 1", noHwSlot: true },
+    { num: "6 час", start: "17:10", end: "17:50", subjId: "lit", slotCode: "G07-LIT", grade: 7, title: "БЕЛ (Литература)", teacher: "Павлинка Борисова", room: "каб. 303, ет. 3" },
+    { num: "7 час", start: "17:55", end: "18:35", subjId: "bio", slotCode: "G07-BIO", grade: 7, title: "Биология и ЗО", teacher: "Петя Кайрякова", room: "каб. 205, ет. 2" },
+    { num: "Вечер", start: "20:00", end: "21:15", subjId: "box", slotCode: "G07-BOX", grade: 7, title: "Бокс – Тренировка", teacher: "Кико Бонев", room: "Зала „Люлин Олимпия“" }
   ]},
   { dow: 5, dayName: "ПЕТЪК", slots: [
-    { num: "1 час", start: "13:00", end: "13:40", subjId: "lit", title: "БЕЛ ИУЧ (Зелено помагало „Регалия 6“)", teacher: "Павлинка Борисова", room: "каб. 204, ет. 2", forceGreenbook: true },
-    { num: "2 час", start: "13:50", end: "14:30", subjId: "phy", title: "Физика и астрономия", teacher: "Нели Шипочка", room: "каб. 206, ет. 2" },
-    { num: "3 час", start: "14:40", end: "15:20", subjId: "his", title: "История и цивилизации", teacher: "Елена Николова", room: "каб. 206, ет. 2" },
-    { num: "4 час", start: "15:40", end: "16:20", subjId: "chm", title: "Химия и ООС", teacher: "Петя Кайрякова", room: "каб. 209, ет. 2" },
-    { num: "5 час", start: "16:25", end: "17:05", subjId: "math", title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
-    { num: "6 час", start: "17:10", end: "17:50", subjId: "art", title: "ФВС", teacher: "Поля Борисова", room: "Салон, ет. 1", noHwSlot: true }
+    { num: "1 час", start: "13:00", end: "13:40", subjId: "lit", slotCode: "G07-BEL-IUCH", grade: 7, title: "БЕЛ ИУЧ (Зелено помагало „Регалия 6“)", teacher: "Павлинка Борисова", room: "каб. 204, ет. 2", forceGreenbook: true },
+    { num: "2 час", start: "13:50", end: "14:30", subjId: "phy", slotCode: "G07-PHY", grade: 7, title: "Физика и астрономия", teacher: "Нели Шипочка", room: "каб. 206, ет. 2" },
+    { num: "3 час", start: "14:40", end: "15:20", subjId: "his", slotCode: "G07-HIS", grade: 7, title: "История и цивилизации", teacher: "Елена Николова", room: "каб. 206, ет. 2" },
+    { num: "4 час", start: "15:40", end: "16:20", subjId: "chm", slotCode: "G07-CHM", grade: 7, title: "Химия и ООС", teacher: "Петя Кайрякова", room: "каб. 209, ет. 2" },
+    { num: "5 час", start: "16:25", end: "17:05", subjId: "math", slotCode: "G07-MATH", grade: 7, title: "Математика", teacher: "Регина Бабенко", room: "каб. 204, ет. 2" },
+    { num: "6 час", start: "17:10", end: "17:50", subjId: "art", slotCode: "G07-ART", grade: 7, title: "ФВС", teacher: "Поля Борисова", room: "Салон, ет. 1", noHwSlot: true }
   ]},
   { dow: 0, dayName: "НЕДЕЛЯ", slots: [
-    { num: "Следобед", start: "17:00", end: "18:30", subjId: "beel", title: "БЕЕЛ (уроци) – НВО по БЕЛ и Литература", teacher: "г-жа Петрова", room: "Онлайн" }
+    { num: "Следобед", start: "17:00", end: "18:30", subjId: "beel", slotCode: "G07-BEEL", grade: 7, title: "БЕЕЛ (уроци) – НВО по БЕЛ и Литература", teacher: "г-жа Петрова", room: "Онлайн" }
   ]}
 ];
 function valOr(a, b) { return (a !== undefined && a !== null && a !== '') ? a : b; }
@@ -579,6 +603,12 @@ function ui(key, fallback) {
   const fb = fallback !== undefined ? fallback : '';
   if (window.APP_DATA && window.APP_DATA.ui && window.APP_DATA.ui[key] !== undefined) return window.APP_DATA.ui[key];
   return DEFAULT_UI[key] !== undefined ? DEFAULT_UI[key] : fb;
+}
+
+function getSubjCode(subjId, customSlotCode) {
+  if (customSlotCode) return customSlotCode;
+  const k = String(valOr(subjId, '')).trim().toLowerCase();
+  return SUBJ_CODE_MAP[k] ? SUBJ_CODE_MAP[k] : `G0${CURRENT_SCHOOL_GRADE}-${k.toUpperCase()}`;
 }
 
 function openPassModal(customMsg) {
@@ -685,7 +715,6 @@ function toggleSlotDrawer(drawerId) {
   else openDrawerIds.delete(drawerId);
 }
 
-// УМНА ВРЪЗКА ОТ СЕДМИЧНАТА ПРОГРАМА И КОНТРОЛНИТЕ ДИРЕКТНО КЪМ ЖИВИТЕ ДАННИ В РОТАЦИОННИЯ РАДАР
 function jumpToLiveSlot(slotUid, drawerId) {
   setHwTypeFilter('all');
   switchRadarView('rot');
@@ -734,12 +763,15 @@ function parseDayOnlyMs(genStr) {
   return res ? res : 0;
 }
 
-// ЕДИННА ЗНАЧКА ЗА АКТУАЛНОСТ НА БАЗАТА СПРЯМО СЕДМИЧНАТА ПРОГРАМА
-function tierBadgeHTML(isLatest, genDate) {
+function tierBadgeHTML(isLatest, genDate, gradeNum, subjCodeStr) {
+  const gNum = valOr(gradeNum, CURRENT_SCHOOL_GRADE);
+  const codeTxt = subjCodeStr ? ` • ${subjCodeStr}` : '';
   const masterDate = (window.APP_DATA && window.APP_DATA.generatedAt) ? shortDateLabel(window.APP_DATA.generatedAt) : shortDateLabel(genDate);
-  return isLatest
-    ? `<span class="tier-badge-new no-read">🟢 Обновено за седмицата • ${masterDate}</span>`
-    : `<span class="tier-badge-rev no-read">🗄️ Базов архив • ${shortDateLabel(genDate)}</span>`;
+  const isCurrentGrade = Number(gNum) === Number(CURRENT_SCHOOL_GRADE);
+  if (isLatest && isCurrentGrade) {
+    return `<span class="tier-badge-new no-read">🟢 ${gNum}. клас${codeTxt} • Обновено ${masterDate}</span>`;
+  }
+  return `<span class="tier-badge-rev no-read">🗄️ Архив ${gNum}. клас${codeTxt} •${shortDateLabel(genDate)}</span>`;
 }
 
 function normalizeSubjKey(s) {
@@ -751,21 +783,21 @@ function normalizeSubjKey(s) {
 function guessSubjectKeyFromText(badgeOrTitle, subjects) {
   const txt = String(valOr(badgeOrTitle, '')).toLowerCase();
   const map = [
-    { k: 'math', w: ['математика', 'геометрия', 'алгебра', 'мат'] },
-    { k: 'maat', w: ['маат', 'филип'] },
-    { k: 'beel', w: ['беел', 'петрова'] },
-    { k: 'lit', w: ['литература', 'ботев', 'чинтулов', 'прощаване', 'регалия', 'бел (иуч'] },
-    { k: 'bg', w: ['български', 'бел', 'медиен', 'художествен'] },
-    { k: 'geo', w: ['география', 'контурна', 'opentopomap', 'геогр'] },
-    { k: 'phy', w: ['физика', 'ом', 'напрежение', 'ток'] },
-    { k: 'chm', w: ['химия', 'валентност', 'молекул'] },
-    { k: 'bio', w: ['биология', 'монера', 'протиста', 'еукариот', 'биол'] },
-    { k: 'eng', w: ['английски', 'unit', 'english', 'test № 1', 'англ'] },
-    { k: 'his', w: ['история', 'възраждане', 'паисий', 'будители', 'алафранга'] },
-    { k: 'mus', w: ['музика', 'диез', 'бемол', 'канон'] },
-    { k: 'it', w: ['кмит', 'компютър', 'информационни'] },
-    { k: 'art', w: ['изобразително', 'ии', 'технологии', 'фвс', 'час на класа', 'скицник', 'импресионизъм'] },
-    { k: 'box', w: ['бокс', 'денисов', 'кико'] }
+    { k: 'math', w: ['g07-math', 'математика', 'геометрия', 'алгебра', 'мат'] },
+    { k: 'maat', w: ['g07-maat', 'маат', 'филип'] },
+    { k: 'beel', w: ['g07-beel', 'беел', 'петрова'] },
+    { k: 'lit', w: ['g07-lit', 'g07-bel-iuch', 'литература', 'ботев', 'чинтулов', 'прощаване', 'регалия', 'бел (иуч', 'бел иуч'] },
+    { k: 'bg', w: ['g07-bg', 'български', 'бел', 'медиен', 'художествен'] },
+    { k: 'geo', w: ['g07-geo', 'география', 'контурна', 'opentopomap', 'геогр'] },
+    { k: 'phy', w: ['g07-phy', 'физика', 'ом', 'напрежение', 'ток'] },
+    { k: 'chm', w: ['g07-chm', 'химия', 'валентност', 'молекул'] },
+    { k: 'bio', w: ['g07-bio', 'биология', 'монера', 'протиста', 'еукариот', 'биол'] },
+    { k: 'eng', w: ['g07-eng', 'английски', 'unit', 'english', 'test № 1', 'англ'] },
+    { k: 'his', w: ['g07-his', 'история', 'възраждане', 'паисий', 'будители', 'алафранга'] },
+    { k: 'mus', w: ['g07-mus', 'музика', 'диез', 'бемол', 'канон'] },
+    { k: 'it', w: ['g07-it', 'кмит', 'компютър', 'информационни'] },
+    { k: 'art', w: ['g07-art', 'изобразително', 'ии', 'технологии', 'фвс', 'час на класа', 'скицник', 'импресионизъм'] },
+    { k: 'box', w: ['g07-box', 'бокс', 'денисов', 'кико'] }
   ];
   for (const item of map) {
     if (item.w.some(word => txt.includes(word))) return item.k;
@@ -785,12 +817,14 @@ function makeMasteryStorageKey(subjId, vaultTitle, fallbackIdx) {
 function classifyHomeworkType(h) {
   if (!h) return 'review';
   if (h.hwType === 'must' || h.hwType === 'greenbook' || h.hwType === 'review') return h.hwType;
-  const combined = `${valOr(h.id, '')}${valOr(h.badge, '')} ${valOr(h.title, '')}${valOr(h.text, '')}`.toLowerCase();
+  const combined = `${valOr(h.id, '')} ${valOr(h.slotCode, '')}${valOr(h.badge, '')} ${valOr(h.title, '')}${valOr(h.text, '')}`.toLowerCase();
   if (
     combined.includes('зелено помагало') ||
     combined.includes('зеленото помагало') ||
     combined.includes('регалия 6') ||
     combined.includes('step-1-greenbook') ||
+    combined.includes('g07-math-iuch') ||
+    combined.includes('g07-bel-iuch') ||
     String(h.id).includes('iuch')
   ) return 'greenbook';
   if (
@@ -867,12 +901,12 @@ function evalDataCodeWithRepair(codeString) {
 }
 
 function describePartContent(d) {
-  const parts = [];
+  const g = valOr(d.grade, CURRENT_SCHOOL_GRADE);
+  const parts = [`${g}кл.`];
   if (Array.isArray(d.homework) && d.homework.length) parts.push(`ДР (${d.homework.length})`);
   if (Array.isArray(d.subjects) && d.subjects.length) parts.push(`Предмети (${d.subjects.length})`);
   if (Array.isArray(d.cards) && d.cards.length) parts.push(`Карти (${d.cards.length})`);
-  if (Array.isArray(d.schedule) && d.schedule.length) parts.push(`График (${d.schedule.length}д)`);
-  return parts.length ? parts.join(' + ') : 'Пач';
+  return parts.join(' + ');
 }
 
 function buildMultiFileMergedAppData(entriesList) {
@@ -890,9 +924,13 @@ function buildMultiFileMergedAppData(entriesList) {
       if (isValidAppDataPart(parsed) && parsed.enabled !== false) {
         const ts = valOr(parseBgDateString(parsed.generatedAt, false), 0);
         const dayTs = parseDayOnlyMs(parsed.generatedAt);
+        const fileGrade = valOr(parsed.grade, CURRENT_SCHOOL_GRADE);
+        const fileYear = valOr(parsed.schoolYear, CURRENT_SCHOOL_YEAR);
         valid.push({
           name: valOr(item.name, 'data.js'),
           generatedAt: valOr(parsed.generatedAt, valOr(item.name, 'База')),
+          grade: fileGrade,
+          schoolYear: fileYear,
           ts, dayTs, repaired,
           partDesc: describePartContent(parsed),
           data: parsed
@@ -906,11 +944,11 @@ function buildMultiFileMergedAppData(entriesList) {
   valid.sort((a, b) => a.ts - b.ts);
   const newestDayTs = valid[valid.length - 1].dayTs;
   const newestGenAt = valid[valid.length - 1].generatedAt;
+  const newestGrade = valid[valid.length - 1].grade;
   const oldestDayTs = valid[0].dayTs;
 
-  // Усещане за ЕДНА БАЗА: Всички файлове след базовия архив от 11.10 се третират като част от текущата жива седмична база!
   valid.forEach(v => {
-    const isArchiveLayer = String(v.name).includes('00_') || String(v.generatedAt).includes('11.10.2026');
+    const isArchiveLayer = String(v.name).includes('00_') || String(v.generatedAt).includes('11.10.2026') || Number(v.grade) < Number(newestGrade);
     v.isLatest = (newestDayTs > oldestDayTs) ? !isArchiveLayer : true;
   });
 
@@ -953,18 +991,24 @@ function buildMultiFileMergedAppData(entriesList) {
       if (s.shortName) aliasToKey.set(normName, mapKey);
 
       const explicitNum = (typeof s.num === 'number' && !isNaN(s.num)) ? s.num : null;
+      const sGrade = valOr(s.grade, v.grade);
+      const sCode = valOr(s.subjCode, getSubjCode(mapKey));
 
       if (!subjMap.has(mapKey)) {
         const clone = JSON.parse(JSON.stringify(s));
         clone.id = valOr(clone.id, mapKey);
+        clone.grade = sGrade;
+        clone.subjCode = sCode;
         clone._inLatestFile = isLatest && !s.dropped && !s.archived;
         clone._sortNum = explicitNum !== null ? explicitNum : (100 + sOrderIdx + 1);
         clone._sourceDate = newestGenAt;
         clone.vault = (clone.vault ? clone.vault : []).filter(vi => !vi.disabled).map(vItem => Object.assign({}, vItem, {
+          grade: valOr(vItem.grade, sGrade),
+          subjCode: sCode,
           _isLatest: isLatest,
           _sourceDate: isLatest ? newestGenAt : v.generatedAt
         }));
-        clone.homeworkBlocks = clone.homeworkHTML ? [{ html: clone.homeworkHTML, _isLatest: isLatest, _sourceDate: isLatest ? newestGenAt : v.generatedAt }] : [];
+        clone.homeworkBlocks = clone.homeworkHTML ? [{ html: clone.homeworkHTML, grade: sGrade, subjCode: sCode, _isLatest: isLatest, _sourceDate: isLatest ? newestGenAt : v.generatedAt }] : [];
         subjMap.set(mapKey, clone);
       } else {
         const existing = subjMap.get(mapKey);
@@ -974,6 +1018,8 @@ function buildMultiFileMergedAppData(entriesList) {
         if (s.shortName) existing.shortName = s.shortName;
         if (s.fullName) existing.fullName = s.fullName;
         if (s.extraHTML) existing.extraHTML = s.extraHTML;
+        existing.grade = sGrade;
+        existing.subjCode = sCode;
         existing._sourceDate = newestGenAt;
 
         const newVaultItems = [];
@@ -981,21 +1027,26 @@ function buildMultiFileMergedAppData(entriesList) {
           if (vItem.disabled || (vItem.id && disabledIds.has(vItem.id))) return;
           const tKey = String(valOr(vItem.title, '')).trim().toLowerCase();
           const existIdx = existing.vault.findIndex(x => String(valOr(x.title, '')).trim().toLowerCase() === tKey);
-          const enriched = Object.assign({}, vItem, { _isLatest: isLatest, _sourceDate: isLatest ? newestGenAt : v.generatedAt });
+          const enriched = Object.assign({}, vItem, { grade: valOr(vItem.grade, sGrade), subjCode: sCode, _isLatest: isLatest, _sourceDate: isLatest ? newestGenAt : v.generatedAt });
           if (existIdx >= 0) existing.vault[existIdx] = Object.assign({}, existing.vault[existIdx], enriched);
           else newVaultItems.push(enriched);
         });
         if (newVaultItems.length > 0) existing.vault = [...newVaultItems, ...existing.vault];
 
         if (s.homeworkHTML && !existing.homeworkBlocks.some(b => b.html === s.homeworkHTML)) {
-          existing.homeworkBlocks.unshift({ html: s.homeworkHTML, _isLatest: isLatest, _sourceDate: isLatest ? newestGenAt : v.generatedAt });
+          existing.homeworkBlocks.unshift({ html: s.homeworkHTML, grade: sGrade, subjCode: sCode, _isLatest: isLatest, _sourceDate: isLatest ? newestGenAt : v.generatedAt });
         }
       }
     });
   });
 
   const allSubjects = Array.from(subjMap.values()).sort((a, b) => a._sortNum - b._sortNum);
-  allSubjects.forEach((s, index) => { s.displayNum = (s._sortNum < 100) ? s._sortNum : (index + 1); s.num = s.displayNum; });
+  allSubjects.forEach((s, index) => {
+    s.displayNum = (s._sortNum < 100) ? s._sortNum : (index + 1);
+    s.num = s.displayNum;
+    s.subjCode = valOr(s.subjCode, getSubjCode(s.id));
+    s.grade = valOr(s.grade, newestGrade);
+  });
 
   const hwMap = new Map();
   valid.forEach(v => {
@@ -1004,9 +1055,17 @@ function buildMultiFileMergedAppData(entriesList) {
       if (h.disabled || disabledIds.has(key)) { hwMap.delete(key); return; }
       const subjId = valOr(h.subjId, guessSubjectKeyFromText(valOr(h.badge, '') + ' ' + valOr(h.title, ''), allSubjects));
       const prev = hwMap.has(key) ? hwMap.get(key) : {};
+      const finalSubjId = valOr(subjId, prev.subjId);
+      const isGreenIuch = classifyHomeworkType(h) === 'greenbook';
+      const defaultSlotCode = isGreenIuch
+        ? (finalSubjId === 'math' ? 'G07-MATH-IUCH' : (finalSubjId === 'lit' || finalSubjId === 'bg' ? 'G07-BEL-IUCH' : getSubjCode(finalSubjId)))
+        : getSubjCode(finalSubjId);
+
       hwMap.set(key, Object.assign({}, prev, h, {
         id: key,
-        subjId: valOr(subjId, prev.subjId),
+        grade: valOr(h.grade, v.grade),
+        subjId: finalSubjId,
+        slotCode: valOr(h.slotCode, defaultSlotCode),
         _isLatest: v.isLatest && !h.archived,
         _sourceDate: v.isLatest ? newestGenAt : v.generatedAt
       }));
@@ -1019,7 +1078,15 @@ function buildMultiFileMergedAppData(entriesList) {
       const key = valOr(e.id, e.date + '_' + e.subj);
       if (e.disabled || disabledIds.has(key)) { exMap.delete(key); return; }
       const prev = exMap.has(key) ? exMap.get(key) : {};
-      exMap.set(key, Object.assign({}, prev, e, { _isLatest: v.isLatest && !e.archived, _sourceDate: newestGenAt }));
+      const sKey = guessSubjectKeyFromText(e.subj, allSubjects);
+      const cleanSubjName = String(valOr(e.subj, '')).replace(/\s*\(ООП\)/gi, '');
+      exMap.set(key, Object.assign({}, prev, e, {
+        subj: cleanSubjName,
+        grade: valOr(e.grade, v.grade),
+        subjCode: valOr(e.subjCode, getSubjCode(sKey)),
+        _isLatest: v.isLatest && !e.archived,
+        _sourceDate: newestGenAt
+      }));
     });
   });
 
@@ -1030,7 +1097,13 @@ function buildMultiFileMergedAppData(entriesList) {
       if (t.disabled || disabledIds.has(key)) { topMap.delete(key); return; }
       const subjId = valOr(t.subjId, guessSubjectKeyFromText(t.subj, allSubjects));
       const prev = topMap.has(key) ? topMap.get(key) : {};
-      topMap.set(key, Object.assign({}, prev, t, { subjId, _isLatest: v.isLatest && !t.archived, _sourceDate: newestGenAt }));
+      topMap.set(key, Object.assign({}, prev, t, {
+        subjId,
+        grade: valOr(t.grade, v.grade),
+        subjCode: valOr(t.subjCode, getSubjCode(subjId)),
+        _isLatest: v.isLatest && !t.archived,
+        _sourceDate: newestGenAt
+      }));
     });
   });
 
@@ -1041,8 +1114,11 @@ function buildMultiFileMergedAppData(entriesList) {
       if (c.disabled || disabledIds.has(String(c.id)) || disabledIds.has(uniqueKey)) { cardMap.delete(uniqueKey); return; }
       const cSubjId = valOr(c.subjId, guessSubjectKeyFromText(valOr(c.subj, c.title), allSubjects));
       const prev = cardMap.has(uniqueKey) ? cardMap.get(uniqueKey) : {};
+      const finalSubjId = valOr(cSubjId, prev.subjId);
       cardMap.set(uniqueKey, Object.assign({}, prev, c, {
-        subjId: valOr(cSubjId, prev.subjId),
+        subjId: finalSubjId,
+        grade: valOr(c.grade, v.grade),
+        subjCode: valOr(c.subjCode, getSubjCode(finalSubjId)),
         _origId: c.id,
         _isLatest: v.isLatest,
         _sourceDate: v.isLatest ? newestGenAt : v.generatedAt,
@@ -1060,12 +1136,15 @@ function buildMultiFileMergedAppData(entriesList) {
   const metaDesc = [...valid].reverse().map(v => ({
     name: v.name,
     generatedAt: v.generatedAt,
+    grade: v.grade,
     partDesc: v.partDesc,
     repaired: v.repaired,
     isLatest: v.isLatest
   }));
 
   return {
+    grade: newestGrade,
+    schoolYear: CURRENT_SCHOOL_YEAR,
     generatedAt: newestGenAt,
     extraCSS: mergedCSS,
     ui: mergedUI,
@@ -1134,8 +1213,15 @@ function buildRotatingScheduleStream(data, nowMs) {
         if (h.archived || usedHwIds.has(h.id)) return false;
         const hDate = shortDateLabel(h.dueDate);
         if (hDate !== dateStr) return false;
-        if (h.subjId === slotTpl.subjId) return true;
+        if (h.slotCode && slotTpl.slotCode && h.slotCode === slotTpl.slotCode) return true;
+        if (h.subjId === slotTpl.subjId) {
+          const hIsGreen = classifyHomeworkType(h) === 'greenbook';
+          if (Boolean(slotTpl.forceGreenbook) === hIsGreen) return true;
+        }
         return false;
+      }) || (data.homework || []).find(h => {
+        if (h.archived || usedHwIds.has(h.id)) return false;
+        return shortDateLabel(h.dueDate) === dateStr && h.subjId === slotTpl.subjId;
       });
       if (matchingHw) usedHwIds.add(matchingHw.id);
 
@@ -1144,7 +1230,7 @@ function buildRotatingScheduleStream(data, nowMs) {
         const eDate = shortDateLabel(e.date);
         if (eDate !== dateStr) return false;
         const eSubjKey = guessSubjectKeyFromText(e.subj, data.subjects);
-        return eSubjKey === slotTpl.subjId;
+        return eSubjKey === slotTpl.subjId && !slotTpl.forceGreenbook && slotTpl.slotCode !== 'G07-ENG-IUCH';
       });
 
       allSlots.push({
@@ -1159,6 +1245,8 @@ function buildRotatingScheduleStream(data, nowMs) {
         slotStartMs,
         slotEndMs,
         subjId: slotTpl.subjId,
+        slotCode: valOr(slotTpl.slotCode, getSubjCode(slotTpl.subjId)),
+        grade: valOr(slotTpl.grade, CURRENT_SCHOOL_GRADE),
         title: slotTpl.title,
         teacher: slotTpl.teacher,
         room: slotTpl.room,
@@ -1190,6 +1278,8 @@ function buildRotatingScheduleStream(data, nowMs) {
       slotStartMs: dueMs,
       slotEndMs: dueMs + 2400000,
       subjId: h.subjId,
+      slotCode: valOr(h.slotCode, getSubjCode(h.subjId)),
+      grade: valOr(h.grade, CURRENT_SCHOOL_GRADE),
       title: h.title,
       teacher: '',
       room: '',
@@ -1253,7 +1343,7 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
 
   let hwDrawerInner = '';
   if (ex) {
-    hwDrawerInner += `<div class="step-1-must">🚨 ПРЕДСТОЯЩА КОНТРОЛНА РАБОТА (${ex.date}): ${ex.topic} (${ex.teacher})</div>`;
+    hwDrawerInner += `<div class="step-1-must">🚨 ПРЕДСТОЯЩА КОНТРОЛНА РАБОТА (${ex.date} • ${slot.slotCode}): ${ex.topic} (${ex.teacher})</div>`;
   }
   if (h) {
     const fallbackSol = (sObj && sObj.homeworkBlocks && sObj.homeworkBlocks[0]) ? sObj.homeworkBlocks[0].html : '';
@@ -1264,15 +1354,15 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
     const resLabel = valOr(h.resourceLabel, firstCard ? valOr(firstCard.linkLabel, '🔗 Отвори интерактивния ресурс') : '🔗 Отвори интерактивния ресурс');
 
     const step1Banner = slotCategory === 'must'
-      ? `<span class="step-1-must">🔴 1. СТАТУС: ЗАДЪЛЖИТЕЛНО ПИСМЕНО ДОМАШНО / КОНТРОЛНА РАБОТА (${slot.dateStr} • ${slot.startStr} ч.)</span>`
+      ? `<span class="step-1-must">🔴 1. СТАТУС (${slot.slotCode} • ${slot.grade}. клас): ЗАДЪЛЖИТЕЛНО ДОМАШНО / КОНТРОЛНА (${slot.dateStr} • ${slot.startStr} ч.)</span>`
       : (slotCategory === 'greenbook'
-        ? `<span class="step-1-greenbook">📗 1. СТАТУС: РАБОТА ПО ЗЕЛЕНОТО ПОМАГАЛО ИУЧ (${slot.dateStr} • ${slot.startStr} ч.)</span>`
-        : `<span class="step-1-none">🔵 1. СТАТУС: НЯМА ПИСМЕНО ДОМАШНО В ШКОЛО (Кара се на преговор!)</span>`);
+        ? `<span class="step-1-greenbook">📗 1. СТАТУС (${slot.slotCode} • ${slot.grade}. клас): РАБОТА ПО ЗЕЛЕНОТО ПОМАГАЛО ИУЧ (${slot.dateStr} • ${slot.startStr} ч.)</span>`
+        : `<span class="step-1-none">🔵 1. СТАТУС (${slot.slotCode} • ${slot.grade}. клас): НЯМА ПИСМЕНО ДОМАШНО В ШКОЛО (Кара се на преговор!)</span>`);
 
     hwDrawerInner += `
       <div id="sol_box_${slot.uid}">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-          <b style="color:var(--gold);">📌 Детайли, условие и решение за тетрадката:</b>
+          <b style="color:var(--gold);">📌 Детайли, условие и решение за тетрадката (${slot.slotCode}):</b>
           ${playerHTML('sol_box_' + slot.uid, '▶️ Чуй решението')}
         </div>
         ${step1Banner}
@@ -1282,7 +1372,7 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
         ${visualsHTML ? `<div style="margin-top:8px;">${visualsHTML}</div>` : ''}
         <div class="voice-bar no-read" style="margin-top:8px;">
           ${resLink ? `<a class="btn btn-file" href="${resLink}" target="_blank">${resLabel}</a>` : ''}
-          ${sObj ? `<button class="btn btn-arch" onclick="jumpToSubject('${sObj.id}')">🧠 Отвори Предмета (${sObj.shortName})</button>` : ''}
+          ${sObj ? `<button class="btn btn-arch" onclick="jumpToSubject('${sObj.id}')">🧠 Отвори Предмета (${sObj.shortName} •${sObj.subjCode})</button>` : ''}
         </div>
       </div>
     `;
@@ -1290,13 +1380,13 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
     const isMathIuch = slot.subjId === 'math';
     hwDrawerInner += `
       <div>
-        <span class="step-1-greenbook">📗 1. СТАТУС: РАБОТА ПО ЗЕЛЕНОТО ПОМАГАЛО ИУЧ (В Школо не се вписва отделно)</span>
+        <span class="step-1-greenbook">📗 1. СТАТУС (${slot.slotCode} • ${slot.grade}. клас): РАБОТА ПО ЗЕЛЕНОТО ПОМАГАЛО ИУЧ (В Школо не се вписва отделно)</span>
         <span class="step-2-cond">📋 <b>2. КАКВО СЕ ИСКА:</b> ${isMathIuch
           ? 'Отвори <b>Зеленото помагало по Математика ИУЧ</b> и провери кои задачи са отбелязани за решаване за сряда (2-ри час)!'
           : 'Отвори зеленото помагало на изд. <b>„Регалия 6“ (27 примерни теста по БЕЛ)</b> и провери отбелязания тест за петък (1-ви час)!'}</span>
         ${firstVault ? `<div class="step-5-deep"><b>🧠 Ключово правило от Сейфа (${firstVault.title}):</b><br>${formatMemoWords(firstVault.text)}</div>` : ''}
         <div class="voice-bar no-read" style="margin-top:8px;">
-          ${sObj ? `<button class="btn btn-arch" onclick="jumpToSubject('${sObj.id}')">🧠 Отвори Предмета (${sObj.shortName})</button>` : ''}
+          ${sObj ? `<button class="btn btn-arch" onclick="jumpToSubject('${sObj.id}')">🧠 Отвори Предмета (${sObj.shortName} •${sObj.subjCode})</button>` : ''}
         </div>
       </div>
     `;
@@ -1305,12 +1395,12 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
   const topicDrawerInner = `
     <div>
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
-        <b style="color:var(--accent);">📖 Взети и следващи теми по ${sShort}:</b>
+        <b style="color:var(--accent);">📖 Взети и следващи теми по ${sShort} (${slot.slotCode} • ${slot.grade}. клас):</b>
         ${sObj ? `<button class="btn btn-arch no-read" onclick="jumpToSubject('${sObj.id}')">🧠 Към Златния сейф и 3D картите (${sShort})</button>` : ''}
       </div>
-      ${activeTopicObj ? `<div class="topic-drop-box"><b>🆕 Актуално по учебен план:</b> ${activeTopicObj.text}</div>` : ''}
+      ${activeTopicObj ? `<div class="topic-drop-box"><b>🆕 Актуално по учебен план (${slot.grade}. клас):</b> ${activeTopicObj.text}</div>` : ''}
       ${firstVault ? `<div class="topic-drop-box" style="border-left-color:var(--gold);"><b>🔐 Последно правило в Златния сейф (${firstVault.title}):</b><br>${formatMemoWords(firstVault.text)}</div>` : ''}
-      ${pastTopicsList.map(pt => `<div class="topic-drop-box" style="border-left-color:var(--purple); opacity:0.85;"><b>⏪ База от минали седмици:</b> ${pt.text}</div>`).join('')}
+      ${pastTopicsList.map(pt => `<div class="topic-drop-box" style="border-left-color:var(--purple); opacity:0.85;"><b>🗄️ Архив (${valOr(pt.grade, 7)}. клас):</b> ${pt.text}</div>`).join('')}
     </div>
   `;
 
@@ -1321,6 +1411,7 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
       <div class="slot-left">
         <input type="checkbox" id="${chkId}" data-real-chk="${chkId}" ${isChk ? 'checked' : ''} onchange="saveChk(this)" title="Отметни като готово/прегледано">
         <span class="slot-time-pill no-read">${slot.num} • ${slot.startStr}–${slot.endStr}</span>
+        <span class="slot-code-pill no-read" title="Уникален идентификатор за ${slot.grade}. клас">${slot.grade}кл • ${slot.slotCode}</span>
         <span class="slot-subj-title" onclick="toggleSlotDrawer('${hwDrawerInner ? drawerHwId : drawerTopId}')" title="Кликни за разгъване на информацията по предмета">
           <span class="no-read">${sIcon}</span> ${slot.title}
         </span>
@@ -1335,7 +1426,6 @@ function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
   </div>`;
 }
 
-// СБИТА СЕДМИЧНА ПРОГРАМА С ЕЛЕГАНТЕН БУТОН КЪМ ЖИВИТЕ ДАННИ В РОТАЦИОННИЯ РАДАР
 function renderCompactScheduleWithLiveLinks(data, streamSlots) {
   return WEEKLY_SLOTS_TEMPLATE.map(dayTpl => {
     const sampleSlot = streamSlots.find(s => s.dow === dayTpl.dow);
@@ -1344,8 +1434,11 @@ function renderCompactScheduleWithLiveLinks(data, streamSlots) {
     const rowsHTML = dayTpl.slots.map((slTpl, idx) => {
       const sObj = (data.subjects || []).find(s => s.id === slTpl.subjId);
       const sIcon = sObj ? valOr(sObj.icon, '📘') : '📘';
+      const sCode = valOr(slTpl.slotCode, getSubjCode(slTpl.subjId));
+      const sGrade = valOr(slTpl.grade, CURRENT_SCHOOL_GRADE);
 
-      const liveMatch = streamSlots.find(ls => ls.dow === dayTpl.dow && ls.num === slTpl.num && ls.subjId === slTpl.subjId)
+      const liveMatch = streamSlots.find(ls => ls.dow === dayTpl.dow && ls.slotCode === sCode && ls.num === slTpl.num)
+        || streamSlots.find(ls => ls.dow === dayTpl.dow && ls.num === slTpl.num && ls.subjId === slTpl.subjId)
         || streamSlots.find(ls => ls.dow === dayTpl.dow && ls.subjId === slTpl.subjId);
 
       let liveBtnHTML = '';
@@ -1375,6 +1468,7 @@ function renderCompactScheduleWithLiveLinks(data, streamSlots) {
         <div class="slot-main-row">
           <div class="slot-left">
             <span class="slot-time-pill no-read">${slTpl.num} • ${slTpl.start}–${slTpl.end}</span>
+            <span class="slot-code-pill no-read">${sGrade}кл • ${sCode}</span>
             <span class="slot-subj-title" onclick="${liveMatch ? `jumpToLiveSlot('${liveMatch.uid}', '${liveMatch.hw || liveMatch.exam || liveMatch.forceGreenbook ? 'drw_hw_' + liveMatch.uid : 'drw_top_' + liveMatch.uid}')` : (sObj ? `jumpToSubject('${sObj.id}')` : '')}">
               <span class="no-read">${sIcon}</span> ${slTpl.title}
             </span>
@@ -1391,13 +1485,12 @@ function renderCompactScheduleWithLiveLinks(data, streamSlots) {
     return `<div style="margin-bottom:14px;">
       <div class="day-divider" style="margin-top:6px;">
         <span>🗓️ ${dayTpl.dayName}${nextDateLbl}</span>
-        <span class="badge b-blue no-read">${dayTpl.slots.length} учебни слота</span>
+        <span class="badge b-blue no-read">7. клас • ${dayTpl.slots.length} слота</span>
       </div>
       ${rowsHTML}
     </div>`;
   }).join('');
 }
-
 function jumpToSubject(subjId) {
   openTab('tab-2', document.getElementById('tab-btn-2'));
   const btn = document.getElementById('sbtn-' + subjId);
@@ -1414,6 +1507,9 @@ function initApp(data) {
     return;
   }
   alertBar.style.display = (data.warnings && data.warnings.length > 0) ? 'flex' : 'none';
+
+  const activeGradeEl = document.getElementById('active-grade-lbl');
+  if (activeGradeEl) activeGradeEl.innerText = `${valOr(data.grade, CURRENT_SCHOOL_GRADE)}. клас (${valOr(data.schoolYear, CURRENT_SCHOOL_YEAR)})`;
 
   if (data.extraCSS) {
     let st = document.getElementById('dynamic-data-css');
@@ -1450,8 +1546,8 @@ function initApp(data) {
       const isToday = sl.offset === 0;
       const isNextWeekRot = sl.offset >= 5;
       const badgeRight = isToday
-        ? `<span class="badge b-green no-read">📍 ДНЕС (ТЕКУЩИ И ПРЕДСТОЯЩИ ЧАСОВЕ)</span>`
-        : (isNextWeekRot ? `<span class="badge b-purple no-read">🔄 СЛЕДВАЩО ЗАВЪРТАНЕ ПО ПРОГРАМАТА</span>` : `<span class="badge b-blue no-read">📅 ПРЕДСТОЯЩ УЧЕБЕН ДЕН</span>`);
+        ? `<span class="badge b-green no-read">📍 ДНЕС (7. КЛАС • ТЕКУЩИ И ПРЕДСТОЯЩИ ЧАСОВЕ)</span>`
+        : (isNextWeekRot ? `<span class="badge b-purple no-read">🔄 СЛЕДВАЩО ЗАВЪРТАНЕ ПО ПРОГРАМАТА</span>` : `<span class="badge b-blue no-read">📅 ПРЕДСТОЯЩ УЧЕБЕН ДЕН (7. КЛАС)</span>`);
 
       const friAlert = sl.dateStr === '23.10.2026' ? ` • 🚨 НАМАЛЕНИ ЧАСОВЕ ПО 30 МИН. (КРАЙ В 16:50 Ч.)` : '';
       streamHTML += `<div class="day-divider ${isToday ? 'day-today' : ''} ${isNextWeekRot ? 'day-rotated' : ''}">
@@ -1471,7 +1567,7 @@ function initApp(data) {
 
   document.getElementById('hw-zone-past').innerHTML = pastHw.map(h => `
     <div class="uni-card" style="margin-bottom:8px;">
-      <h4>${valOr(h.badge, '')} — ${h.title} (${valOr(h.dueDate, '')})</h4>
+      <h4><span class="slot-code-pill no-read">${valOr(h.grade, 7)}кл • ${valOr(h.slotCode, getSubjCode(h.subjId))}</span> ${valOr(h.badge, '')} — ${h.title} (${valOr(h.dueDate, '')})</h4>
       <p>${h.text}</p>
       ${h.solutionHTML ? `<div class="step-4-copy" style="margin-top:6px;">${h.solutionHTML}</div>` : ''}
     </div>
@@ -1496,8 +1592,9 @@ function initApp(data) {
     const sKey = guessSubjectKeyFromText(e.subj, data.subjects);
     const sObj = (data.subjects || []).find(s => s.id === sKey);
     const exDateShort = shortDateLabel(e.date);
+    const exCode = valOr(e.subjCode, getSubjCode(sKey));
+    const exGrade = valOr(e.grade, CURRENT_SCHOOL_GRADE);
 
-    // Проверка дали за това контролно вече има ЖИВИ ДАННИ в текущия ротационен поток
     const liveSlotMatch = streamSlots.find(sl => (sl.dateStr === exDateShort && sl.subjId === sKey) || (sl.exam && sl.exam.id === e.id));
     const liveHwMatch = (data.homework || []).find(h => !h.archived && shortDateLabel(h.dueDate) === exDateShort && h.subjId === sKey);
 
@@ -1522,6 +1619,7 @@ function initApp(data) {
       <div class="slot-main-row">
         <div class="slot-left">
           <span class="slot-time-pill no-read">#${i + 1} • ${e.date}</span>
+          <span class="slot-code-pill no-read">${exGrade}кл • ${exCode}</span>
           <span class="slot-subj-title" onclick="toggleSlotDrawer('${exDrwId}')">${e.subj} — ${e.topic}</span>
           <span class="slot-teacher-room no-read">(👩‍🏫 ${e.teacher})</span>
         </div>
@@ -1532,12 +1630,12 @@ function initApp(data) {
         </div>
       </div>
       <div class="slot-expand-drawer ${isDrwOpen}" id="${exDrwId}">
-        <div class="step-1-must">🎯 <b>Тема за изпитване (${e.date}):</b> ${e.topic} | Преподавател: ${e.teacher}</div>
+        <div class="step-1-must">🎯 <b>Тема за изпитване (${e.date} • ${exCode}):</b> ${e.topic} | Преподавател: ${e.teacher}</div>
         ${hwSolPreview}
         ${vaultPreview}
         <div class="voice-bar no-read" style="margin-top:8px;">
           ${liveSlotMatch ? `<button class="btn btn-file" onclick="jumpToLiveSlot('${liveSlotMatch.uid}', 'drw_hw_${liveSlotMatch.uid}')">🔄 Отиди на часа в Живата програма</button>` : ''}
-          ${sObj ? `<button class="btn btn-speak" onclick="jumpToSubject('${sObj.id}')">🚀 Отвори всички правила и 3D карти по ${sObj.shortName}</button>` : ''}
+          ${sObj ? `<button class="btn btn-speak" onclick="jumpToSubject('${sObj.id}')">🚀 Отвори всички правила и 3D карти по ${sObj.shortName} (${sObj.subjCode})</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -1548,19 +1646,18 @@ function initApp(data) {
     exArchDrawer.style.display = 'block';
     document.getElementById('exams-arch-cards-box').innerHTML = pastExams.map(e => `
       <div class="uni-card item-tier-rev">
-        <h4>${e.subj} — ${e.date}</h4>
+        <h4><span class="slot-code-pill no-read">${valOr(e.grade, 7)}кл • ${valOr(e.subjCode, 'G07')}</span> ${e.subj} — ${e.date}</h4>
         <p>${e.topic} <span style="color:var(--muted);">(${e.teacher})</span></p>
       </div>`).join('');
   } else exArchDrawer.style.display = 'none';
 
-  // Рендериране на сбитата седмична програма с директни бутони към Живата програма
   const schedBoxEl = document.getElementById('sched-box');
   if (schedBoxEl) {
     schedBoxEl.className = '';
     schedBoxEl.innerHTML = renderCompactScheduleWithLiveLinks(data, streamSlots);
   }
 
-  // ТАБ 2: 15 ПРЕДМЕТА
+  // ТАБ 2: 15 ПРЕДМЕТА С ИДЕНТИФИКАТОРИ (G07-...) И МАРКИРОВКА ЗА 7. КЛАС
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
   navBtns.innerHTML = ''; panesWrap.innerHTML = '';
@@ -1570,9 +1667,12 @@ function initApp(data) {
     const sIcon = valOr(s.icon, '📘');
     const sShort = valOr(s.shortName, 'Предмет');
     const sFull = valOr(s.fullName, sShort);
+    const sCode = valOr(s.subjCode, getSubjCode(s.id));
+    const sGrade = valOr(s.grade, CURRENT_SCHOOL_GRADE);
 
     navBtns.innerHTML += `<button class="s-btn ${idx === 0 ? 'active' : ''}" id="sbtn-${s.id}" onclick="openPane('tab-2', 'sp-${s.id}', this)">
       <span class="no-read">${sIcon} ${s.displayNum}.</span> ${sShort}
+      <span class="slot-code-pill no-read" style="font-size:0.64rem; padding:1px 5px;">${sCode}</span>
       <span class="s-btn-pct no-read" id="spct-${s.id}">0%</span>
     </button>`;
 
@@ -1584,7 +1684,7 @@ function initApp(data) {
 
       return `<div class="memo-card ${tierCls} ${isMast ? 'mastered' : ''}">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          ${tierBadgeHTML(v._isLatest, v._sourceDate)}
+          ${tierBadgeHTML(v._isLatest, v._sourceDate, valOr(v.grade, sGrade), sCode)}
           <span class="no-read" style="font-size:0.72rem; color:var(--muted);">Правило #${vIdx + 1}</span>
         </div>
         <div class="visual-anchor no-read">${valOr(v.visual, '')}</div>
@@ -1598,6 +1698,7 @@ function initApp(data) {
 
     const cardsHTML = subjCards.map(c => {
       const tierCls = c._isLatest ? 'item-tier-new' : 'item-tier-rev';
+      const cGrade = valOr(c.grade, sGrade);
       const algoHTML = c.algo ? `
         <div class="algo-box">
           <div class="algo-step">🎯 <b>${ui('algoStep1')}</b> ${c.algo.type}</div>
@@ -1609,8 +1710,8 @@ function initApp(data) {
         <div class="card-front">
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="badge b-blue no-read">🃏 Карта за мислене #${c.id}</span>
-              ${tierBadgeHTML(c._isLatest, c._sourceDate)}
+              <span class="badge b-blue no-read">🃏 Карта #${c.id}</span>
+              ${tierBadgeHTML(c._isLatest, c._sourceDate, cGrade, sCode)}
             </div>
             <h3>${c.title}</h3>
             <div id="joker${c.uid}">${algoHTML}<div class="story-box">${c.joker}</div></div>
@@ -1625,7 +1726,7 @@ function initApp(data) {
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <span class="badge b-yellow no-read">Практически въпрос #${c.id}</span>
-              ${tierBadgeHTML(c._isLatest, c._sourceDate)}
+              ${tierBadgeHTML(c._isLatest, c._sourceDate, cGrade, sCode)}
             </div>
             <h3>${c.q}</h3>
             <select id="q${c.uid}" class="ans-select" data-subj="${s.id}" onchange="checkSingleCard(${c.uid})">
@@ -1644,14 +1745,13 @@ function initApp(data) {
       const tierCls = blk._isLatest ? 'item-tier-new' : 'item-tier-rev';
       return `<div class="zone-box ${tierCls}" id="${blkId}" style="margin-top:12px;">
         <div class="zone-title">
-          <span>✍️ РЕШЕНИ ЗАДАЧИ И УПРАЖНЕНИЯ ПО ТЕМАТА ${tierBadgeHTML(blk._isLatest, blk._sourceDate)}</span>
+          <span>✍️ РЕШЕНИ ЗАДАЧИ И УПРАЖНЕНИЯ ПО ТЕМАТА ${tierBadgeHTML(blk._isLatest, blk._sourceDate, valOr(blk.grade, sGrade), sCode)}</span>
           ${playerHTML(blkId, '▶️ Чуй урока')}
         </div>
         <div style="font-size:0.86rem;">${blk.html}</div>
       </div>`;
     }).join('');
 
-    // Умна връзка от самия предмет обратно към следващия му час в Живата програма
     const nextLiveForSubj = streamSlots.find(sl => sl.subjId === s.id);
     const subjLiveBtn = nextLiveForSubj
       ? `<button class="act-pill pill-rev no-read" onclick="openTab('tab-1', document.getElementById('tab-btn-1')); jumpToLiveSlot('${nextLiveForSubj.uid}', '${nextLiveForSubj.hw || nextLiveForSubj.exam || nextLiveForSubj.forceGreenbook ? 'drw_hw_' + nextLiveForSubj.uid : 'drw_top_' + nextLiveForSubj.uid}')">🔄 Следващ час: ${nextLiveForSubj.dayName} (${nextLiveForSubj.dateStr.slice(0,5)}) ➔</button>`
@@ -1661,7 +1761,7 @@ function initApp(data) {
       <div class="zone-box" id="p-${s.id}">
         <div class="subj-prog-banner no-read">
           <div>
-            <strong style="color:var(--accent); font-size:0.95rem;">${sIcon} ${s.displayNum}. ${sFull}</strong>
+            <strong style="color:var(--accent); font-size:0.95rem;">${sIcon} ${s.displayNum}. ${sFull} <span class="slot-code-pill">${sGrade}. клас • ${sCode}</span></strong>
             <div id="sprog-detail-${s.id}" style="font-size:0.8rem; color:var(--muted); margin-top:2px;">Учене наизуст: 0/0 | Тренажор за мислене: 0/0</div>
           </div>
           <div class="voice-bar">
@@ -1672,7 +1772,7 @@ function initApp(data) {
 
         <div class="memo-vault" id="vault-${s.id}">
           <div class="memo-head">
-            <h3>${ui('vaultPrefix')} ${sShort.toUpperCase()} (${(s.vault || []).length} правила)</h3>
+            <h3>${ui('vaultPrefix')} ${sShort.toUpperCase()} (${sGrade}. КЛАС • ${sCode} • ${(s.vault || []).length} правила)</h3>
             <div class="mini-player no-read">
               <button class="btn btn-mask" onclick="maskVault('vault-${s.id}')">${ui('btnTestMemory')}</button>
               ${playerHTML('vault-' + s.id, ui('btnPlayVault'))}
@@ -1686,7 +1786,7 @@ function initApp(data) {
         ${subjCards.length > 0 ? `
         <div class="zone-box" style="border-color:var(--accent); margin-top:12px;">
           <div class="zone-title">
-            <span>🃏 АЛГОРИТЪМ ЗА МИСЛЕНЕ И ПРАКТИКА ПО ${sShort.toUpperCase()} (${subjCards.length} карти)</span>
+            <span>🃏 АЛГОРИТЪМ ЗА МИСЛЕНЕ И ПРАКТИКА ПО ${sShort.toUpperCase()} (${sCode} •${subjCards.length} карти)</span>
             <button class="btn btn-speak no-read" onclick="checkSubjectCards('${s.id}')">✅ Обърни и провери картите</button>
           </div>
           <div class="cards-container">${cardsHTML}</div>
@@ -1706,7 +1806,7 @@ function initApp(data) {
     }
   });
 
-  document.getElementById('db-status-label').innerHTML = `✅ Единна жива база (Версия: <b>${data.generatedAt}</b>) | Активни <b>${(data.loadedMeta || []).length} модула</b> | <b>${(data.subjects || []).length} предмета</b> | <b>${(data.cards || []).length} карти</b>`;
+  document.getElementById('db-status-label').innerHTML = `✅ Единна жива база (<b>${valOr(data.grade, 7)}. клас • ${valOr(data.schoolYear, '2026/2027')}</b> | Версия: <b>${data.generatedAt}</b>) | Активни <b>${(data.loadedMeta || []).length} модула</b> | <b>${(data.subjects || []).length} предмета (G07)</b> | <b>${(data.cards || []).length} карти</b>`;
   document.getElementById('loaded-files-badges').innerHTML = (data.loadedMeta || []).map(m => `
     <span class="file-Chip">${m.isLatest ? '🟢' : '🗄️'} <b>${m.name}</b> (${m.generatedAt} • ${m.partDesc})</span>`).join('');
 
@@ -1721,7 +1821,7 @@ function renderSavedFilesListInTab3() {
   tab5List.innerHTML = savedList.map((s, idx) => {
     const isOff = Boolean(disabledMap[s.name]);
     return `<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:${isOff ? '#1e1b4b' : '#172554'}; opacity:${isOff ? '0.65' : '1'}; padding:7px 11px; border-radius:8px; margin-top:5px; font-size:0.8rem;">
-      <span>${isOff ? '⏸️ [ИЗКЛЮЧЕН]' : '🟢 [АКТИВЕН]'} 📄 <b>${s.name}</b> (${valOr(s.generatedAt, '—')})</span>
+      <span>${isOff ? '⏸️ [ИЗКЛЮЧЕН]' : '🟢 [АКТИВЕН • 7. КЛАС]'} 📄 <b>${s.name}</b> (${valOr(s.generatedAt, '—')})</span>
       <div class="voice-bar">
         <button class="btn ${isOff ? 'btn-file' : 'btn-mask'}" style="padding:3px 9px; font-size:0.73rem;" onclick="toggleSourceEnabled('${s.name.replace(/'/g, "\\'")}')">${isOff ? '▶️ Включи' : '⏸️ Изключи'}</button>
         <button class="btn btn-stop" style="padding:3px 8px; font-size:0.73rem;" onclick="removeSingleSavedSource(${idx})">✖ Изтрий</button>
@@ -2080,7 +2180,7 @@ function generateSyncReport() {
   const mast = document.querySelectorAll('.mast-chk:checked').length;
   const totM = document.querySelectorAll('.mast-chk').length;
   const filesLoaded = (APP_DATA.loadedMeta || []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
-  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.4 – РОТАЦИОНЕН РАДАР) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
+  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.4 • 7. КЛАС • G07) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
   const box = document.getElementById('sync-box');
   box.style.display = 'block'; box.value = rep; box.select();
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
