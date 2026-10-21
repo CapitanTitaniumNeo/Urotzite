@@ -1947,6 +1947,7 @@ function toggleAllMasks() {
   const hide = Array.from(words).some(w => !w.classList.contains('masked'));
   words.forEach(w => w.classList.toggle('masked', hide));
 }
+  
 function saveChk(chk) {
   const realKey = valOr(chk.getAttribute('data-real-chk'), chk.id);
   localStorage.setItem(STORAGE_PREFIX + 'chk_' + realKey, chk.checked ? '1' : '0');
@@ -1968,6 +1969,9 @@ let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
 let speechTimer = null;
 const originalBtnLabels = new Map();
 
+// Тихо 0.1-секундно аудио за мигновено отключване на колоните на Samsung Smart TV при клик с дистанционното
+const SILENT_UNLOCK_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
 function getTvAudioElement() {
   let el = document.getElementById('tv-tts-audio-el');
   if (!el) {
@@ -1981,6 +1985,15 @@ function getTvAudioElement() {
   return el;
 }
 
+function unlockTvAudioNow() {
+  const audioEl = getTvAudioElement();
+  try {
+    audioEl.src = SILENT_UNLOCK_WAV;
+    const p = audioEl.play();
+    if (p && typeof p.catch === 'function') p.catch(function() {});
+  } catch (e) {}
+}
+
 function playerHTML(id, label) {
   return `<span class="mini-player no-read">
     <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${valOr(label, ui('btnListen'))}</button>
@@ -1989,42 +2002,15 @@ function playerHTML(id, label) {
   </span>`;
 }
 
-function splitTextToChunks(text, maxLen) {
-  const limit = maxLen || 140;
-  const rawSentences = text.match(/[^.!?]+[.!?]*/g) || [text];
-  const chunks = [];
-  rawSentences.forEach(function(s) {
-    const trimmed = s.trim();
-    if (!trimmed) return;
-    if (trimmed.length <= limit) {
-      chunks.push(trimmed);
-    } else {
-      const words = trimmed.split(/\s+/);
-      let current = '';
-      words.forEach(function(word) {
-        if ((current + ' ' + word).trim().length <= limit) {
-          current = (current + ' ' + word).trim();
-        } else {
-          if (current) chunks.push(current);
-          current = word;
-        }
-      });
-      if (current) chunks.push(current);
-    }
-  });
-  const uniqueChunks = [];
-  chunks.forEach(function(c) {
-    if (c.length > 1 && uniqueChunks[uniqueChunks.length - 1] !== c) uniqueChunks.push(c);
-  });
-  return uniqueChunks;
-}
-
 function updatePlayButtonUI(id, state) {
   if (!id) return;
   const btn = document.getElementById('play-' + id);
   if (!btn) return;
   if (!originalBtnLabels.has(id)) originalBtnLabels.set(id, btn.innerHTML);
-  if (state === 'playing') {
+  if (state === 'loading') {
+    btn.innerHTML = '⏳ Зарежда глас...';
+    btn.classList.add('speaking-glow');
+  } else if (state === 'playing') {
     btn.innerHTML = '⏹️ Спри четенето...';
     btn.classList.add('speaking-glow');
   } else {
@@ -2047,129 +2033,62 @@ function stopSpeech() {
   activeId = null; queue = []; idx = 0;
 }
 
-function playNext() {
-  if (stopped || paused || !activeId || idx >= queue.length) {
-    if (idx >= queue.length) stopSpeech();
-    return;
-  }
-  playSmartVoiceChunk(queue[idx]);
-}
-
-function playSmartVoiceChunk(chunk) {
-  if (stopped || paused) return;
-  let handled = false;
-  function goNextSentence() {
-    if (handled || stopped || paused) return;
-    handled = true;
-    idx++;
-    speechTimer = setTimeout(function() { playNext(); }, 350);
-  }
-
-  const isTV = /Tizen|SmartTV|SMART-TV|SamsungBrowser.*TV|Web0S|NetCast|TV/i.test(navigator.userAgent || '');
-  if (!isTV && 'speechSynthesis' in window) {
-    const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
-    const bgVoices = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf('bg') !== -1; });
-    const naturalVoice = bgVoices.find(function(v) { return /Natural|Online|Kalina|Borislav|Google/i.test(v.name); });
-    if (naturalVoice) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(chunk);
-      u.voice = naturalVoice; u.lang = 'bg-BG'; u.rate = 0.88; u.pitch = 1.0;
-      u.onend = goNextSentence;
-      u.onerror = function() { if (!handled) playCloudStreamForTV(chunk, 0, goNextSentence); };
-      window.speechSynthesis.speak(u);
-      return;
-    }
-  }
-  playCloudStreamForTV(chunk, 0, goNextSentence);
-}
-
-function playCloudStreamForTV(chunk, epIdx, onDoneCallback) {
-  if (stopped || paused) return;
+// За Samsung TV и всички устройства: изтегля ЦЕЛИЯ урок като ЕДИН непрекъснат MP3 файл от Google Apps Script!
+function playFullTextOnTV(fullCleanText, targetId) {
   const audioEl = getTvAudioElement();
   const driveUrl = getDriveUrl();
   const secretKey = getDriveSecretKey() || 'Bug!2026';
+  const trimmedText = fullCleanText.slice(0, 1600);
 
-  if (epIdx === 0 && driveUrl) {
-    const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
-    const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&text=' + encodeURIComponent(chunk) + '&t=' + Date.now();
+  const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
+  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
 
-    fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
-      .then(function(r) { return r.json(); })
-      .then(function(res) {
-        if (stopped || paused) return;
+  function playReceivedDataUrl(dataUrl) {
+    if (stopped || activeId !== targetId) return;
+    updatePlayButtonUI(targetId, 'playing');
+    audioEl.onended = function() { stopSpeech(); };
+    audioEl.onerror = function() { stopSpeech(); };
+    audioEl.src = dataUrl;
+    try { audioEl.playbackRate = 1.0; } catch (e) {}
+    const p = audioEl.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(function() { stopSpeech(); });
+    }
+  }
+
+  fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (stopped || activeId !== targetId) return;
+      if (res && res.status === 'ok' && res.audioDataUrl) {
+        playReceivedDataUrl(res.audioDataUrl);
+      } else {
+        stopSpeech();
+      }
+    })
+    .catch(function() {
+      const cbName = 'tts_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      const sEl = document.createElement('script');
+      window[cbName] = function(res) {
+        delete window[cbName]; sEl.remove();
+        if (stopped || activeId !== targetId) return;
         if (res && res.status === 'ok' && res.audioDataUrl) {
-          audioEl.onended = onDoneCallback;
-          audioEl.onerror = function() { playCloudStreamForTV(chunk, 1, onDoneCallback); };
-          audioEl.src = res.audioDataUrl;
-          try { audioEl.playbackRate = 0.90; } catch (e) {}
-          const p = audioEl.play();
-          if (p && typeof p.catch === 'function') {
-            p.catch(function() { playCloudStreamForTV(chunk, 1, onDoneCallback); });
-          }
+          playReceivedDataUrl(res.audioDataUrl);
         } else {
-          playCloudStreamForTV(chunk, 1, onDoneCallback);
+          stopSpeech();
         }
-      })
-      .catch(function() {
-        const cbName = 'tts_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        const sEl = document.createElement('script');
-        window[cbName] = function(res) {
-          delete window[cbName]; sEl.remove();
-          if (stopped || paused) return;
-          if (res && res.status === 'ok' && res.audioDataUrl) {
-            audioEl.onended = onDoneCallback;
-            audioEl.onerror = function() { playCloudStreamForTV(chunk, 1, onDoneCallback); };
-            audioEl.src = res.audioDataUrl;
-            try { audioEl.playbackRate = 0.90; } catch (e) {}
-            audioEl.play();
-          } else {
-            playCloudStreamForTV(chunk, 1, onDoneCallback);
-          }
-        };
-        sEl.onerror = function() {
-          delete window[cbName]; sEl.remove();
-          playCloudStreamForTV(chunk, 1, onDoneCallback);
-        };
-        sEl.src = ttsApiUrl + '&callback=' + cbName;
-        document.body.appendChild(sEl);
-      });
-    return;
-  }
-
-  const q = encodeURIComponent(chunk);
-  const endpoints = [
-    '',
-    'https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=bg&client=tw-ob&q=' + q,
-    'https://translate.google.com/translate_tts?ie=UTF-8&tl=bg&client=gtx&q=' + q
-  ];
-  if (epIdx >= endpoints.length) {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(chunk);
-      u.lang = 'bg-BG'; u.rate = 0.86; u.pitch = 0.95;
-      u.onend = onDoneCallback; u.onerror = onDoneCallback;
-      window.speechSynthesis.speak(u);
-    } else onDoneCallback();
-    return;
-  }
-
-  let epFailed = false;
-  function tryNextEndpoint() {
-    if (epFailed || stopped || paused) return;
-    epFailed = true;
-    playCloudStreamForTV(chunk, epIdx + 1, onDoneCallback);
-  }
-  audioEl.onended = function() { if (!epFailed) onDoneCallback(); };
-  audioEl.onerror = tryNextEndpoint;
-  audioEl.src = endpoints[epIdx];
-  try { audioEl.playbackRate = 0.90; } catch (e) {}
-  const p = audioEl.play();
-  if (p && typeof p.catch === 'function') p.catch(tryNextEndpoint);
+      };
+      sEl.onerror = function() {
+        delete window[cbName]; sEl.remove();
+        stopSpeech();
+      };
+      sEl.src = ttsApiUrl + '&callback=' + cbName;
+      document.body.appendChild(sEl);
+    });
 }
 
 function startSpeech(id, startIdx) {
-  getTvAudioElement();
-  const sIdx = startIdx !== undefined ? startIdx : 0;
+  unlockTvAudioNow();
   const el = document.getElementById(id);
   if (!el) return;
   const clone = el.cloneNode(true);
@@ -2177,33 +2096,35 @@ function startSpeech(id, startIdx) {
   clone.querySelectorAll(ignoreList).forEach(function(n) { n.remove(); });
   const clean = String(valOr(clone.innerText, '')).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
-  stopSpeech(); activeId = id;
-  queue = splitTextToChunks(clean, 140);
-  idx = sIdx; stopped = false; paused = false;
+
+  stopSpeech();
+  activeId = id;
+  stopped = false; paused = false;
   el.classList.add('speaking-glow');
-  updatePlayButtonUI(id, 'playing');
-  playNext();
+  updatePlayButtonUI(id, 'loading');
+  playFullTextOnTV(clean, id);
 }
 
 function toggleSpeak(id) {
-  if (activeId === id && queue.length) stopSpeech();
+  if (activeId === id && !stopped) stopSpeech();
   else startSpeech(id, 0);
 }
 
 function speakDirect(txt) {
-  getTvAudioElement();
+  unlockTvAudioNow();
   if (!txt) return;
   const tmpDiv = document.createElement('div');
   tmpDiv.innerHTML = txt;
   tmpDiv.querySelectorAll('.no-read').forEach(function(n) { n.remove(); });
   const clean = String(valOr(tmpDiv.innerText, txt)).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
-  stopSpeech(); activeId = 'header-title';
-  queue = splitTextToChunks(clean, 140);
-  idx = 0; stopped = false; paused = false;
+
+  stopSpeech();
+  activeId = 'header-title';
+  stopped = false; paused = false;
   const headEl = document.querySelector('header');
   if (headEl) headEl.classList.add('speaking-glow');
-  playNext();
+  playFullTextOnTV(clean, 'header-title');
 }
 
 function speakGreeting() { speakDirect(ui('voiceGreeting')); }
