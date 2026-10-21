@@ -1840,12 +1840,12 @@ function toggleSourceEnabled(fileName) {
   localStorage.setItem(STORAGE_PREFIX + 'DISABLED_FILES', JSON.stringify(map));
   rebuildAndInitFromStorage();
 }
-
 function checkSingleCard(cardUid, silent) {
   if (!window.APP_DATA || !APP_DATA.cards) return false;
   const c = APP_DATA.cards.find(x => x.uid === cardUid);
   if (!c) return false;
-  const sel = document.getElementById('q' + c.uid)?.value;
+  const selEl = document.getElementById('q' + c.uid);
+  const sel = selEl ? selEl.value : '';
   const fb = document.getElementById('fb' + c.uid);
   const correctOpt = (c.opts || []).find(o => o.k === c.ans);
   const correctFullText = correctOpt ? correctOpt.t : c.ans;
@@ -1854,17 +1854,21 @@ function checkSingleCard(cardUid, silent) {
 
   if (!sel) {
     localStorage.removeItem(storageKey);
-    fb.className = 'feedback warn';
-    fb.innerHTML = `⚠️ <b>${ui('msgNoAnswer')}</b>`;
+    if (fb) {
+      fb.className = 'feedback warn';
+      fb.innerHTML = `⚠️ <b>${ui('msgNoAnswer')}</b>`;
+    }
     if (!silent) updateProgress();
     return false;
   }
   localStorage.setItem(storageKey, sel);
   const isOk = sel === c.ans;
-  fb.className = isOk ? 'feedback ok' : 'feedback err';
-  fb.innerHTML = isOk
-    ? `✅ <b>${ui('msgCorrect')}</b> ${cleanExp}`
-    : `❌ <b>${ui('msgWrong')}</b><br>👉 ${ui('msgCorrectIs')} <b>${correctFullText}</b><br>💡 ${cleanExp}`;
+  if (fb) {
+    fb.className = isOk ? 'feedback ok' : 'feedback err';
+    fb.innerHTML = isOk
+      ? `✅ <b>${ui('msgCorrect')}</b> ${cleanExp}`
+      : `❌ <b>${ui('msgWrong')}</b><br>👉 ${ui('msgCorrectIs')} <b>${correctFullText}</b><br>💡 ${cleanExp}`;
+  }
   if (!silent) updateProgress();
   return isOk;
 }
@@ -1874,7 +1878,8 @@ function checkSubjectCards(subjId) {
   const sObj = (APP_DATA.subjects || []).find(s => s.id === subjId);
   if (!sObj) return;
   getCardsForSubject(sObj, APP_DATA.cards).forEach(c => {
-    document.getElementById('fc' + c.uid)?.classList.add('flipped');
+    const fcEl = document.getElementById('fc' + c.uid);
+    if (fcEl) fcEl.classList.add('flipped');
     checkSingleCard(c.uid, true);
   });
   updateProgress();
@@ -1888,7 +1893,10 @@ function updateProgress() {
     const doneM = vEl ? vEl.querySelectorAll('.mast-chk:checked').length : 0;
     const sCards = getCardsForSubject(s, APP_DATA.cards);
     let okC = 0;
-    sCards.forEach(c => { if (document.getElementById('q' + c.uid)?.value === c.ans) okC++; });
+    sCards.forEach(c => {
+      const qEl = document.getElementById('q' + c.uid);
+      if (qEl && qEl.value === c.ans) okC++;
+    });
     const totSubj = totM + sCards.length;
     const doneSubj = doneM + okC;
     const pctSubj = totSubj ? Math.round((doneSubj / totSubj) * 100) : 0;
@@ -1903,7 +1911,10 @@ function updateProgress() {
   const doneChks = Array.from(allChks).filter(c => c.checked).length;
   let cardsOk = 0;
   const totalCards = (APP_DATA.cards || []).length;
-  (APP_DATA.cards || []).forEach(c => { if (document.getElementById('q' + c.uid)?.value === c.ans) cardsOk++; });
+  (APP_DATA.cards || []).forEach(c => {
+    const qEl = document.getElementById('q' + c.uid);
+    if (qEl && qEl.value === c.ans) cardsOk++;
+  });
 
   const grandTotal = allChks.length + totalCards;
   const grandDone = doneChks + cardsOk;
@@ -1915,13 +1926,15 @@ function updateProgress() {
 function openTab(tabId, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
+  const tEl = document.getElementById(tabId);
+  if (tEl) tEl.classList.add('active');
   if (btn) btn.classList.add('active');
 }
 function openPane(parentId, paneId, btn) {
   document.querySelectorAll(`#${parentId} .subj-pane`).forEach(p => p.classList.remove('active'));
   document.querySelectorAll(`#${parentId} .s-btn`).forEach(b => b.classList.remove('active'));
-  document.getElementById(paneId)?.classList.add('active');
+  const pEl = document.getElementById(paneId);
+  if (pEl) pEl.classList.add('active');
   if (btn) btn.classList.add('active');
 }
 function formatMemoWords(text) {
@@ -1942,20 +1955,34 @@ function saveChk(chk) {
   localStorage.setItem(STORAGE_PREFIX + 'chk_' + realKey, chk.checked ? '1' : '0');
   document.querySelectorAll(`input[data-real-chk="${realKey}"]`).forEach(el => {
     el.checked = chk.checked;
-    el.closest('.rot-slot-card')?.classList.toggle('done-card', chk.checked);
+    const pCard = el.closest('.rot-slot-card');
+    if (pCard) pCard.classList.toggle('done-card', chk.checked);
   });
   updateProgress();
 }
 function saveMastery(chk) {
   const key = valOr(chk.getAttribute('data-storage-key'), STORAGE_PREFIX + 'mast_' + chk.id);
   localStorage.setItem(key, chk.checked ? '1' : '0');
-  chk.closest('.memo-card')?.classList.toggle('mastered', chk.checked);
+  const mCard = chk.closest('.memo-card');
+  if (mCard) mCard.classList.toggle('mastered', chk.checked);
   updateProgress();
 }
-
 let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
-let tvAudioPlayer = null;
+let speechTimer = null;
 const originalBtnLabels = new Map();
+
+function getTvAudioElement() {
+  let el = document.getElementById('tv-tts-audio-el');
+  if (!el) {
+    el = document.createElement('audio');
+    el.id = 'tv-tts-audio-el';
+    el.setAttribute('preload', 'none');
+    el.setAttribute('playsinline', 'true');
+    el.style.display = 'none';
+    document.body.appendChild(el);
+  }
+  return el;
+}
 
 function playerHTML(id, label) {
   return `<span class="mini-player no-read">
@@ -1966,18 +1993,18 @@ function playerHTML(id, label) {
 }
 
 function splitTextToChunks(text, maxLen) {
-  const limit = maxLen || 165;
+  const limit = maxLen || 140;
   const rawSentences = text.match(/[^.!?]+[.!?]*/g) || [text];
   const chunks = [];
-  rawSentences.forEach(s => {
+  rawSentences.forEach(function(s) {
     const trimmed = s.trim();
     if (!trimmed) return;
     if (trimmed.length <= limit) {
       chunks.push(trimmed);
     } else {
-      const parts = trimmed.split(/(?=[,;:\-–—])\s*|\s+/);
+      const words = trimmed.split(/\s+/);
       let current = '';
-      parts.forEach(word => {
+      words.forEach(function(word) {
         if ((current + ' ' + word).trim().length <= limit) {
           current = (current + ' ' + word).trim();
         } else {
@@ -1988,7 +2015,11 @@ function splitTextToChunks(text, maxLen) {
       if (current) chunks.push(current);
     }
   });
-  return chunks.filter(c => c.length > 1);
+  const uniqueChunks = [];
+  chunks.forEach(function(c) {
+    if (c.length > 1 && uniqueChunks[uniqueChunks.length - 1] !== c) uniqueChunks.push(c);
+  });
+  return uniqueChunks;
 }
 
 function updatePlayButtonUI(id, state) {
@@ -2008,17 +2039,13 @@ function updatePlayButtonUI(id, state) {
 function stopSpeech() {
   const prevId = activeId;
   stopped = true; paused = false;
+  if (speechTimer) { clearTimeout(speechTimer); speechTimer = null; }
   if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch (e) {} }
-  if (tvAudioPlayer) {
-    try {
-      tvAudioPlayer.onended = null;
-      tvAudioPlayer.onerror = null;
-      tvAudioPlayer.pause();
-      tvAudioPlayer.removeAttribute('src');
-    } catch (e) {}
-    tvAudioPlayer = null;
+  const audioEl = document.getElementById('tv-tts-audio-el');
+  if (audioEl) {
+    try { audioEl.onended = null; audioEl.onerror = null; audioEl.pause(); audioEl.src = ''; } catch (e) {}
   }
-  document.querySelectorAll('.speaking-glow').forEach(e => e.classList.remove('speaking-glow'));
+  document.querySelectorAll('.speaking-glow').forEach(function(e) { e.classList.remove('speaking-glow'); });
   if (prevId) updatePlayButtonUI(prevId, 'stopped');
   activeId = null; queue = []; idx = 0;
 }
@@ -2028,48 +2055,68 @@ function playNext() {
     if (idx >= queue.length) stopSpeech();
     return;
   }
-  playCloudAudioChunk(queue[idx], 0);
+  playSmartVoiceChunk(queue[idx]);
 }
 
-function playCloudAudioChunk(chunk, endpointIndex) {
+function playSmartVoiceChunk(chunk) {
+  if (stopped || paused) return;
+  let handled = false;
+  function goNextSentence() {
+    if (handled || stopped || paused) return;
+    handled = true;
+    idx++;
+    speechTimer = setTimeout(function() { playNext(); }, 350);
+  }
+
+  const isTV = /Tizen|SmartTV|SMART-TV|SamsungBrowser.*TV|Web0S|NetCast/i.test(navigator.userAgent || '');
+  if (!isTV && 'speechSynthesis' in window) {
+    const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+    const bgVoices = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf('bg') !== -1; });
+    const naturalVoice = bgVoices.find(function(v) { return /Natural|Online|Kalina|Borislav|Google/i.test(v.name); });
+    if (naturalVoice) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(chunk);
+      u.voice = naturalVoice; u.lang = 'bg-BG'; u.rate = 0.88; u.pitch = 1.0;
+      u.onend = goNextSentence;
+      u.onerror = function() { if (!handled) playCloudStreamForTV(chunk, 0, goNextSentence); };
+      window.speechSynthesis.speak(u);
+      return;
+    }
+  }
+  playCloudStreamForTV(chunk, 0, goNextSentence);
+}
+
+function playCloudStreamForTV(chunk, epIdx, onDoneCallback) {
   if (stopped || paused) return;
   const q = encodeURIComponent(chunk);
   const endpoints = [
-    `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${q}&tl=bg&client=tw-ob`,
-    `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=bg&client=gtx`
+    'https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=bg&client=tw-ob&q=' + q,
+    'https://translate.google.com/translate_tts?ie=UTF-8&tl=bg&client=gtx&q=' + q
   ];
-  const streamUrl = endpoints[endpointIndex || 0];
-  if (!tvAudioPlayer) tvAudioPlayer = new Audio();
-  tvAudioPlayer.referrerPolicy = 'no-referrer';
-  tvAudioPlayer.src = streamUrl;
-  tvAudioPlayer.playbackRate = 1.04;
-
-  tvAudioPlayer.onended = () => { if (!stopped && !paused) { idx++; playNext(); } };
-  tvAudioPlayer.onerror = () => {
-    if (!stopped && !paused) {
-      if ((endpointIndex || 0) + 1 < endpoints.length) playCloudAudioChunk(chunk, (endpointIndex || 0) + 1);
-      else fallbackSystemVoice(chunk);
-    }
-  };
-
-  const playPromise = tvAudioPlayer.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      if (!stopped && !paused) {
-        if ((endpointIndex || 0) + 1 < endpoints.length) playCloudAudioChunk(chunk, (endpointIndex || 0) + 1);
-        else fallbackSystemVoice(chunk);
-      }
-    });
+  if (epIdx >= endpoints.length) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(chunk);
+      u.lang = 'bg-BG'; u.rate = 0.86; u.pitch = 0.95;
+      u.onend = onDoneCallback; u.onerror = onDoneCallback;
+      window.speechSynthesis.speak(u);
+    } else onDoneCallback();
+    return;
   }
-}
 
-function fallbackSystemVoice(chunk) {
-  if (!('speechSynthesis' in window)) { idx++; playNext(); return; }
-  const u = new SpeechSynthesisUtterance(chunk);
-  u.lang = ui('speechLang', 'bg-BG'); u.rate = 1.0;
-  u.onend = () => { if (!stopped && !paused) { idx++; playNext(); } };
-  u.onerror = () => { if (!stopped && !paused) { idx++; playNext(); } };
-  window.speechSynthesis.speak(u);
+  const audioEl = getTvAudioElement();
+  let epFailed = false;
+  function tryNextEndpoint() {
+    if (epFailed || stopped || paused) return;
+    epFailed = true;
+    playCloudStreamForTV(chunk, epIdx + 1, onDoneCallback);
+  }
+  audioEl.onended = function() { if (!epFailed) onDoneCallback(); };
+  audioEl.onerror = tryNextEndpoint;
+  audioEl.src = endpoints[epIdx];
+  try { audioEl.playbackRate = 0.90; } catch (e) {}
+  const p = audioEl.play();
+  if (p && typeof p.catch === 'function') p.catch(tryNextEndpoint);
 }
 
 function startSpeech(id, startIdx) {
@@ -2077,11 +2124,12 @@ function startSpeech(id, startIdx) {
   const el = document.getElementById(id);
   if (!el) return;
   const clone = el.cloneNode(true);
-  clone.querySelectorAll(ui('speechIgnoreSelectors')).forEach(n => n.remove());
+  const ignoreList = ui('speechIgnoreSelectors') + ', .slot-expand-drawer:not(.open), .card-back';
+  clone.querySelectorAll(ignoreList).forEach(function(n) { n.remove(); });
   const clean = String(valOr(clone.innerText, '')).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
   stopSpeech(); activeId = id;
-  queue = splitTextToChunks(clean, 165);
+  queue = splitTextToChunks(clean, 140);
   idx = sIdx; stopped = false; paused = false;
   el.classList.add('speaking-glow');
   updatePlayButtonUI(id, 'playing');
@@ -2098,7 +2146,7 @@ function speakDirect(txt) {
   const clean = String(txt).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
   stopSpeech(); activeId = 'header-title';
-  queue = splitTextToChunks(clean, 165);
+  queue = splitTextToChunks(clean, 140);
   idx = 0; stopped = false; paused = false;
   const headEl = document.querySelector('header');
   if (headEl) headEl.classList.add('speaking-glow');
