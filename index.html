@@ -1954,6 +1954,9 @@ function saveMastery(chk) {
 }
 
 let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
+let tvAudioPlayer = null;
+const originalBtnLabels = new Map();
+
 function playerHTML(id, label) {
   return `<span class="mini-player no-read">
     <button class="btn btn-speak" id="play-${id}" onclick="toggleSpeak('${id}')">${valOr(label, ui('btnListen'))}</button>
@@ -1961,19 +1964,114 @@ function playerHTML(id, label) {
     <button class="btn btn-stop" onclick="stopSpeech()">⏹️</button>
   </span>`;
 }
+
+function splitTextToChunks(text, maxLen) {
+  const limit = maxLen || 165;
+  const rawSentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+  const chunks = [];
+  rawSentences.forEach(s => {
+    const trimmed = s.trim();
+    if (!trimmed) return;
+    if (trimmed.length <= limit) {
+      chunks.push(trimmed);
+    } else {
+      const parts = trimmed.split(/(?=[,;:\-–—])\s*|\s+/);
+      let current = '';
+      parts.forEach(word => {
+        if ((current + ' ' + word).trim().length <= limit) {
+          current = (current + ' ' + word).trim();
+        } else {
+          if (current) chunks.push(current);
+          current = word;
+        }
+      });
+      if (current) chunks.push(current);
+    }
+  });
+  return chunks.filter(c => c.length > 1);
+}
+
+function updatePlayButtonUI(id, state) {
+  if (!id) return;
+  const btn = document.getElementById('play-' + id);
+  if (!btn) return;
+  if (!originalBtnLabels.has(id)) originalBtnLabels.set(id, btn.innerHTML);
+  if (state === 'playing') {
+    btn.innerHTML = '⏹️ Спри четенето...';
+    btn.classList.add('speaking-glow');
+  } else {
+    btn.innerHTML = originalBtnLabels.get(id) || ui('btnListen', '▶️ Слушай');
+    btn.classList.remove('speaking-glow');
+  }
+}
+
 function stopSpeech() {
+  const prevId = activeId;
   stopped = true; paused = false;
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  if (tvAudioPlayer) {
+    try {
+      tvAudioPlayer.onended = null;
+      tvAudioPlayer.onerror = null;
+      tvAudioPlayer.pause();
+      tvAudioPlayer.removeAttribute('src');
+    } catch (e) {}
+    tvAudioPlayer = null;
+  }
   document.querySelectorAll('.speaking-glow').forEach(e => e.classList.remove('speaking-glow'));
+  if (prevId) updatePlayButtonUI(prevId, 'stopped');
   activeId = null; queue = []; idx = 0;
 }
+
 function playNext() {
-  if (stopped || paused || !activeId || idx >= queue.length) { if (idx >= queue.length) stopSpeech(); return; }
-  const u = new SpeechSynthesisUtterance(queue[idx]);
+  if (stopped || paused || !activeId || idx >= queue.length) {
+    if (idx >= queue.length) stopSpeech();
+    return;
+  }
+  playCloudAudioChunk(queue[idx], 0);
+}
+
+function playCloudAudioChunk(chunk, endpointIndex) {
+  if (stopped || paused) return;
+  const q = encodeURIComponent(chunk);
+  const endpoints = [
+    `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${q}&tl=bg&client=tw-ob`,
+    `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=bg&client=gtx`
+  ];
+  const streamUrl = endpoints[endpointIndex || 0];
+  if (!tvAudioPlayer) tvAudioPlayer = new Audio();
+  tvAudioPlayer.referrerPolicy = 'no-referrer';
+  tvAudioPlayer.src = streamUrl;
+  tvAudioPlayer.playbackRate = 1.04;
+
+  tvAudioPlayer.onended = () => { if (!stopped && !paused) { idx++; playNext(); } };
+  tvAudioPlayer.onerror = () => {
+    if (!stopped && !paused) {
+      if ((endpointIndex || 0) + 1 < endpoints.length) playCloudAudioChunk(chunk, (endpointIndex || 0) + 1);
+      else fallbackSystemVoice(chunk);
+    }
+  };
+
+  const playPromise = tvAudioPlayer.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      if (!stopped && !paused) {
+        if ((endpointIndex || 0) + 1 < endpoints.length) playCloudAudioChunk(chunk, (endpointIndex || 0) + 1);
+        else fallbackSystemVoice(chunk);
+      }
+    });
+  }
+}
+
+function fallbackSystemVoice(chunk) {
+  if (!('speechSynthesis' in window)) { idx++; playNext(); return; }
+  const u = new SpeechSynthesisUtterance(chunk);
   u.lang = ui('speechLang', 'bg-BG'); u.rate = 1.0;
   u.onend = () => { if (!stopped && !paused) { idx++; playNext(); } };
+  u.onerror = () => { if (!stopped && !paused) { idx++; playNext(); } };
   window.speechSynthesis.speak(u);
 }
+
 function startSpeech(id, startIdx) {
   const sIdx = startIdx !== undefined ? startIdx : 0;
   const el = document.getElementById(id);
@@ -1983,26 +2081,30 @@ function startSpeech(id, startIdx) {
   const clean = String(valOr(clone.innerText, '')).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
   stopSpeech(); activeId = id;
-  const matched = clean.match(/[^.!?]+[.!?]*/g);
-  queue = (matched ? matched : [clean]).map(s => s.trim()).filter(s => s.length > 1);
+  queue = splitTextToChunks(clean, 165);
   idx = sIdx; stopped = false; paused = false;
   el.classList.add('speaking-glow');
+  updatePlayButtonUI(id, 'playing');
   playNext();
 }
+
 function toggleSpeak(id) {
-  if (activeId === id && queue.length) {
-    paused = !paused; stopped = paused;
-    if (paused) window.speechSynthesis.cancel(); else playNext();
-  } else startSpeech(id, 0);
+  if (activeId === id && queue.length) stopSpeech();
+  else startSpeech(id, 0);
 }
+
 function speakDirect(txt) {
-  if (!('speechSynthesis' in window) || !txt) return;
-  stopSpeech(); stopped = false;
-  const clean = txt.replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!txt) return;
+  const clean = String(txt).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
-  const u = new SpeechSynthesisUtterance(clean); u.lang = 'bg-BG';
-  window.speechSynthesis.speak(u);
+  stopSpeech(); activeId = 'header-title';
+  queue = splitTextToChunks(clean, 165);
+  idx = 0; stopped = false; paused = false;
+  const headEl = document.querySelector('header');
+  if (headEl) headEl.classList.add('speaking-glow');
+  playNext();
 }
+
 function speakGreeting() { speakDirect(ui('voiceGreeting')); }
 
 function getSavedSourcesList() {
