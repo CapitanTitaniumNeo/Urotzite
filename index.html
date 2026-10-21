@@ -494,11 +494,10 @@ details.archive-drawer summary { cursor: pointer; font-weight: 800; color: var(-
 
 <script>
 const STORAGE_PREFIX = 'APP_SHELL_V36_';
-const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyCv6mFvrSefXv8vs55h0qBO5bp5dK0SEfvjLoFs9e7yTV7u5H3WY36bS1kcshVbA8EJQ/exec";
+const DEFAULT_DRIVE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxT-MwkDyfaYesDZA2Dj_FHoKyuq_-yI-Hfg3WxRUmLFZYQs8YxBHmLvkAV-mZj6As/exec";
 const CURRENT_SCHOOL_GRADE = 7;
 const CURRENT_SCHOOL_YEAR = "2026/2027";
 const openDrawerIds = new Set();
-
 const SUBJ_CODE_MAP = {
   math: "G07-MATH",
   bg: "G07-BG",
@@ -773,7 +772,6 @@ function tierBadgeHTML(isLatest, genDate, gradeNum, subjCodeStr) {
   }
   return `<span class="tier-badge-rev no-read">🗄️ Архив ${gNum}. клас${codeTxt} •${shortDateLabel(genDate)}</span>`;
 }
-
 function normalizeSubjKey(s) {
   if (s && s.id) return String(s.id).trim().toLowerCase();
   if (s && s.shortName) return 'subj_' + String(s.shortName).trim().toLowerCase().replace(/\s+/g, '_');
@@ -1293,7 +1291,6 @@ function buildRotatingScheduleStream(data, nowMs) {
   allSlots.sort((a, b) => a.slotStartMs - b.slotStartMs);
   return allSlots;
 }
-
 function renderRotatingSlotHTML(slot, data, isFirstUpcoming) {
   const sObj = (data.subjects || []).find(s => s.id === slot.subjId);
   const sIcon = sObj ? valOr(sObj.icon, '📘') : '📘';
@@ -1491,6 +1488,7 @@ function renderCompactScheduleWithLiveLinks(data, streamSlots) {
     </div>`;
   }).join('');
 }
+
 function jumpToSubject(subjId) {
   openTab('tab-2', document.getElementById('tab-btn-2'));
   const btn = document.getElementById('sbtn-' + subjId);
@@ -1573,7 +1571,6 @@ function initApp(data) {
     </div>
   `).join('');
 
-  // ДЪЛГОСРОЧЕН КАЛЕНДАР: ПОД-СЕКЦИЯ 1 (СПЕШНИ КОНТРОЛНИ С БУТОН КЪМ ЖИВИТЕ ДАННИ) + ПОД-СЕКЦИЯ 2 (СБИТА ПРОГРАМА С БУТОН КЪМ ЖИВИТЕ ДАННИ)
   const activeExams = [], pastExams = [];
   (data.exams || []).forEach(e => {
     const eMs = parseBgDateString(e.date, true);
@@ -1657,7 +1654,6 @@ function initApp(data) {
     schedBoxEl.innerHTML = renderCompactScheduleWithLiveLinks(data, streamSlots);
   }
 
-  // ТАБ 2: 15 ПРЕДМЕТА С ИДЕНТИФИКАТОРИ (G07-...) И МАРКИРОВКА ЗА 7. КЛАС
   const navBtns = document.getElementById('subj-nav-btns');
   const panesWrap = document.getElementById('subj-panes-wrap');
   navBtns.innerHTML = ''; panesWrap.innerHTML = '';
@@ -1840,6 +1836,7 @@ function toggleSourceEnabled(fileName) {
   localStorage.setItem(STORAGE_PREFIX + 'DISABLED_FILES', JSON.stringify(map));
   rebuildAndInitFromStorage();
 }
+
 function checkSingleCard(cardUid, silent) {
   if (!window.APP_DATA || !APP_DATA.cards) return false;
   const c = APP_DATA.cards.find(x => x.uid === cardUid);
@@ -1976,7 +1973,7 @@ function getTvAudioElement() {
   if (!el) {
     el = document.createElement('audio');
     el.id = 'tv-tts-audio-el';
-    el.setAttribute('preload', 'none');
+    el.setAttribute('preload', 'auto');
     el.setAttribute('playsinline', 'true');
     el.style.display = 'none';
     document.body.appendChild(el);
@@ -2043,7 +2040,7 @@ function stopSpeech() {
   if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch (e) {} }
   const audioEl = document.getElementById('tv-tts-audio-el');
   if (audioEl) {
-    try { audioEl.onended = null; audioEl.onerror = null; audioEl.pause(); audioEl.src = ''; } catch (e) {}
+    try { audioEl.onended = null; audioEl.onerror = null; audioEl.pause(); audioEl.removeAttribute('src'); } catch (e) {}
   }
   document.querySelectorAll('.speaking-glow').forEach(function(e) { e.classList.remove('speaking-glow'); });
   if (prevId) updatePlayButtonUI(prevId, 'stopped');
@@ -2068,7 +2065,7 @@ function playSmartVoiceChunk(chunk) {
     speechTimer = setTimeout(function() { playNext(); }, 350);
   }
 
-  const isTV = /Tizen|SmartTV|SMART-TV|SamsungBrowser.*TV|Web0S|NetCast/i.test(navigator.userAgent || '');
+  const isTV = /Tizen|SmartTV|SMART-TV|SamsungBrowser.*TV|Web0S|NetCast|TV/i.test(navigator.userAgent || '');
   if (!isTV && 'speechSynthesis' in window) {
     const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
     const bgVoices = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf('bg') !== -1; });
@@ -2088,8 +2085,60 @@ function playSmartVoiceChunk(chunk) {
 
 function playCloudStreamForTV(chunk, epIdx, onDoneCallback) {
   if (stopped || paused) return;
+  const audioEl = getTvAudioElement();
+  const driveUrl = getDriveUrl();
+  const secretKey = getDriveSecretKey() || 'Bug!2026';
+
+  if (epIdx === 0 && driveUrl) {
+    const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
+    const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&text=' + encodeURIComponent(chunk) + '&t=' + Date.now();
+
+    fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (stopped || paused) return;
+        if (res && res.status === 'ok' && res.audioDataUrl) {
+          audioEl.onended = onDoneCallback;
+          audioEl.onerror = function() { playCloudStreamForTV(chunk, 1, onDoneCallback); };
+          audioEl.src = res.audioDataUrl;
+          try { audioEl.playbackRate = 0.90; } catch (e) {}
+          const p = audioEl.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(function() { playCloudStreamForTV(chunk, 1, onDoneCallback); });
+          }
+        } else {
+          playCloudStreamForTV(chunk, 1, onDoneCallback);
+        }
+      })
+      .catch(function() {
+        const cbName = 'tts_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        const sEl = document.createElement('script');
+        window[cbName] = function(res) {
+          delete window[cbName]; sEl.remove();
+          if (stopped || paused) return;
+          if (res && res.status === 'ok' && res.audioDataUrl) {
+            audioEl.onended = onDoneCallback;
+            audioEl.onerror = function() { playCloudStreamForTV(chunk, 1, onDoneCallback); };
+            audioEl.src = res.audioDataUrl;
+            try { audioEl.playbackRate = 0.90; } catch (e) {}
+            audioEl.play();
+          } else {
+            playCloudStreamForTV(chunk, 1, onDoneCallback);
+          }
+        };
+        sEl.onerror = function() {
+          delete window[cbName]; sEl.remove();
+          playCloudStreamForTV(chunk, 1, onDoneCallback);
+        };
+        sEl.src = ttsApiUrl + '&callback=' + cbName;
+        document.body.appendChild(sEl);
+      });
+    return;
+  }
+
   const q = encodeURIComponent(chunk);
   const endpoints = [
+    '',
     'https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=bg&client=tw-ob&q=' + q,
     'https://translate.google.com/translate_tts?ie=UTF-8&tl=bg&client=gtx&q=' + q
   ];
@@ -2104,7 +2153,6 @@ function playCloudStreamForTV(chunk, epIdx, onDoneCallback) {
     return;
   }
 
-  const audioEl = getTvAudioElement();
   let epFailed = false;
   function tryNextEndpoint() {
     if (epFailed || stopped || paused) return;
@@ -2120,6 +2168,7 @@ function playCloudStreamForTV(chunk, epIdx, onDoneCallback) {
 }
 
 function startSpeech(id, startIdx) {
+  getTvAudioElement();
   const sIdx = startIdx !== undefined ? startIdx : 0;
   const el = document.getElementById(id);
   if (!el) return;
@@ -2142,8 +2191,12 @@ function toggleSpeak(id) {
 }
 
 function speakDirect(txt) {
+  getTvAudioElement();
   if (!txt) return;
-  const clean = String(txt).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const tmpDiv = document.createElement('div');
+  tmpDiv.innerHTML = txt;
+  tmpDiv.querySelectorAll('.no-read').forEach(function(n) { n.remove(); });
+  const clean = String(valOr(tmpDiv.innerText, txt)).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!clean) return;
   stopSpeech(); activeId = 'header-title';
   queue = splitTextToChunks(clean, 140);
@@ -2218,10 +2271,11 @@ function resetToDefaultFileDB() {
   localStorage.removeItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
   localStorage.removeItem(STORAGE_PREFIX + 'DISABLED_FILES');
   localStorage.removeItem(STORAGE_PREFIX + 'DRIVE_KEY');
+  localStorage.removeItem(STORAGE_PREFIX + 'DRIVE_URL');
   location.reload();
 }
 
-function getDriveUrl() { return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_URL'), DEFAULT_DRIVE_WEBAPP_URL); }
+function getDriveUrl() { return DEFAULT_DRIVE_WEBAPP_URL; }
 function getDriveSecretKey() { return valOr(localStorage.getItem(STORAGE_PREFIX + 'DRIVE_KEY'), ''); }
 function saveDriveSettingsFromTab3() {
   const urlVal = document.getElementById('drive-url-input').value.trim();
@@ -2337,12 +2391,12 @@ function generateSyncReport() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  const savedUrl = getDriveUrl();
+  localStorage.setItem(STORAGE_PREFIX + 'DRIVE_URL', DEFAULT_DRIVE_WEBAPP_URL);
   const savedKey = getDriveSecretKey();
-  if (savedUrl) document.getElementById('drive-url-input').value = savedUrl;
+  document.getElementById('drive-url-input').value = DEFAULT_DRIVE_WEBAPP_URL;
   if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
   rebuildAndInitFromStorage();
-  if (savedUrl) syncFromGoogleDrive(true);
+  syncFromGoogleDrive(true);
   setInterval(() => {
     const clk = document.getElementById('live-sofia-clock');
     if (clk) {
