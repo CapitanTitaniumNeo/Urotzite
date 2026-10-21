@@ -2086,15 +2086,110 @@ function playFullTextOnTV(fullCleanText, targetId) {
       document.body.appendChild(sEl);
     });
 }
+  // Пълен литературен, фонетичен и пунктуационен нормализатор за книжовен български изговор (7. клас)
+function prepareLiteraryBgText(containerEl) {
+  const clone = containerEl.cloneNode(true);
+  const ignoreList = ui('speechIgnoreSelectors') + ', .slot-expand-drawer:not(.open), .card-back';
+  clone.querySelectorAll(ignoreList).forEach(function(n) { n.remove(); });
+
+  // Поставяме интонационна точка след всеки блок, заглавие или нов ред, за да не се сливат мислите
+  clone.querySelectorAll('br, p, div, li, h1, h2, h3, h4, tr').forEach(function(block) {
+    block.insertAdjacentText('afterend', '. ');
+  });
+
+  let txt = String(valOr(clone.innerText, ''));
+
+  // 1. Разгъване на римски векове, валентности и учебни съкращения в чист книжовен изговор
+  const literaryRules = [
+    [/\bXVIII\s*в\./g, 'осемнадесети век.'],
+    [/\bXIX\s*в\./g, 'деветнадесети век.'],
+    [/\bXX\s*в\./g, 'двадесети век.'],
+    [/\bXVII\s*в\./g, 'седемнадесети век.'],
+    [/\bXIII\s*в\./g, 'тринадесети век.'],
+    [/\bXVIII\b/g, 'осемнадесети'],
+    [/\bXIX\b/g, 'деветнадесети'],
+    [/\bVII\s*клас/gi, 'седми клас'],
+    [/\b7\.\s*клас/gi, 'седми клас'],
+    [/\bI\s+валентност/gi, 'първа валентност'],
+    [/\bII\s+валентност/gi, 'втора валентност'],
+    [/\bIII\s+валентност/gi, 'трета валентност'],
+    [/\bIV\s+валентност/gi, 'четвърта валентност'],
+    [/\bV\s+валентност/gi, 'пета валентност'],
+    [/\bVI\s+валентност/gi, 'шеста валентност'],
+    [/\bVII\s+валентност/gi, 'седма валентност'],
+    [/\bНВО\b/g, 'национално външно оценяване'],
+    [/\bБЕЛ\b/g, 'български език и литература'],
+    [/\bИУЧ\b/g, 'избираеми учебни часове'],
+    [/\bООП\b/g, 'общообразователна подготовка'],
+    [/\bФВС\b/g, 'физическо възпитание и спорт'],
+    [/\bКМИТ\b/g, 'компютърно моделиране и информационни технологии'],
+    [/\bГО\b/g, 'гражданско образование'],
+    [/\bБДП\b/g, 'безопасност на движението по пътищата'],
+    [/\bУТ\b/g, 'учебна тетрадка'],
+    [/\bКР\b/g, 'контролна работа'],
+    [/\bДР\b/g, 'домашна работа'],
+    [/\bЛ\.С\./g, 'лявата страна '],
+    [/\bД\.С\./g, 'дясната страна '],
+    [/\bнапр\./gi, 'например, '],
+    [/\bт\.е\./gi, 'тоест, '],
+    [/\bт\.\s*нар\./gi, 'така нареченият '],
+    [/\bи др\./gi, 'и други.'],
+    [/\bи т\.н\./gi, 'и така нататък.'],
+    [/\bвж\./gi, 'виж '],
+    [/\bстр\./gi, 'страница '],
+    [/\bс\.\s*(?=\d)/gi, 'страница '],
+    [/\bзад\./gi, 'задача '],
+    [/\bупр\./gi, 'упражнение '],
+    [/\bг-жа\b/gi, 'госпожа '],
+    [/\bг-н\b/gi, 'господин '],
+    [/\bд-р\b/gi, 'доктор '],
+    [/\bсв\.\s*св\./gi, 'свети свети '],
+    [/\bсв\./gi, 'свети '],
+    [/\bвр\./gi, 'връх '],
+    [/\bр\./gi, 'река '],
+    [/\bп-в\b/gi, 'полуостров '],
+    [/\bо-в\b/gi, 'остров '],
+    [/\bед\.\s*ч\./gi, 'единствено число'],
+    [/\bмн\.\s*ч\./gi, 'множествено число'],
+    [/\bм\.\s*р\./gi, 'мъжки род'],
+    [/\bж\.\s*р\./gi, 'женски род'],
+    [/\bср\.\s*р\./gi, 'среден род'],
+    [/\bсег\.\s*вр\./gi, 'сегашно време'],
+    [/\bмин\.\s*св\.\s*вр\./gi, 'минало свършено време'],
+    [/\bмин\.\s*несв\.\s*вр\./gi, 'минало несвършено време'],
+    [/\bизяв\.\s*накл\./gi, 'изявително наклонение'],
+    [/\bч\./gi, 'часа.']
+  ];
+
+  literaryRules.forEach(function(rule) {
+    txt = txt.replace(rule[0], rule[1]);
+  });
+
+  // 2. Превръщане на пунктуационните знаци (тирета, кавички, двоеточия, скоби) в естествени дикторски паузи
+  txt = txt
+    .replace(/[➔➜•▪▸]/g, '. ')
+    .replace(/\s+[–—-]\s+/g, ', ')
+    .replace(/[()]/g, ', ')
+    .replace(/„|“|"/g, ', ')
+    .replace(/:/g, ': ')
+    .replace(/;/g, '. ')
+    .replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/,\s*,+/g, ', ')
+    .replace(/([.!?])\s*[.,!?;:]+/g, '$1 ')
+    .replace(/,\s*([.!?])/g, '$1')
+    .replace(/\s+([.,!?;:])/g, '$1')
+    .replace(/^[,.;:\s]+/, '')
+    .trim();
+
+  return txt;
+}
 
 function startSpeech(id, startIdx) {
   unlockTvAudioNow();
   const el = document.getElementById(id);
   if (!el) return;
-  const clone = el.cloneNode(true);
-  const ignoreList = ui('speechIgnoreSelectors') + ', .slot-expand-drawer:not(.open), .card-back';
-  clone.querySelectorAll(ignoreList).forEach(function(n) { n.remove(); });
-  const clean = String(valOr(clone.innerText, '')).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const clean = prepareLiteraryBgText(el);
   if (!clean) return;
 
   stopSpeech();
@@ -2115,8 +2210,7 @@ function speakDirect(txt) {
   if (!txt) return;
   const tmpDiv = document.createElement('div');
   tmpDiv.innerHTML = txt;
-  tmpDiv.querySelectorAll('.no-read').forEach(function(n) { n.remove(); });
-  const clean = String(valOr(tmpDiv.innerText, txt)).replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const clean = prepareLiteraryBgText(tmpDiv);
   if (!clean) return;
 
   stopSpeech();
