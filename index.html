@@ -2237,7 +2237,6 @@ function speakDirect(txt) {
 }
 
 function speakGreeting() { speakDirect(ui('voiceGreeting')); }
-
 function getSavedSourcesList() {
   try { return JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES'), '[]')); } catch (e) { return []; }
 }
@@ -2245,6 +2244,8 @@ function rebuildAndInitFromStorage() {
   const merged = buildMultiFileMergedAppData(getSavedSourcesList());
   window.APP_DATA = merged;
   initApp(merged);
+  cleanupOldSubjectiveTrackers();
+  renderDailySubjectBanner();
   return Boolean(merged);
 }
 function saveAndRebuildMergedData(newEntries) {
@@ -2316,6 +2317,434 @@ function saveDriveSettingsFromTab3() {
   syncFromGoogleDrive(false);
 }
 
+// === ПЪЛНО ПРЕМАХВАНЕ НА СТАРИТЕ СУБЕКТИВНИ ОТЧИТАНИЯ (0/200, ЧЕКБОКСОВЕ, СТАРИ ПРОГРЕС БАРОВЕ) ===
+function cleanupOldSubjectiveTrackers() {
+  let cleanStyle = document.getElementById('hide-old-trackers-css');
+  if (!cleanStyle) {
+    cleanStyle = document.createElement('style');
+    cleanStyle.id = 'hide-old-trackers-css';
+    cleanStyle.innerHTML = `
+      .prog-bar-bg,
+      #prog-text,
+      .slot-left input[type="checkbox"],
+      .mastery-bar label,
+      .mast-chk,
+      [id^="sprog-detail-"] {
+        display: none !important;
+      }
+      .rot-slot-card.done-card {
+        opacity: 1 !important;
+      }
+    `;
+    document.head.appendChild(cleanStyle);
+  }
+  const progWrap = document.querySelector('.prog-wrap');
+  if (progWrap && progWrap.firstElementChild && !progWrap.firstElementChild.classList.contains('filter-bar') && progWrap.firstElementChild.id !== 'daily-subj-tracker-bar') {
+    progWrap.firstElementChild.style.display = 'none';
+  }
+}
+
+updateProgress = function() {
+  cleanupOldSubjectiveTrackers();
+};
+
+// === МОДЕРЕН ДЕТЕКТОР НА РЕАЛНА УЧЕБНА РАБОТА (АУДИО/ВИДЕО УРОК + РЕАЛЕН КЛИК + РЕАЛНО СКРОЛВАНЕ) ===
+let lastMeaningfulActionMs = 0;
+let lastScrollCheckY = window.scrollY || 0;
+let currentActiveSubjId = '';
+let activeAudioSubjId = '';
+const unsyncedSubjSec = {};
+const unsyncedSubjActs = {};
+
+function formatMinBg(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  if (s === 0) return '0 мин.';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const remSec = s % 60;
+  if (h > 0) return h + ' ч. ' + m + ' мин.';
+  if (m > 0) return m + ' мин.';
+  return remSec + ' сек.';
+}
+
+function getLocalDailyTracker() {
+  const todayStr = formatDdMmYyyy(new Date());
+  try {
+    const parsed = JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3'), '{}'));
+    if (parsed && parsed.date === todayStr && parsed.subjects) {
+      if (!parsed.acts) parsed.acts = {};
+      return parsed;
+    }
+  } catch (e) {}
+  const fresh = { date: todayStr, totalSec: 0, totalActs: 0, subjects: {}, acts: {} };
+  localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(fresh));
+  return fresh;
+}
+
+// Проверява дали в момента се подготвя или възпроизвежда аудио урок ИЛИ видео на страницата
+function isMediaActiveNow() {
+  if (activeId && !stopped) {
+    return true;
+  }
+  const audioEl = document.getElementById('tv-tts-audio-el');
+  if (audioEl && !audioEl.paused && !audioEl.ended && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV) {
+    return true;
+  }
+  const videos = document.querySelectorAll('video');
+  for (let i = 0; i < videos.length; i++) {
+    if (!videos[i].paused && !videos[i].ended) return true;
+  }
+  if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+    return true;
+  }
+  return false;
+}
+
+// Определя точно върху кой предмет е действието или пуснатият аудио урок
+function detectActiveSubjectFromDOM(targetEl) {
+  if (targetEl && targetEl.closest && window.APP_DATA) {
+    const pane = targetEl.closest('.subj-pane');
+    if (pane && pane.id.indexOf('sp-') === 0) {
+      return pane.id.slice(3);
+    }
+    const slotCard = targetEl.closest('.rot-slot-card');
+    if (slotCard) {
+      const codePill = slotCard.querySelector('.slot-code-pill');
+      const titleEl = slotCard.querySelector('.slot-subj-title');
+      const gKey = guessSubjectKeyFromText((codePill ? codePill.innerText : '') + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
+      if (gKey) return gKey;
+    }
+  }
+
+  if (isMediaActiveNow()) {
+    if (activeAudioSubjId) return activeAudioSubjId;
+    if (activeId) {
+      const spEl = document.getElementById(activeId);
+      if (spEl && window.APP_DATA) {
+        const pane = spEl.closest('.subj-pane');
+        if (pane && pane.id.indexOf('sp-') === 0) return pane.id.slice(3);
+        const slotCard = spEl.closest('.rot-slot-card');
+        if (slotCard) {
+          const codePill = slotCard.querySelector('.slot-code-pill');
+          const titleEl = slotCard.querySelector('.slot-subj-title');
+          const gKey = guessSubjectKeyFromText((codePill ? codePill.innerText : '') + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
+          if (gKey) return gKey;
+        }
+      }
+    }
+  }
+
+  const tab2 = document.getElementById('tab-2');
+  if (tab2 && tab2.classList.contains('active')) {
+    const actPane = document.querySelector('#tab-2 .subj-pane.active');
+    if (actPane && actPane.id.indexOf('sp-') === 0) {
+      return actPane.id.slice(3);
+    }
+  }
+
+  const openDrawers = Array.from(document.querySelectorAll('#tab-1 .slot-expand-drawer.open'));
+  if (openDrawers.length > 0 && window.APP_DATA) {
+    const lastOpen = openDrawers[openDrawers.length - 1];
+    const parentSlot = lastOpen.closest('.rot-slot-card');
+    if (parentSlot) {
+      const codePill = parentSlot.querySelector('.slot-code-pill');
+      const titleEl = parentSlot.querySelector('.slot-subj-title');
+      const gKey = guessSubjectKeyFromText((codePill ? codePill.innerText : '') + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
+      if (gKey) return gKey;
+    }
+  }
+
+  return currentActiveSubjId || 'math';
+}
+
+function registerRealStudyPulse(subjId, isExplicitClickAction) {
+  if (!subjId || subjId === 'box') return;
+  currentActiveSubjId = subjId;
+  lastMeaningfulActionMs = Date.now();
+
+  if (isExplicitClickAction) {
+    const daily = getLocalDailyTracker();
+    daily.acts[subjId] = (Number(daily.acts[subjId]) || 0) + 1;
+    daily.totalActs = (Number(daily.totalActs) || 0) + 1;
+    localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(daily));
+    unsyncedSubjActs[subjId] = (Number(unsyncedSubjActs[subjId]) || 0) + 1;
+    renderDailySubjectBanner();
+  }
+}
+
+const _origStartSpeech = startSpeech;
+startSpeech = function(id, startIdx) {
+  const el = document.getElementById(id);
+  const subj = detectActiveSubjectFromDOM(el);
+  if (subj && subj !== 'box') {
+    activeAudioSubjId = subj;
+    registerRealStudyPulse(subj, true);
+  }
+  _origStartSpeech(id, startIdx);
+  renderDailySubjectBanner();
+};
+
+const _origStopSpeech = stopSpeech;
+stopSpeech = function() {
+  _origStopSpeech();
+  activeAudioSubjId = '';
+  renderDailySubjectBanner();
+};
+
+// 1. Засичане на РЕАЛЕН КЛИК върху учебни бутони, подменюта, карти, думи в сейфа и ресурси
+window.addEventListener('click', function(ev) {
+  const t = ev.target;
+  if (!t || !t.closest) return;
+
+  const isStudyClick = Boolean(
+    t.closest('.s-btn') ||
+    t.closest('.act-pill') ||
+    t.closest('.slot-subj-title') ||
+    t.closest('.memo-word') ||
+    t.closest('.btn-speak') ||
+    t.closest('.btn-restart') ||
+    t.closest('.btn-mask') ||
+    t.closest('.btn-unlock') ||
+    t.closest('.btn-wiki') ||
+    t.closest('.topo-btn') ||
+    t.closest('.ans-select') ||
+    t.closest('summary')
+  );
+
+  const detectedSubj = detectActiveSubjectFromDOM(t);
+  if (detectedSubj && isStudyClick) {
+    registerRealStudyPulse(detectedSubj, true);
+  }
+}, { passive: true });
+
+// 2. Засичане на РЕАЛНО СКРОЛВАНЕ на урочния текст
+let lastScrollPulseMs = 0;
+window.addEventListener('scroll', function() {
+  const curY = window.scrollY || 0;
+  if (Math.abs(curY - lastScrollCheckY) >= 35) {
+    lastScrollCheckY = curY;
+    const now = Date.now();
+    const detectedSubj = detectActiveSubjectFromDOM(null);
+    if (detectedSubj) {
+      const countAsAct = (now - lastScrollPulseMs) > 4000;
+      if (countAsAct) lastScrollPulseMs = now;
+      registerRealStudyPulse(detectedSubj, countAsAct);
+    }
+  }
+}, { passive: true });
+
+// 3. Засичане на навигация с дистанционното на телевизора
+window.addEventListener('keydown', function(ev) {
+  if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Enter'].indexOf(ev.key) !== -1) {
+    const detectedSubj = detectActiveSubjectFromDOM(document.activeElement);
+    if (detectedSubj) {
+      registerRealStudyPulse(detectedSubj, ev.key === 'Enter');
+    }
+  }
+}, { passive: true });
+
+function applyServerDailyTracker(srvDaily) {
+  if (!srvDaily || typeof srvDaily !== 'object') return;
+  const todayStr = formatDdMmYyyy(new Date());
+  const localDaily = getLocalDailyTracker();
+
+  if (srvDaily.date === todayStr) {
+    if (srvDaily.subjects) {
+      Object.keys(srvDaily.subjects).forEach(function(sKey) {
+        const srvSec = Number(srvDaily.subjects[sKey]) || 0;
+        const locSec = Number(localDaily.subjects[sKey]) || 0;
+        localDaily.subjects[sKey] = Math.max(srvSec, locSec);
+      });
+    }
+    if (srvDaily.acts) {
+      Object.keys(srvDaily.acts).forEach(function(sKey) {
+        const srvActs = Number(srvDaily.acts[sKey]) || 0;
+        const locActs = Number(localDaily.acts[sKey]) || 0;
+        localDaily.acts[sKey] = Math.max(srvActs, locActs);
+      });
+    }
+  }
+
+  let sumSec = 0, sumActs = 0;
+  Object.keys(localDaily.subjects).forEach(function(sKey) {
+    sumSec += (Number(localDaily.subjects[sKey]) || 0);
+  });
+  Object.keys(localDaily.acts).forEach(function(sKey) {
+    sumActs += (Number(localDaily.acts[sKey]) || 0);
+  });
+  localDaily.totalSec = sumSec;
+  localDaily.totalActs = sumActs;
+  localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(localDaily));
+
+  renderDailySubjectBanner();
+}
+
+function renderDailySubjectBanner() {
+  cleanupOldSubjectiveTrackers();
+  const progWrap = document.querySelector('.prog-wrap');
+  if (!progWrap) return;
+
+  let barEl = document.getElementById('daily-subj-tracker-bar');
+  if (!barEl) {
+    barEl = document.createElement('div');
+    barEl.id = 'daily-subj-tracker-bar';
+    barEl.className = 'no-read';
+    barEl.style.cssText = 'flex:1; min-width:280px; display:flex; flex-direction:column; gap:6px; font-size:0.8rem;';
+    progWrap.insertBefore(barEl, progWrap.firstChild);
+  }
+
+  const daily = getLocalDailyTracker();
+  const subjSecMap = daily.subjects || {};
+  const subjActsMap = daily.acts || {};
+  const totalSec = Math.max(0, Number(daily.totalSec) || 0);
+  const totalActs = Math.max(0, Number(daily.totalActs) || 0);
+  const allSubjs = (window.APP_DATA && Array.isArray(window.APP_DATA.subjects)) ? window.APP_DATA.subjects : [];
+
+  const studiedList = [];
+  const unstudiedList = [];
+
+  allSubjs.forEach(function(s) {
+    if (s.id === 'box') return;
+    const sec = Number(subjSecMap[s.id]) || 0;
+    const acts = Number(subjActsMap[s.id]) || 0;
+    const pct = totalSec > 0 ? Math.round((sec / totalSec) * 100) : (totalActs > 0 && acts > 0 ? Math.round((acts / totalActs) * 100) : 0);
+
+    const tab2Badge = document.getElementById('spct-' + s.id);
+    if (tab2Badge) {
+      tab2Badge.innerText = pct + '%';
+      tab2Badge.style.color = pct > 0 ? '#4ade80' : '#94a3b8';
+    }
+
+    if (sec > 0 || acts > 0) {
+      studiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, sec: sec, acts: acts, pct: pct });
+    } else {
+      unstudiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName });
+    }
+  });
+
+  studiedList.sort(function(a, b) { return (b.sec - a.sec) || (b.acts - a.acts); });
+
+  const studiedHTML = studiedList.length > 0
+    ? studiedList.map(function(item) {
+        return `<span onclick="jumpToSubject('${item.id}')" title="Кликни за отваряне на предмета" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.2); border:1px solid #22c55e; color:#f0fdf4; padding:4px 10px; border-radius:8px; font-weight:900;">
+          ${item.icon} ${item.name}: <b style="color:#fde047; font-size:0.86rem;">${item.pct}%</b> <span style="color:#86efac; font-size:0.75rem;">(${formatMinBg(item.sec)} • ⚡ ${item.acts} действ.)</span>
+        </span>`;
+      }).join('')
+    : `<span style="color:#fca5a5; font-weight:800;">⚠️ Днес все още няма реална активност (кликване, скролване или слушане на урок)</span>`;
+
+  const unstudiedHTML = unstudiedList.map(function(item) {
+    return `<span onclick="jumpToSubject('${item.id}')" title="Днес още не е учено по ${item.name} (Кликни за старт)" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:rgba(15,23,42,0.9); border:1px dashed rgba(239,68,68,0.55); color:#94a3b8; padding:3px 8px; border-radius:7px; font-weight:700; font-size:0.75rem;">
+      ${item.icon} ${item.name}: <b style="color:#f87171;">0%</b>
+    </span>`;
+  }).join('');
+
+  const mediaRunning = isMediaActiveNow();
+  const hasRecentClickOrScroll = (Date.now() - lastMeaningfulActionMs) <= 12000;
+
+  let liveStatusBadge = `<span style="background:rgba(148,163,184,0.15); border:1px dashed #64748b; color:#94a3b8; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700;">⏸️ Пауза (Не отчита празен престой)</span>`;
+  if (mediaRunning) {
+    liveStatusBadge = `<span style="background:rgba(251,191,36,0.25); border:1px solid #fbbf24; color:#fde047; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:900;">🎙️ В момента слуша аудио/видео урок (Отчита автоматично)</span>`;
+  } else if (hasRecentClickOrScroll) {
+    liveStatusBadge = `<span style="background:rgba(34,197,94,0.25); border:1px solid #22c55e; color:#4ade80; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:900;">🟢 В момента работи активно</span>`;
+  }
+
+  barEl.innerHTML = `
+    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px;">
+      <span style="font-weight:900; color:var(--accent);">
+        🎯 РЕАЛНА РАБОТА ПО ПРЕДМЕТИ ЗА ДНЕС (${daily.date} г. • Активно време: <b style="color:var(--gold);">${formatMinBg(totalSec)}</b> • Общо действия: <b style="color:#86efac;">⚡ ${totalActs}</b>):
+      </span>
+      ${liveStatusBadge}
+    </div>
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+      <b style="color:#4ade80;">✅ УЧЕНО ДНЕС:</b> ${studiedHTML}
+    </div>
+    ${unstudiedList.length > 0 ? `<div style="display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:2px;">
+      <b style="color:#f87171; font-size:0.76rem;">⭕ НЕ Е УЧЕНО ДНЕС (0%):</b> ${unstudiedHTML}
+    </div>` : ''}
+  `;
+}
+
+function sendDailySubjectPing() {
+  const url = getDriveUrl();
+  const rawKey = getDriveSecretKey();
+  if (!url || !rawKey) return;
+
+  let targetSubj = activeAudioSubjId || currentActiveSubjId || '';
+  let secToSend = 0;
+  let actsToSend = 0;
+
+  Object.keys(unsyncedSubjSec).forEach(function(k) {
+    if (unsyncedSubjSec[k] > secToSend) {
+      targetSubj = k;
+      secToSend = unsyncedSubjSec[k];
+    }
+  });
+  if (!targetSubj) {
+    Object.keys(unsyncedSubjActs).forEach(function(k) {
+      if (unsyncedSubjActs[k] > actsToSend) {
+        targetSubj = k;
+      }
+    });
+  }
+
+  if (targetSubj) {
+    secToSend = Number(unsyncedSubjSec[targetSubj]) || 0;
+    actsToSend = Number(unsyncedSubjActs[targetSubj]) || 0;
+    unsyncedSubjSec[targetSubj] = 0;
+    unsyncedSubjActs[targetSubj] = 0;
+  }
+
+  const sep = url.indexOf('?') !== -1 ? '&' : '?';
+  const pingUrl = url + sep + 'mode=ping&key=' + encodeURIComponent(rawKey) + '&subj=' + encodeURIComponent(targetSubj) + '&addSec=' + secToSend + '&addActs=' + actsToSend + '&t=' + Date.now();
+
+  fetch(pingUrl, { method: 'GET', redirect: 'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res && res.status === 'ok' && res.daily) {
+        applyServerDailyTracker(res.daily);
+      }
+    })
+    .catch(function() {
+      const cbName = 'ping_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      const sEl = document.createElement('script');
+      const tmr = setTimeout(function() {
+        if (window[cbName]) { delete window[cbName]; sEl.remove(); }
+      }, 8000);
+      window[cbName] = function(res) {
+        clearTimeout(tmr); delete window[cbName]; sEl.remove();
+        if (res && res.status === 'ok' && res.daily) {
+          applyServerDailyTracker(res.daily);
+        }
+      };
+      sEl.onerror = function() {
+        clearTimeout(tmr); delete window[cbName]; sEl.remove();
+      };
+      sEl.src = pingUrl + '&callback=' + cbName;
+      document.body.appendChild(sEl);
+    });
+}
+
+const _origOpenPane = openPane;
+openPane = function(parentId, paneId, btn) {
+  _origOpenPane(parentId, paneId, btn);
+  if (paneId && paneId.indexOf('sp-') === 0) {
+    registerRealStudyPulse(paneId.slice(3), true);
+  }
+};
+
+const _origCheckSingleCard = checkSingleCard;
+checkSingleCard = function(cardUid, silent) {
+  const res = _origCheckSingleCard(cardUid, silent);
+  if (!silent) {
+    const selEl = document.getElementById('q' + cardUid);
+    if (selEl && selEl.getAttribute('data-subj')) {
+      registerRealStudyPulse(selEl.getAttribute('data-subj'), true);
+    }
+    sendDailySubjectPing();
+  }
+  return res;
+};
+
 function callDriveEndpoint(url, mode, onSuccess, onError) {
   const secretKey = encodeURIComponent(getDriveSecretKey());
   const sep = url.includes('?') ? '&' : '?';
@@ -2367,12 +2796,17 @@ function syncFromGoogleDrive(isSilentAuto) {
       return;
     }
 
+    if (res.daily) {
+      applyServerDailyTracker(res.daily);
+    }
+
     const lastSig = localStorage.getItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
     const hasLocalData = getSavedSourcesList().length > 0;
 
     if (isSilentAuto && hasLocalData && res.signature && res.signature === lastSig) {
       if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = '☁️ Актуално'; }
-      if (logEl) logEl.innerText = '✅ Базата е напълно синхронизирана с Google Drive.';
+      if (logEl) logEl.innerText = '✅ Базата и дневният отчет по предмети са синхронизирани.';
+      sendDailySubjectPing();
       return;
     }
 
@@ -2382,6 +2816,10 @@ function syncFromGoogleDrive(isSilentAuto) {
         if (pill) { pill.className = 'sync-pill err no-read'; pill.innerText = '⚠️ Drive грешка'; }
         return;
       }
+      if (fullRes.daily) {
+        applyServerDailyTracker(fullRes.daily);
+      }
+
       const loadedEntries = [];
       fullRes.files.forEach(f => {
         if (f.name && f.name.startsWith('_')) return;
@@ -2395,6 +2833,7 @@ function syncFromGoogleDrive(isSilentAuto) {
         localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(loadedEntries));
         if (fullRes.signature) localStorage.setItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE', fullRes.signature);
         rebuildAndInitFromStorage();
+        sendDailySubjectPing();
         if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = `☁️ Обновено (${loadedEntries.length})`; }
         if (logEl) logEl.innerText = `✅ Успешно заредени и обединени ${loadedEntries.length} файла от Google Drive!`;
         if (!isSilentAuto) openTab('tab-1', document.getElementById('tab-btn-1'));
@@ -2411,10 +2850,15 @@ function syncFromGoogleDrive(isSilentAuto) {
 
 function generateSyncReport() {
   if (!window.APP_DATA) return;
-  const mast = document.querySelectorAll('.mast-chk:checked').length;
-  const totM = document.querySelectorAll('.mast-chk').length;
-  const filesLoaded = (APP_DATA.loadedMeta || []).map(m => `${m.name} (${shortDateLabel(m.generatedAt)})`).join(', ');
-  const rep = `=== ОТЧЕТ НА БОРИС (ЯДРО 4.4 • 7. КЛАС • G07) ===\n📂 Активни файлове: ${filesLoaded}\n🔐 Учене наизуст: ${mast}/${totM}\n📊 Общ напредък: ${document.getElementById('prog-text').innerText}`;
+  const daily = getLocalDailyTracker();
+  const totalSec = Math.max(0, Number(daily.totalSec) || 0);
+  const subjParts = Object.keys(daily.subjects || {}).map(function(k) {
+    const sec = Number(daily.subjects[k]) || 0;
+    const acts = Number((daily.acts || {})[k]) || 0;
+    const pct = totalSec > 0 ? Math.round((sec / totalSec) * 100) : 0;
+    return k.toUpperCase() + ': ' + pct + '% (' + formatMinBg(sec) + ', ' + acts + ' действ.)';
+  }).join(' | ');
+  const rep = `=== ДНЕВЕН ОТЧЕТ НА БОРИС (${daily.date} г. • 7. КЛАС) ===\n🎯 Реално учено днес по предмети: ${subjParts || '0%'}`;
   const box = document.getElementById('sync-box');
   box.style.display = 'block'; box.value = rep; box.select();
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
@@ -2425,8 +2869,45 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedKey = getDriveSecretKey();
   document.getElementById('drive-url-input').value = DEFAULT_DRIVE_WEBAPP_URL;
   if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
+  cleanupOldSubjectiveTrackers();
   rebuildAndInitFromStorage();
+  renderDailySubjectBanner();
   syncFromGoogleDrive(true);
+
+  const tvAudio = getTvAudioElement();
+  if (tvAudio) {
+    tvAudio.addEventListener('timeupdate', function() {
+      if (!tvAudio.paused && !tvAudio.ended && tvAudio.src && tvAudio.src !== SILENT_UNLOCK_WAV) {
+        lastMeaningfulActionMs = Date.now();
+      }
+    });
+  }
+
+  setInterval(() => {
+    const isMediaRunning = isMediaActiveNow();
+    const isPageVisible = (document.visibilityState !== 'hidden') || isMediaRunning;
+    const hasGenuineInteraction = (Date.now() - lastMeaningfulActionMs) <= 12000;
+
+    if (isPageVisible && (isMediaRunning || hasGenuineInteraction)) {
+      const subjNow = isMediaRunning ? (activeAudioSubjId || detectActiveSubjectFromDOM(null)) : detectActiveSubjectFromDOM(null);
+      if (subjNow && subjNow !== 'box') {
+        const daily = getLocalDailyTracker();
+        daily.subjects[subjNow] = (Number(daily.subjects[subjNow]) || 0) + 10;
+        daily.totalSec = (Number(daily.totalSec) || 0) + 10;
+        localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(daily));
+
+        unsyncedSubjSec[subjNow] = (Number(unsyncedSubjSec[subjNow]) || 0) + 10;
+        renderDailySubjectBanner();
+
+        if (unsyncedSubjSec[subjNow] >= 30 || (unsyncedSubjActs[subjNow] || 0) >= 5) {
+          sendDailySubjectPing();
+        }
+      }
+    } else {
+      renderDailySubjectBanner();
+    }
+  }, 10000);
+
   setInterval(() => {
     const clk = document.getElementById('live-sofia-clock');
     if (clk) {
