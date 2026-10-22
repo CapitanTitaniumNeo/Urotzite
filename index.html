@@ -1968,6 +1968,8 @@ function saveMastery(chk) {
 let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
 let speechTimer = null;
 const originalBtnLabels = new Map();
+const ttsFullAudioCache = new Map();
+const PREFERRED_NEURAL_VOICE = 'bg-BG-KalinaNeural'; // Може да се смени с 'bg-BG-BorislavNeural'
 
 // Тихо 0.1-секундно аудио за мигновено отключване на колоните на Samsung Smart TV при клик с дистанционното
 const SILENT_UNLOCK_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
@@ -2002,16 +2004,17 @@ function playerHTML(id, label) {
   </span>`;
 }
 
-function updatePlayButtonUI(id, state) {
+function updatePlayButtonUI(id, state, engineInfo) {
   if (!id) return;
   const btn = document.getElementById('play-' + id);
   if (!btn) return;
   if (!originalBtnLabels.has(id)) originalBtnLabels.set(id, btn.innerHTML);
   if (state === 'loading') {
-    btn.innerHTML = '⏳ Зарежда глас...';
+    btn.innerHTML = '⏳ Подготвя целия глас...';
     btn.classList.add('speaking-glow');
   } else if (state === 'playing') {
-    btn.innerHTML = '⏹️ Спри четенето...';
+    const voiceTag = (engineInfo && engineInfo.indexOf('edge') !== -1) ? ' (🎙️ Калина Neural)' : '';
+    btn.innerHTML = '⏹️ Спри четенето' + voiceTag;
     btn.classList.add('speaking-glow');
   } else {
     btn.innerHTML = originalBtnLabels.get(id) || ui('btnListen', '▶️ Слушай');
@@ -2033,19 +2036,17 @@ function stopSpeech() {
   activeId = null; queue = []; idx = 0;
 }
 
-// За Samsung TV и всички устройства: изтегля ЦЕЛИЯ урок като ЕДИН непрекъснат MP3 файл от Google Apps Script!
+// Изтегля ЦЕЛИЯ урок накуп като ЕДИН непрекъснат MP3 файл от новия Google Apps Script (edge-tts KalinaNeural)
 function playFullTextOnTV(fullCleanText, targetId) {
   const audioEl = getTvAudioElement();
   const driveUrl = getDriveUrl();
   const secretKey = getDriveSecretKey() || 'Bug!2026';
-  const trimmedText = fullCleanText.slice(0, 1600);
+  const trimmedText = fullCleanText.slice(0, 1800);
+  const cacheKey = PREFERRED_NEURAL_VOICE + ':' + trimmedText;
 
-  const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
-  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
-
-  function playReceivedDataUrl(dataUrl) {
+  function playReceivedDataUrl(dataUrl, engineName) {
     if (stopped || activeId !== targetId) return;
-    updatePlayButtonUI(targetId, 'playing');
+    updatePlayButtonUI(targetId, 'playing', engineName);
     audioEl.onended = function() { stopSpeech(); };
     audioEl.onerror = function() { stopSpeech(); };
     audioEl.src = dataUrl;
@@ -2056,12 +2057,23 @@ function playFullTextOnTV(fullCleanText, targetId) {
     }
   }
 
+  // Ако този урок вече е бил зареден веднъж, пускаме го мигновено от кеша без чакане
+  if (ttsFullAudioCache.has(cacheKey)) {
+    const cached = ttsFullAudioCache.get(cacheKey);
+    playReceivedDataUrl(cached.dataUrl, cached.engine);
+    return;
+  }
+
+  const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
+  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&voice=' + encodeURIComponent(PREFERRED_NEURAL_VOICE) + '&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
+
   fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
     .then(function(r) { return r.json(); })
     .then(function(res) {
       if (stopped || activeId !== targetId) return;
       if (res && res.status === 'ok' && res.audioDataUrl) {
-        playReceivedDataUrl(res.audioDataUrl);
+        ttsFullAudioCache.set(cacheKey, { dataUrl: res.audioDataUrl, engine: res.engine || 'edge-tts-neural' });
+        playReceivedDataUrl(res.audioDataUrl, res.engine || 'edge-tts-neural');
       } else {
         stopSpeech();
       }
@@ -2069,24 +2081,30 @@ function playFullTextOnTV(fullCleanText, targetId) {
     .catch(function() {
       const cbName = 'tts_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
       const sEl = document.createElement('script');
+      const tmr = setTimeout(function() {
+        if (window[cbName]) { delete window[cbName]; sEl.remove(); stopSpeech(); }
+      }, 14000);
+
       window[cbName] = function(res) {
-        delete window[cbName]; sEl.remove();
+        clearTimeout(tmr); delete window[cbName]; sEl.remove();
         if (stopped || activeId !== targetId) return;
         if (res && res.status === 'ok' && res.audioDataUrl) {
-          playReceivedDataUrl(res.audioDataUrl);
+          ttsFullAudioCache.set(cacheKey, { dataUrl: res.audioDataUrl, engine: res.engine || 'edge-tts-neural' });
+          playReceivedDataUrl(res.audioDataUrl, res.engine || 'edge-tts-neural');
         } else {
           stopSpeech();
         }
       };
       sEl.onerror = function() {
-        delete window[cbName]; sEl.remove();
+        clearTimeout(tmr); delete window[cbName]; sEl.remove();
         stopSpeech();
       };
       sEl.src = ttsApiUrl + '&callback=' + cbName;
       document.body.appendChild(sEl);
     });
 }
-  // Пълен литературен, фонетичен и пунктуационен нормализатор за книжовен български изговор (7. клас)
+
+// Пълен литературен, фонетичен и пунктуационен нормализатор за книжовен български изговор (7. клас)
 function prepareLiteraryBgText(containerEl) {
   const clone = containerEl.cloneNode(true);
   const ignoreList = ui('speechIgnoreSelectors') + ', .slot-expand-drawer:not(.open), .card-back';
@@ -2158,14 +2176,15 @@ function prepareLiteraryBgText(containerEl) {
     [/\bмин\.\s*св\.\s*вр\./gi, 'минало свършено време'],
     [/\bмин\.\s*несв\.\s*вр\./gi, 'минало несвършено време'],
     [/\bизяв\.\s*накл\./gi, 'изявително наклонение'],
-    [/\bч\./gi, 'часа.']
+    [/\bч\./gi, 'часа.'],
+    [/№\s*/g, 'номер ']
   ];
 
   literaryRules.forEach(function(rule) {
     txt = txt.replace(rule[0], rule[1]);
   });
 
-  // 2. Превръщане на пунктуационните знаци (тирета, кавички, двоеточия, скоби) в естествени дикторски паузи
+  // 2. Превръщане на пунктуационните знаци в естествени дикторски паузи (със запазване на цифрите 0-9 за edge-tts)
   txt = txt
     .replace(/[➔➜•▪▸]/g, '. ')
     .replace(/\s+[–—-]\s+/g, ', ')
@@ -2173,7 +2192,7 @@ function prepareLiteraryBgText(containerEl) {
     .replace(/„|“|"/g, ', ')
     .replace(/:/g, ': ')
     .replace(/;/g, '. ')
-    .replace(/[^а-яА-Я.,!?;:\-\s]/g, ' ')
+    .replace(/[^а-яА-Я0-9.,!?;:\-\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/,\s*,+/g, ', ')
     .replace(/([.!?])\s*[.,!?;:]+/g, '$1 ')
