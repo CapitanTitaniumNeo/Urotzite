@@ -2317,7 +2317,7 @@ function saveDriveSettingsFromTab3() {
   syncFromGoogleDrive(false);
 }
 
-// === ПЪЛНО ПРЕМАХВАНЕ НА СТАРИТЕ СУБЕКТИВНИ ОТЧИТАНИЯ (0/200, ЧЕКБОКСОВЕ, СТАРИ ПРОГРЕС БАРОВЕ) ===
+// === ПЪЛНО ПРЕМАХВАНЕ НА СТАРИТЕ ОТЧИТАНИЯ И ПОВДИГАНЕ НА ЖИВАТА ПРОГРАМА НАЙ-ОТГОРЕ ===
 function cleanupOldSubjectiveTrackers() {
   let cleanStyle = document.getElementById('hide-old-trackers-css');
   if (!cleanStyle) {
@@ -2335,11 +2335,16 @@ function cleanupOldSubjectiveTrackers() {
       .rot-slot-card.done-card {
         opacity: 1 !important;
       }
+      .prog-wrap {
+        padding: 5px 12px !important;
+        margin-bottom: 8px !important;
+        justify-content: flex-end !important;
+      }
     `;
     document.head.appendChild(cleanStyle);
   }
   const progWrap = document.querySelector('.prog-wrap');
-  if (progWrap && progWrap.firstElementChild && !progWrap.firstElementChild.classList.contains('filter-bar') && progWrap.firstElementChild.id !== 'daily-subj-tracker-bar') {
+  if (progWrap && progWrap.firstElementChild && !progWrap.firstElementChild.classList.contains('filter-bar')) {
     progWrap.firstElementChild.style.display = 'none';
   }
 }
@@ -2348,7 +2353,7 @@ updateProgress = function() {
   cleanupOldSubjectiveTrackers();
 };
 
-// === МОДЕРЕН ДЕТЕКТОР НА РЕАЛНА УЧЕБНА РАБОТА (АУДИО/ВИДЕО УРОК + РЕАЛЕН КЛИК + РЕАЛНО СКРОЛВАНЕ) ===
+// === КОМПАКТЕН КРЪГЪЛ БРОЯЧ В ХЕДЪРА + МОДАЛЕН ОТЧЕТ ПО ПРЕДМЕТИ (В СЕКУНДИ И ДЕЙСТВИЯ, БЕЗ ПРОЦЕНТИ) ===
 let lastMeaningfulActionMs = 0;
 let lastScrollCheckY = window.scrollY || 0;
 let currentActiveSubjId = '';
@@ -2356,15 +2361,25 @@ let activeAudioSubjId = '';
 const unsyncedSubjSec = {};
 const unsyncedSubjActs = {};
 
-function formatMinBg(sec) {
+function formatExactTimeBg(sec) {
   const s = Math.max(0, Math.floor(Number(sec) || 0));
-  if (s === 0) return '0 мин.';
+  if (s === 0) return '0 сек.';
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const remSec = s % 60;
-  if (h > 0) return h + ' ч. ' + m + ' мин.';
-  if (m > 0) return m + ' мин.';
+  if (h > 0) return h + ' ч. ' + m + ' мин. ' + remSec + ' сек.';
+  if (m > 0) return m + ' мин.' + (remSec > 0 ? ' ' + remSec + ' сек.' : '');
   return remSec + ' сек.';
+}
+
+function formatShortTabBadge(sec, acts) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const a = Math.max(0, Math.floor(Number(acts) || 0));
+  if (s === 0 && a === 0) return '0 сек.';
+  const m = Math.floor(s / 60);
+  const remS = s % 60;
+  const timeTxt = m > 0 ? (m + 'м ' + remS + 'с') : (s + ' сек.');
+  return timeTxt + ' • ⚡' + a;
 }
 
 function getLocalDailyTracker() {
@@ -2381,7 +2396,6 @@ function getLocalDailyTracker() {
   return fresh;
 }
 
-// Проверява дали в момента се подготвя или възпроизвежда аудио урок ИЛИ видео на страницата
 function isMediaActiveNow() {
   if (activeId && !stopped) {
     return true;
@@ -2400,7 +2414,6 @@ function isMediaActiveNow() {
   return false;
 }
 
-// Определя точно върху кой предмет е действието или пуснатият аудио урок
 function detectActiveSubjectFromDOM(targetEl) {
   if (targetEl && targetEl.closest && window.APP_DATA) {
     const pane = targetEl.closest('.subj-pane');
@@ -2491,7 +2504,6 @@ stopSpeech = function() {
   renderDailySubjectBanner();
 };
 
-// 1. Засичане на РЕАЛЕН КЛИК върху учебни бутони, подменюта, карти, думи в сейфа и ресурси
 window.addEventListener('click', function(ev) {
   const t = ev.target;
   if (!t || !t.closest) return;
@@ -2517,7 +2529,6 @@ window.addEventListener('click', function(ev) {
   }
 }, { passive: true });
 
-// 2. Засичане на РЕАЛНО СКРОЛВАНЕ на урочния текст
 let lastScrollPulseMs = 0;
 window.addEventListener('scroll', function() {
   const curY = window.scrollY || 0;
@@ -2533,7 +2544,6 @@ window.addEventListener('scroll', function() {
   }
 }, { passive: true });
 
-// 3. Засичане на навигация с дистанционното на телевизора
 window.addEventListener('keydown', function(ev) {
   if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Enter'].indexOf(ev.key) !== -1) {
     const detectedSubj = detectActiveSubjectFromDOM(document.activeElement);
@@ -2579,19 +2589,45 @@ function applyServerDailyTracker(srvDaily) {
   renderDailySubjectBanner();
 }
 
+function toggleDailyTrackerModal(forceOpen) {
+  let modal = document.getElementById('daily-tracker-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'daily-tracker-modal';
+    modal.className = 'pass-modal-overlay no-read';
+    modal.onclick = function(ev) {
+      if (ev.target === modal) modal.style.display = 'none';
+    };
+    modal.innerHTML = `
+      <div class="pass-modal-box" style="max-width:640px; text-align:left; border-color:var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; border-bottom:1px dashed var(--border); padding-bottom:10px; margin-bottom:12px;">
+          <h3 id="dt-modal-title" style="margin:0; color:var(--gold); font-size:1.02rem;">🎯 Реална работа по предмети за ДНЕС</h3>
+          <button class="btn btn-stop" style="padding:4px 10px;" onclick="document.getElementById('daily-tracker-modal').style.display='none'">✖ Затвори</button>
+        </div>
+        <div id="dt-modal-body" style="max-height:70vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px; font-size:0.84rem;"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  if (forceOpen === true) {
+    modal.style.display = 'flex';
+  } else if (forceOpen === false) {
+    modal.style.display = 'none';
+  } else {
+    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+  }
+  if (modal.style.display === 'flex') {
+    renderDailySubjectBanner();
+  }
+}
+
 function renderDailySubjectBanner() {
   cleanupOldSubjectiveTrackers();
-  const progWrap = document.querySelector('.prog-wrap');
-  if (!progWrap) return;
 
-  let barEl = document.getElementById('daily-subj-tracker-bar');
-  if (!barEl) {
-    barEl = document.createElement('div');
-    barEl.id = 'daily-subj-tracker-bar';
-    barEl.className = 'no-read';
-    barEl.style.cssText = 'flex:1; min-width:280px; display:flex; flex-direction:column; gap:6px; font-size:0.8rem;';
-    progWrap.insertBefore(barEl, progWrap.firstChild);
-  }
+  // Изчистваме стария голям банер, ако съществува, за да не измества живата програма надолу
+  const oldBigBar = document.getElementById('daily-subj-tracker-bar');
+  if (oldBigBar) oldBigBar.remove();
 
   const daily = getLocalDailyTracker();
   const subjSecMap = daily.subjects || {};
@@ -2607,61 +2643,93 @@ function renderDailySubjectBanner() {
     if (s.id === 'box') return;
     const sec = Number(subjSecMap[s.id]) || 0;
     const acts = Number(subjActsMap[s.id]) || 0;
-    const pct = totalSec > 0 ? Math.round((sec / totalSec) * 100) : (totalActs > 0 && acts > 0 ? Math.round((acts / totalActs) * 100) : 0);
 
+    // В Таб 2 върху бутона на всеки предмет показваме само времето (сек/мин) и броя действия – БЕЗ проценти!
     const tab2Badge = document.getElementById('spct-' + s.id);
     if (tab2Badge) {
-      tab2Badge.innerText = pct + '%';
-      tab2Badge.style.color = pct > 0 ? '#4ade80' : '#94a3b8';
+      tab2Badge.innerText = formatShortTabBadge(sec, acts);
+      tab2Badge.style.color = (sec > 0 || acts > 0) ? '#4ade80' : '#94a3b8';
     }
 
     if (sec > 0 || acts > 0) {
-      studiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, sec: sec, acts: acts, pct: pct });
+      studiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, code: s.subjCode, sec: sec, acts: acts });
     } else {
-      unstudiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName });
+      unstudiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, code: s.subjCode });
     }
   });
 
   studiedList.sort(function(a, b) { return (b.sec - a.sec) || (b.acts - a.acts); });
 
-  const studiedHTML = studiedList.length > 0
-    ? studiedList.map(function(item) {
-        return `<span onclick="jumpToSubject('${item.id}')" title="Кликни за отваряне на предмета" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; background:rgba(34,197,94,0.2); border:1px solid #22c55e; color:#f0fdf4; padding:4px 10px; border-radius:8px; font-weight:900;">
-          ${item.icon} ${item.name}: <b style="color:#fde047; font-size:0.86rem;">${item.pct}%</b> <span style="color:#86efac; font-size:0.75rem;">(${formatMinBg(item.sec)} • ⚡ ${item.acts} действ.)</span>
-        </span>`;
-      }).join('')
-    : `<span style="color:#fca5a5; font-weight:800;">⚠️ Днес все още няма реална активност (кликване, скролване или слушане на урок)</span>`;
-
-  const unstudiedHTML = unstudiedList.map(function(item) {
-    return `<span onclick="jumpToSubject('${item.id}')" title="Днес още не е учено по ${item.name} (Кликни за старт)" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:rgba(15,23,42,0.9); border:1px dashed rgba(239,68,68,0.55); color:#94a3b8; padding:3px 8px; border-radius:7px; font-weight:700; font-size:0.75rem;">
-      ${item.icon} ${item.name}: <b style="color:#f87171;">0%</b>
-    </span>`;
-  }).join('');
-
   const mediaRunning = isMediaActiveNow();
   const hasRecentClickOrScroll = (Date.now() - lastMeaningfulActionMs) <= 12000;
 
-  let liveStatusBadge = `<span style="background:rgba(148,163,184,0.15); border:1px dashed #64748b; color:#94a3b8; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700;">⏸️ Пауза (Не отчита празен престой)</span>`;
-  if (mediaRunning) {
-    liveStatusBadge = `<span style="background:rgba(251,191,36,0.25); border:1px solid #fbbf24; color:#fde047; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:900;">🎙️ В момента слуша аудио/видео урок (Отчита автоматично)</span>`;
-  } else if (hasRecentClickOrScroll) {
-    liveStatusBadge = `<span style="background:rgba(34,197,94,0.25); border:1px solid #22c55e; color:#4ade80; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:900;">🟢 В момента работи активно</span>`;
+  // 1. Компактно кръгче/хапче горе в шапката на Супер-Органайзера (header)
+  const headerVoiceBar = document.querySelector('header .voice-bar');
+  if (headerVoiceBar) {
+    let circleBtn = document.getElementById('header-study-circle');
+    if (!circleBtn) {
+      circleBtn = document.createElement('span');
+      circleBtn.id = 'header-study-circle';
+      circleBtn.className = 'sync-pill no-read';
+      circleBtn.onclick = function() { toggleDailyTrackerModal(); };
+      headerVoiceBar.insertBefore(circleBtn, headerVoiceBar.firstChild);
+    }
+
+    const dotIcon = mediaRunning ? '🎙️' : (hasRecentClickOrScroll ? '🟢' : '⏱️');
+    circleBtn.style.background = mediaRunning
+      ? 'rgba(251,191,36,0.25)'
+      : (hasRecentClickOrScroll ? 'rgba(34,197,94,0.25)' : 'rgba(2,132,199,0.22)');
+    circleBtn.style.borderColor = mediaRunning
+      ? '#fbbf24'
+      : (hasRecentClickOrScroll ? '#22c55e' : '#38bdf8');
+    circleBtn.style.color = mediaRunning ? '#fde047' : '#f8fafc';
+    circleBtn.title = 'Кликни за детайлен преглед предмет по предмет за днес';
+    circleBtn.innerHTML = `${dotIcon} Днес: <b style="color:#fde047;">${formatExactTimeBg(totalSec)}</b> <span style="color:#86efac;">(⚡${totalActs})</span> ▾`;
   }
 
-  barEl.innerHTML = `
-    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px;">
-      <span style="font-weight:900; color:var(--accent);">
-        🎯 РЕАЛНА РАБОТА ПО ПРЕДМЕТИ ЗА ДНЕС (${daily.date} г. • Активно време: <b style="color:var(--gold);">${formatMinBg(totalSec)}</b> • Общо действия: <b style="color:#86efac;">⚡ ${totalActs}</b>):
-      </span>
-      ${liveStatusBadge}
-    </div>
-    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
-      <b style="color:#4ade80;">✅ УЧЕНО ДНЕС:</b> ${studiedHTML}
-    </div>
-    ${unstudiedList.length > 0 ? `<div style="display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:2px;">
-      <b style="color:#f87171; font-size:0.76rem;">⭕ НЕ Е УЧЕНО ДНЕС (0%):</b> ${unstudiedHTML}
-    </div>` : ''}
-  `;
+  // 2. Ако модалният прозорец е отворен, обновяваме списъка предмет по предмет вътре в него
+  const modal = document.getElementById('daily-tracker-modal');
+  if (modal && modal.style.display === 'flex') {
+    const titleEl = document.getElementById('dt-modal-title');
+    const bodyEl = document.getElementById('dt-modal-body');
+    if (titleEl) {
+      titleEl.innerHTML = `🎯 Дневна работа (${daily.date} г.) • Общо: <span style="color:#4ade80;">${formatExactTimeBg(totalSec)}</span> • <span style="color:#86efac;">⚡ ${totalActs} действия</span>`;
+    }
+    if (bodyEl) {
+      const statusLine = mediaRunning
+        ? `<div style="background:rgba(251,191,36,0.2); border:1px solid #fbbf24; color:#fde047; padding:6px 10px; border-radius:8px; font-weight:800;">🎙️ Статус в момента: Слуша аудио/видео урок (Отчита автоматично)</div>`
+        : (hasRecentClickOrScroll
+          ? `<div style="background:rgba(34,197,94,0.2); border:1px solid #22c55e; color:#4ade80; padding:6px 10px; border-radius:8px; font-weight:800;">🟢 Статус в момента: Работи активно в платформата</div>`
+          : `<div style="background:rgba(148,163,184,0.12); border:1px dashed #64748b; color:#cbd5e1; padding:6px 10px; border-radius:8px; font-weight:700;">⏸️ Статус в момента: Пауза (Не отчита празен престой)</div>`);
+
+      const studiedRows = studiedList.length > 0
+        ? studiedList.map(function(item) {
+            return `<div onclick="toggleDailyTrackerModal(false); jumpToSubject('${item.id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:rgba(34,197,94,0.16); border:1px solid #22c55e; padding:7px 11px; border-radius:9px;">
+              <span style="font-weight:900; color:#fff;">${item.icon} ${item.name} <span class="slot-code-pill">${item.code}</span></span>
+              <span style="font-weight:900; color:#fde047;">⏱️ ${formatExactTimeBg(item.sec)} &nbsp;|&nbsp; <b style="color:#86efac;">⚡ ${item.acts} действия</b></span>
+            </div>`;
+          }).join('')
+        : `<div style="color:#fca5a5; font-weight:800; padding:6px;">⚠️ Днес все още няма регистрирана работа по нито един предмет (0 сек. • 0 действия).</div>`;
+
+      const unstudiedChips = unstudiedList.map(function(item) {
+        return `<span onclick="toggleDailyTrackerModal(false); jumpToSubject('${item.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:#090d16; border:1px dashed rgba(239,68,68,0.55); color:#94a3b8; padding:4px 9px; border-radius:7px; font-weight:700; font-size:0.77rem;">
+          ${item.icon} ${item.name}: <b style="color:#f87171;">0 сек. (⚡0)</b>
+        </span>`;
+      }).join('');
+
+      bodyEl.innerHTML = `
+        ${statusLine}
+        <div>
+          <div style="font-weight:900; color:#4ade80; margin-bottom:6px;">✅ РАЗРАБОТЕНИ И УЧЕНИ ПРЕДМЕТИ ДНЕС (${studiedList.length}):</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">${studiedRows}</div>
+        </div>
+        ${unstudiedList.length > 0 ? `<div>
+          <div style="font-weight:900; color:#f87171; margin-bottom:6px;">⭕ НЕ Е УЧЕНО ДНЕС (${unstudiedList.length} предмета с 0 сек.):</div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px;">${unstudiedChips}</div>
+        </div>` : ''}
+      `;
+    }
+  }
 }
 
 function sendDailySubjectPing() {
@@ -2852,13 +2920,13 @@ function generateSyncReport() {
   if (!window.APP_DATA) return;
   const daily = getLocalDailyTracker();
   const totalSec = Math.max(0, Number(daily.totalSec) || 0);
+  const totalActs = Math.max(0, Number(daily.totalActs) || 0);
   const subjParts = Object.keys(daily.subjects || {}).map(function(k) {
     const sec = Number(daily.subjects[k]) || 0;
     const acts = Number((daily.acts || {})[k]) || 0;
-    const pct = totalSec > 0 ? Math.round((sec / totalSec) * 100) : 0;
-    return k.toUpperCase() + ': ' + pct + '% (' + formatMinBg(sec) + ', ' + acts + ' действ.)';
+    return k.toUpperCase() + ': ' + formatExactTimeBg(sec) + ' (⚡' + acts + ' действ.)';
   }).join(' | ');
-  const rep = `=== ДНЕВЕН ОТЧЕТ НА БОРИС (${daily.date} г. • 7. КЛАС) ===\n🎯 Реално учено днес по предмети: ${subjParts || '0%'}`;
+  const rep = `=== ДНЕВЕН ОТЧЕТ НА БОРИС (${daily.date} г. • 7. КЛАС) ===\n⏱️ Общо днес: ${formatExactTimeBg(totalSec)} (⚡${totalActs} действ.)\n🎯 По предмети: ${subjParts || '0 сек.'}`;
   const box = document.getElementById('sync-box');
   box.style.display = 'block'; box.value = rep; box.select();
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
