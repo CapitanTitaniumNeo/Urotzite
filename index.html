@@ -2353,13 +2353,13 @@ updateProgress = function() {
   cleanupOldSubjectiveTrackers();
 };
 
-// === КОМПАКТЕН КРЪГЪЛ БРОЯЧ В ХЕДЪРА + МОДАЛЕН ОТЧЕТ ПО ПРЕДМЕТИ (В СЕКУНДИ И ДЕЙСТВИЯ, БЕЗ ПРОЦЕНТИ) ===
+// === СПОКОЙНО КЕШИРАНЕ И ПАКЕТНО НАТРУПВАНЕ НА ВРЕМЕТО (БЕЗ НАТОВАРВАНЕ НА GOOGLE СЪРВЪРИТЕ) ===
 let lastMeaningfulActionMs = 0;
 let lastScrollCheckY = window.scrollY || 0;
 let currentActiveSubjId = '';
 let activeAudioSubjId = '';
-const unsyncedSubjSec = {};
-const unsyncedSubjActs = {};
+let isPingInFlight = false;
+let wasWorkingInPrevTick = false;
 
 function formatExactTimeBg(sec) {
   const s = Math.max(0, Math.floor(Number(sec) || 0));
@@ -2382,18 +2382,79 @@ function formatShortTabBadge(sec, acts) {
   return timeTxt + ' • ⚡' + a;
 }
 
-function getLocalDailyTracker() {
+// 1. Локален кеш на още неизпратените секунди и действия (пази се в localStorage, за да не се губи и секунда при рефреш!)
+function getPendingQueue() {
   const todayStr = formatDdMmYyyy(new Date());
   try {
-    const parsed = JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3'), '{}'));
+    const q = JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'PENDING_QUEUE_V4'), '{}'));
+    if (q && q.date === todayStr && q.sec && q.acts) return q;
+  } catch (e) {}
+  return { date: todayStr, sec: {}, acts: {} };
+}
+
+function savePendingQueue(q) {
+  localStorage.setItem(STORAGE_PREFIX + 'PENDING_QUEUE_V4', JSON.stringify(q));
+}
+
+function addLocalPendingDelta(subjId, addSec, addActs) {
+  if (!subjId || subjId === 'box') return;
+  const q = getPendingQueue();
+  if (addSec > 0) q.sec[subjId] = (Number(q.sec[subjId]) || 0) + addSec;
+  if (addActs > 0) q.acts[subjId] = (Number(q.acts[subjId]) || 0) + addActs;
+  savePendingQueue(q);
+}
+
+function getTotalPendingSec() {
+  const q = getPendingQueue();
+  let sum = 0;
+  Object.keys(q.sec).forEach(function(k) { sum += (Number(q.sec[k]) || 0); });
+  return sum;
+}
+
+function hasAnyPendingData() {
+  const q = getPendingQueue();
+  const hasS = Object.keys(q.sec).some(function(k) { return (Number(q.sec[k]) || 0) > 0; });
+  const hasA = Object.keys(q.acts).some(function(k) { return (Number(q.acts[k]) || 0) > 0; });
+  return hasS || hasA;
+}
+
+// 2. Връща сумата от сървъра (от всички устройства) + локално кешираните минути в това устройство
+function getCombinedDailyTracker() {
+  const todayStr = formatDdMmYyyy(new Date());
+  let srvBase = { date: todayStr, totalSec: 0, totalActs: 0, subjects: {}, acts: {} };
+  try {
+    const parsed = JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'SERVER_DAILY_V4'), '{}'));
     if (parsed && parsed.date === todayStr && parsed.subjects) {
-      if (!parsed.acts) parsed.acts = {};
-      return parsed;
+      srvBase = parsed;
+      if (!srvBase.acts) srvBase.acts = {};
     }
   } catch (e) {}
-  const fresh = { date: todayStr, totalSec: 0, totalActs: 0, subjects: {}, acts: {} };
-  localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(fresh));
-  return fresh;
+
+  const q = getPendingQueue();
+  const combined = {
+    date: todayStr,
+    totalSec: 0,
+    totalActs: 0,
+    subjects: Object.assign({}, srvBase.subjects),
+    acts: Object.assign({}, srvBase.acts)
+  };
+
+  Object.keys(q.sec).forEach(function(k) {
+    const v = Number(q.sec[k]) || 0;
+    if (v > 0) combined.subjects[k] = (Number(combined.subjects[k]) || 0) + v;
+  });
+  Object.keys(q.acts).forEach(function(k) {
+    const v = Number(q.acts[k]) || 0;
+    if (v > 0) combined.acts[k] = (Number(combined.acts[k]) || 0) + v;
+  });
+
+  let sumS = 0, sumA = 0;
+  Object.keys(combined.subjects).forEach(function(k) { sumS += (Number(combined.subjects[k]) || 0); });
+  Object.keys(combined.acts).forEach(function(k) { sumA += (Number(combined.acts[k]) || 0); });
+  combined.totalSec = sumS;
+  combined.totalActs = sumA;
+
+  return combined;
 }
 
 function isMediaActiveNow() {
@@ -2470,17 +2531,14 @@ function detectActiveSubjectFromDOM(targetEl) {
   return currentActiveSubjId || 'math';
 }
 
+// Само кешира действието локално в устройството (0 заявки към Google при клик!)
 function registerRealStudyPulse(subjId, isExplicitClickAction) {
   if (!subjId || subjId === 'box') return;
   currentActiveSubjId = subjId;
   lastMeaningfulActionMs = Date.now();
 
   if (isExplicitClickAction) {
-    const daily = getLocalDailyTracker();
-    daily.acts[subjId] = (Number(daily.acts[subjId]) || 0) + 1;
-    daily.totalActs = (Number(daily.totalActs) || 0) + 1;
-    localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(daily));
-    unsyncedSubjActs[subjId] = (Number(unsyncedSubjActs[subjId]) || 0) + 1;
+    addLocalPendingDelta(subjId, 0, 1);
     renderDailySubjectBanner();
   }
 }
@@ -2502,6 +2560,10 @@ stopSpeech = function() {
   _origStopSpeech();
   activeAudioSubjId = '';
   renderDailySubjectBanner();
+  // Когато аудио урокът приключи, спокойно записваме натрупаното време към облака
+  if (getTotalPendingSec() >= 20) {
+    flushPendingQueueToServer(false);
+  }
 };
 
 window.addEventListener('click', function(ev) {
@@ -2556,35 +2618,17 @@ window.addEventListener('keydown', function(ev) {
 function applyServerDailyTracker(srvDaily) {
   if (!srvDaily || typeof srvDaily !== 'object') return;
   const todayStr = formatDdMmYyyy(new Date());
-  const localDaily = getLocalDailyTracker();
 
   if (srvDaily.date === todayStr) {
-    if (srvDaily.subjects) {
-      Object.keys(srvDaily.subjects).forEach(function(sKey) {
-        const srvSec = Number(srvDaily.subjects[sKey]) || 0;
-        const locSec = Number(localDaily.subjects[sKey]) || 0;
-        localDaily.subjects[sKey] = Math.max(srvSec, locSec);
-      });
-    }
-    if (srvDaily.acts) {
-      Object.keys(srvDaily.acts).forEach(function(sKey) {
-        const srvActs = Number(srvDaily.acts[sKey]) || 0;
-        const locActs = Number(localDaily.acts[sKey]) || 0;
-        localDaily.acts[sKey] = Math.max(srvActs, locActs);
-      });
-    }
+    const exactFromServer = {
+      date: todayStr,
+      totalSec: Number(srvDaily.totalSec) || 0,
+      totalActs: Number(srvDaily.totalActs) || 0,
+      subjects: srvDaily.subjects || {},
+      acts: srvDaily.acts || {}
+    };
+    localStorage.setItem(STORAGE_PREFIX + 'SERVER_DAILY_V4', JSON.stringify(exactFromServer));
   }
-
-  let sumSec = 0, sumActs = 0;
-  Object.keys(localDaily.subjects).forEach(function(sKey) {
-    sumSec += (Number(localDaily.subjects[sKey]) || 0);
-  });
-  Object.keys(localDaily.acts).forEach(function(sKey) {
-    sumActs += (Number(localDaily.acts[sKey]) || 0);
-  });
-  localDaily.totalSec = sumSec;
-  localDaily.totalActs = sumActs;
-  localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(localDaily));
 
   renderDailySubjectBanner();
 }
@@ -2602,7 +2646,10 @@ function toggleDailyTrackerModal(forceOpen) {
       <div class="pass-modal-box" style="max-width:640px; text-align:left; border-color:var(--accent);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; border-bottom:1px dashed var(--border); padding-bottom:10px; margin-bottom:12px;">
           <h3 id="dt-modal-title" style="margin:0; color:var(--gold); font-size:1.02rem;">🎯 Реална работа по предмети за ДНЕС</h3>
-          <button class="btn btn-stop" style="padding:4px 10px;" onclick="document.getElementById('daily-tracker-modal').style.display='none'">✖ Затвори</button>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-cloud" style="padding:4px 10px;" onclick="flushPendingQueueToServer(true)">🔄 Синхронизирай сега</button>
+            <button class="btn btn-stop" style="padding:4px 10px;" onclick="document.getElementById('daily-tracker-modal').style.display='none'">✖ Затвори</button>
+          </div>
         </div>
         <div id="dt-modal-body" style="max-height:70vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px; font-size:0.84rem;"></div>
       </div>
@@ -2618,6 +2665,7 @@ function toggleDailyTrackerModal(forceOpen) {
     modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
   }
   if (modal.style.display === 'flex') {
+    flushPendingQueueToServer(true);
     renderDailySubjectBanner();
   }
 }
@@ -2625,11 +2673,10 @@ function toggleDailyTrackerModal(forceOpen) {
 function renderDailySubjectBanner() {
   cleanupOldSubjectiveTrackers();
 
-  // Изчистваме стария голям банер, ако съществува, за да не измества живата програма надолу
   const oldBigBar = document.getElementById('daily-subj-tracker-bar');
   if (oldBigBar) oldBigBar.remove();
 
-  const daily = getLocalDailyTracker();
+  const daily = getCombinedDailyTracker();
   const subjSecMap = daily.subjects || {};
   const subjActsMap = daily.acts || {};
   const totalSec = Math.max(0, Number(daily.totalSec) || 0);
@@ -2644,7 +2691,6 @@ function renderDailySubjectBanner() {
     const sec = Number(subjSecMap[s.id]) || 0;
     const acts = Number(subjActsMap[s.id]) || 0;
 
-    // В Таб 2 върху бутона на всеки предмет показваме само времето (сек/мин) и броя действия – БЕЗ проценти!
     const tab2Badge = document.getElementById('spct-' + s.id);
     if (tab2Badge) {
       tab2Badge.innerText = formatShortTabBadge(sec, acts);
@@ -2663,7 +2709,6 @@ function renderDailySubjectBanner() {
   const mediaRunning = isMediaActiveNow();
   const hasRecentClickOrScroll = (Date.now() - lastMeaningfulActionMs) <= 12000;
 
-  // 1. Компактно кръгче/хапче горе в шапката на Супер-Органайзера (header)
   const headerVoiceBar = document.querySelector('header .voice-bar');
   if (headerVoiceBar) {
     let circleBtn = document.getElementById('header-study-circle');
@@ -2687,7 +2732,6 @@ function renderDailySubjectBanner() {
     circleBtn.innerHTML = `${dotIcon} Днес: <b style="color:#fde047;">${formatExactTimeBg(totalSec)}</b> <span style="color:#86efac;">(⚡${totalActs})</span> ▾`;
   }
 
-  // 2. Ако модалният прозорец е отворен, обновяваме списъка предмет по предмет вътре в него
   const modal = document.getElementById('daily-tracker-modal');
   if (modal && modal.style.display === 'flex') {
     const titleEl = document.getElementById('dt-modal-title');
@@ -2732,60 +2776,68 @@ function renderDailySubjectBanner() {
   }
 }
 
-function sendDailySubjectPing() {
+// Изпраща целия кеширан пакет от предмети наведнъж към сървъра (само когато се съберат >= 2 минути работа или при рефреш/затваряне)
+function flushPendingQueueToServer(forceEvenIfEmpty) {
   const url = getDriveUrl();
   const rawKey = getDriveSecretKey();
-  if (!url || !rawKey) return;
+  if (!url || !rawKey || isPingInFlight) return;
 
-  let targetSubj = activeAudioSubjId || currentActiveSubjId || '';
-  let secToSend = 0;
-  let actsToSend = 0;
+  const hasPending = hasAnyPendingData();
+  if (!hasPending && !forceEvenIfEmpty) return;
 
-  Object.keys(unsyncedSubjSec).forEach(function(k) {
-    if (unsyncedSubjSec[k] > secToSend) {
-      targetSubj = k;
-      secToSend = unsyncedSubjSec[k];
-    }
-  });
-  if (!targetSubj) {
-    Object.keys(unsyncedSubjActs).forEach(function(k) {
-      if (unsyncedSubjActs[k] > actsToSend) {
-        targetSubj = k;
-      }
-    });
-  }
+  const qSnapshot = getPendingQueue();
+  const todayStr = formatDdMmYyyy(new Date());
+  // Изчистваме опашката преди пращане (ако няма интернет, ще я възстановим обратно)
+  savePendingQueue({ date: todayStr, sec: {}, acts: {} });
 
-  if (targetSubj) {
-    secToSend = Number(unsyncedSubjSec[targetSubj]) || 0;
-    actsToSend = Number(unsyncedSubjActs[targetSubj]) || 0;
-    unsyncedSubjSec[targetSubj] = 0;
-    unsyncedSubjActs[targetSubj] = 0;
-  }
+  // За съвместимост намираме и първия предмет, ако има само един
+  const secKeys = Object.keys(qSnapshot.sec);
+  const actKeys = Object.keys(qSnapshot.acts);
+  const singleSubj = (secKeys.length === 1 && actKeys.length <= 1) ? secKeys[0] : (actKeys.length === 1 && secKeys.length === 0 ? actKeys[0] : '');
+  const singleSec = singleSubj ? (Number(qSnapshot.sec[singleSubj]) || 0) : 0;
+  const singleActs = singleSubj ? (Number(qSnapshot.acts[singleSubj]) || 0) : 0;
+
+  const batchStr = hasPending ? JSON.stringify({ sec: qSnapshot.sec, acts: qSnapshot.acts }) : '';
+  isPingInFlight = true;
 
   const sep = url.indexOf('?') !== -1 ? '&' : '?';
-  const pingUrl = url + sep + 'mode=ping&key=' + encodeURIComponent(rawKey) + '&subj=' + encodeURIComponent(targetSubj) + '&addSec=' + secToSend + '&addActs=' + actsToSend + '&t=' + Date.now();
+  const pingUrl = url + sep + 'mode=ping&key=' + encodeURIComponent(rawKey)
+    + (singleSubj ? '&subj=' + encodeURIComponent(singleSubj) + '&addSec=' + singleSec + '&addActs=' + singleActs : '')
+    + (batchStr ? '&batch=' + encodeURIComponent(batchStr) : '')
+    + '&t=' + Date.now();
+
+  function onFlushDone(res) {
+    isPingInFlight = false;
+    if (res && res.status === 'ok' && res.daily) {
+      applyServerDailyTracker(res.daily);
+    } else if (hasPending) {
+      // Ако връзката е прекъснала, връщаме секундите обратно в кеша на устройството, за да не се изгуби нито секунда!
+      Object.keys(qSnapshot.sec).forEach(function(k) {
+        addLocalPendingDelta(k, Number(qSnapshot.sec[k]) || 0, 0);
+      });
+      Object.keys(qSnapshot.acts).forEach(function(k) {
+        addLocalPendingDelta(k, 0, Number(qSnapshot.acts[k]) || 0);
+      });
+      renderDailySubjectBanner();
+    }
+  }
 
   fetch(pingUrl, { method: 'GET', redirect: 'follow' })
     .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res && res.status === 'ok' && res.daily) {
-        applyServerDailyTracker(res.daily);
-      }
-    })
+    .then(function(res) { onFlushDone(res); })
     .catch(function() {
       const cbName = 'ping_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
       const sEl = document.createElement('script');
       const tmr = setTimeout(function() {
-        if (window[cbName]) { delete window[cbName]; sEl.remove(); }
-      }, 8000);
+        if (window[cbName]) { delete window[cbName]; sEl.remove(); onFlushDone(null); }
+      }, 8500);
       window[cbName] = function(res) {
         clearTimeout(tmr); delete window[cbName]; sEl.remove();
-        if (res && res.status === 'ok' && res.daily) {
-          applyServerDailyTracker(res.daily);
-        }
+        onFlushDone(res);
       };
       sEl.onerror = function() {
         clearTimeout(tmr); delete window[cbName]; sEl.remove();
+        onFlushDone(null);
       };
       sEl.src = pingUrl + '&callback=' + cbName;
       document.body.appendChild(sEl);
@@ -2808,7 +2860,6 @@ checkSingleCard = function(cardUid, silent) {
     if (selEl && selEl.getAttribute('data-subj')) {
       registerRealStudyPulse(selEl.getAttribute('data-subj'), true);
     }
-    sendDailySubjectPing();
   }
   return res;
 };
@@ -2867,6 +2918,10 @@ function syncFromGoogleDrive(isSilentAuto) {
     if (res.daily) {
       applyServerDailyTracker(res.daily);
     }
+    // Ако в това устройство има кеширани минути от предишно учене, прибавяме ги към сървъра!
+    if (hasAnyPendingData()) {
+      flushPendingQueueToServer(false);
+    }
 
     const lastSig = localStorage.getItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE');
     const hasLocalData = getSavedSourcesList().length > 0;
@@ -2874,7 +2929,6 @@ function syncFromGoogleDrive(isSilentAuto) {
     if (isSilentAuto && hasLocalData && res.signature && res.signature === lastSig) {
       if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = '☁️ Актуално'; }
       if (logEl) logEl.innerText = '✅ Базата и дневният отчет по предмети са синхронизирани.';
-      sendDailySubjectPing();
       return;
     }
 
@@ -2901,7 +2955,6 @@ function syncFromGoogleDrive(isSilentAuto) {
         localStorage.setItem(STORAGE_PREFIX + 'MERGED_SOURCES', JSON.stringify(loadedEntries));
         if (fullRes.signature) localStorage.setItem(STORAGE_PREFIX + 'DRIVE_SIGNATURE', fullRes.signature);
         rebuildAndInitFromStorage();
-        sendDailySubjectPing();
         if (pill) { pill.className = 'sync-pill no-read'; pill.innerText = `☁️ Обновено (${loadedEntries.length})`; }
         if (logEl) logEl.innerText = `✅ Успешно заредени и обединени ${loadedEntries.length} файла от Google Drive!`;
         if (!isSilentAuto) openTab('tab-1', document.getElementById('tab-btn-1'));
@@ -2918,7 +2971,7 @@ function syncFromGoogleDrive(isSilentAuto) {
 
 function generateSyncReport() {
   if (!window.APP_DATA) return;
-  const daily = getLocalDailyTracker();
+  const daily = getCombinedDailyTracker();
   const totalSec = Math.max(0, Number(daily.totalSec) || 0);
   const totalActs = Math.max(0, Number(daily.totalActs) || 0);
   const subjParts = Object.keys(daily.subjects || {}).map(function(k) {
@@ -2931,6 +2984,13 @@ function generateSyncReport() {
   box.style.display = 'block'; box.value = rep; box.select();
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
 }
+
+// Ако затвори таба или минимизира браузъра след учене, изпращаме кешираните минути към сървъра
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden' && hasAnyPendingData()) {
+    flushPendingQueueToServer(false);
+  }
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   localStorage.setItem(STORAGE_PREFIX + 'DRIVE_URL', DEFAULT_DRIVE_WEBAPP_URL);
@@ -2951,28 +3011,32 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Локален пулс на всеки 10 секунди (записва само в локалния кеш на браузъра!).
+  // Към Google сървъра праща пакетно САМО когато се натрупат 120 сек. (2 минути) ИЛИ когато спре да учи!
   setInterval(() => {
     const isMediaRunning = isMediaActiveNow();
     const isPageVisible = (document.visibilityState !== 'hidden') || isMediaRunning;
     const hasGenuineInteraction = (Date.now() - lastMeaningfulActionMs) <= 12000;
 
     if (isPageVisible && (isMediaRunning || hasGenuineInteraction)) {
+      wasWorkingInPrevTick = true;
       const subjNow = isMediaRunning ? (activeAudioSubjId || detectActiveSubjectFromDOM(null)) : detectActiveSubjectFromDOM(null);
       if (subjNow && subjNow !== 'box') {
-        const daily = getLocalDailyTracker();
-        daily.subjects[subjNow] = (Number(daily.subjects[subjNow]) || 0) + 10;
-        daily.totalSec = (Number(daily.totalSec) || 0) + 10;
-        localStorage.setItem(STORAGE_PREFIX + 'DAILY_SUBJ_V3', JSON.stringify(daily));
-
-        unsyncedSubjSec[subjNow] = (Number(unsyncedSubjSec[subjNow]) || 0) + 10;
+        addLocalPendingDelta(subjNow, 10, 0);
         renderDailySubjectBanner();
 
-        if (unsyncedSubjSec[subjNow] >= 30 || (unsyncedSubjActs[subjNow] || 0) >= 5) {
-          sendDailySubjectPing();
+        // Ако в локалния кеш са се събрали 2 минути (120 сек.), пращаме ги спокойно в 1 общ пакет към сървъра
+        if (getTotalPendingSec() >= 120) {
+          flushPendingQueueToServer(false);
         }
       }
     } else {
       renderDailySubjectBanner();
+      // Ако допреди малко е учил (напр. 40 сек. на телефона) и вече е спрял, записваме тези 40 сек. към сървъра веднъж
+      if (wasWorkingInPrevTick && hasAnyPendingData()) {
+        wasWorkingInPrevTick = false;
+        flushPendingQueueToServer(false);
+      }
     }
   }, 10000);
 
