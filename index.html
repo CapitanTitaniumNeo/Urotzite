@@ -1969,7 +1969,7 @@ let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
 let speechTimer = null;
 const originalBtnLabels = new Map();
 const ttsFullAudioCache = new Map();
-const PREFERRED_NEURAL_VOICE = 'bg-BG-KalinaNeural'; // Може да се смени с 'bg-BG-BorislavNeural'
+const PREFERRED_NEURAL_VOICE = 'bg-BG-KalinaNeural';
 
 // Тихо 0.1-секундно аудио за мигновено отключване на колоните на Samsung Smart TV при клик с дистанционното
 const SILENT_UNLOCK_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
@@ -2036,7 +2036,7 @@ function stopSpeech() {
   activeId = null; queue = []; idx = 0;
 }
 
-// Изтегля ЦЕЛИЯ урок накуп като ЕДИН непрекъснат MP3 файл от новия Google Apps Script (edge-tts KalinaNeural)
+// За Samsung TV и всички устройства: изтегля ЦЕЛИЯ урок накуп като ЕДИН непрекъснат MP3 файл от Google Apps Script!
 function playFullTextOnTV(fullCleanText, targetId) {
   const audioEl = getTvAudioElement();
   const driveUrl = getDriveUrl();
@@ -2057,7 +2057,6 @@ function playFullTextOnTV(fullCleanText, targetId) {
     }
   }
 
-  // Ако този урок вече е бил зареден веднъж, пускаме го мигновено от кеша без чакане
   if (ttsFullAudioCache.has(cacheKey)) {
     const cached = ttsFullAudioCache.get(cacheKey);
     playReceivedDataUrl(cached.dataUrl, cached.engine);
@@ -2110,14 +2109,12 @@ function prepareLiteraryBgText(containerEl) {
   const ignoreList = ui('speechIgnoreSelectors') + ', .slot-expand-drawer:not(.open), .card-back';
   clone.querySelectorAll(ignoreList).forEach(function(n) { n.remove(); });
 
-  // Поставяме интонационна точка след всеки блок, заглавие или нов ред, за да не се сливат мислите
   clone.querySelectorAll('br, p, div, li, h1, h2, h3, h4, tr').forEach(function(block) {
     block.insertAdjacentText('afterend', '. ');
   });
 
   let txt = String(valOr(clone.innerText, ''));
 
-  // 1. Разгъване на римски векове, валентности и учебни съкращения в чист книжовен изговор
   const literaryRules = [
     [/\bXVIII\s*в\./g, 'осемнадесети век.'],
     [/\bXIX\s*в\./g, 'деветнадесети век.'],
@@ -2184,7 +2181,6 @@ function prepareLiteraryBgText(containerEl) {
     txt = txt.replace(rule[0], rule[1]);
   });
 
-  // 2. Превръщане на пунктуационните знаци в естествени дикторски паузи (със запазване на цифрите 0-9 за edge-tts)
   txt = txt
     .replace(/[➔➜•▪▸]/g, '. ')
     .replace(/\s+[–—-]\s+/g, ', ')
