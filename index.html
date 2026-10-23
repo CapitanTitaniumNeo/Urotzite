@@ -2245,6 +2245,7 @@ function rebuildAndInitFromStorage() {
   window.APP_DATA = merged;
   initApp(merged);
   cleanupOldSubjectiveTrackers();
+  humanizeAllSubjectCodePills();
   renderDailySubjectBanner();
   return Boolean(merged);
 }
@@ -2317,6 +2318,82 @@ function saveDriveSettingsFromTab3() {
   syncFromGoogleDrive(false);
 }
 
+// === РЕЧНИК И АВТОМАТИЧНА ЗАМЯНА НА КОДОВЕТЕ (G07-...) С ЕМОТИКОН, ИМЕ НА ПРЕДМЕТ И КЛАС НАВСЯКЪДЕ ===
+const HUMAN_SUBJ_LABELS = {
+  'G07-MATH': '📐 Математика • 7. клас',
+  'G07-MATH-IUCH': '📗 Математика ИУЧ • 7. клас',
+  'G07-BG': '🇧🇬 Български език • 7. клас',
+  'G07-LIT': '📚 Литература • 7. клас',
+  'G07-BEL-IUCH': '📗 БЕЛ ИУЧ • 7. клас',
+  'G07-GEO': '🌍 География • 7. клас',
+  'G07-PHY': '⚡ Физика • 7. клас',
+  'G07-CHM': '🧪 Химия • 7. клас',
+  'G07-BIO': '🧬 Биология • 7. клас',
+  'G07-ENG': '🇬🇧 Английски език • 7. клас',
+  'G07-ENG-IUCH': '🇬🇧 Английски ИУЧ • 7. клас',
+  'G07-HIS': '📜 История • 7. клас',
+  'G07-MUS': '🎵 Музика • 7. клас',
+  'G07-IT': '💻 КМИТ • 7. клас',
+  'G07-ART': '🎨 ИИ / Техн. / ФВС • 7. клас',
+  'G07-BEEL': '🎯 БЕЕЛ (НВО БЕЛ) • 7. клас',
+  'G07-MAAT': '🧮 МААТ (НВО Мат.) • 7. клас',
+  'G07-BOX': '🥊 Бокс • 7. клас'
+};
+
+function formatHumanSubjCode(rawText) {
+  const str = String(valOr(rawText, '')).trim();
+  const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
+  for (let i = 0; i < codes.length; i++) {
+    const code = codes[i];
+    if (str.indexOf(code) !== -1) {
+      return HUMAN_SUBJ_LABELS[code];
+    }
+  }
+  return str;
+}
+
+function humanizeAllSubjectCodePills() {
+  // 1. Премахваме блокиращия extraCSS от .js файла (който правеше font-size: 0 върху .slot-code-pill)
+  const dynCss = document.getElementById('dynamic-data-css');
+  if (dynCss && dynCss.innerHTML.indexOf('font-size: 0') !== -1) {
+    dynCss.innerHTML = '';
+  }
+
+  // 2. Заменяме всички табелки .slot-code-pill и .tier-badge-new / .tier-badge-rev с реалните имена, емотикони и клас
+  document.querySelectorAll('.slot-code-pill').forEach(function(pill) {
+    const parentCard = pill.closest('.rot-slot-card');
+    if (parentCard && parentCard.id === 'slot_card_rot_extra_hw_mon26_su_visit') {
+      pill.innerHTML = '🏛️ Посещение БФ на СУ • 7. клас';
+      return;
+    }
+    const orig = pill.getAttribute('data-orig-code') || pill.innerText;
+    if (!pill.getAttribute('data-orig-code')) {
+      pill.setAttribute('data-orig-code', orig);
+    }
+    const humanLbl = formatHumanSubjCode(orig);
+    if (humanLbl) {
+      // В бутоните на Таб 2 (които вече имат името на предмета до себе си) оставяме компактно "7. клас"
+      if (pill.closest('.s-btn')) {
+        pill.innerHTML = '7. клас';
+      } else {
+        pill.innerHTML = humanLbl;
+      }
+    }
+  });
+
+  // 3. Превеждаме и кодовете G07-... вътре в зелените/лилавите значки на Златния сейф и 3D картите
+  document.querySelectorAll('.tier-badge-new, .tier-badge-rev, .step-1-must, .step-1-greenbook, .step-1-none').forEach(function(el) {
+    let html = el.innerHTML;
+    const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
+    codes.forEach(function(code) {
+      if (html.indexOf(code) !== -1) {
+        html = html.split(code).join(HUMAN_SUBJ_LABELS[code]);
+      }
+    });
+    el.innerHTML = html;
+  });
+}
+
 // === ПЪЛНО ПРЕМАХВАНЕ НА СТАРИТЕ ОТЧИТАНИЯ И ПОВДИГАНЕ НА ЖИВАТА ПРОГРАМА НАЙ-ОТГОРЕ ===
 function cleanupOldSubjectiveTrackers() {
   let cleanStyle = document.getElementById('hide-old-trackers-css');
@@ -2340,6 +2417,24 @@ function cleanupOldSubjectiveTrackers() {
         margin-bottom: 8px !important;
         justify-content: flex-end !important;
       }
+      .slot-left .slot-code-pill {
+        font-size: 0.74rem !important;
+        padding: 3px 9px !important;
+        border-radius: 7px !important;
+        background: rgba(15, 23, 42, 0.96) !important;
+        border: 1px solid rgba(251, 191, 36, 0.65) !important;
+        color: #fde047 !important;
+        font-weight: 900 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+      }
+      .slot-left .slot-code-pill::after {
+        content: none !important;
+      }
+      .slot-subj-title > .no-read {
+        display: inline !important;
+      }
     `;
     document.head.appendChild(cleanStyle);
   }
@@ -2347,6 +2442,7 @@ function cleanupOldSubjectiveTrackers() {
   if (progWrap && progWrap.firstElementChild && !progWrap.firstElementChild.classList.contains('filter-bar')) {
     progWrap.firstElementChild.style.display = 'none';
   }
+  humanizeAllSubjectCodePills();
 }
 
 updateProgress = function() {
@@ -2382,7 +2478,6 @@ function formatShortTabBadge(sec, acts) {
   return timeTxt + ' • ⚡' + a;
 }
 
-// 1. Локален кеш на още неизпратените секунди и действия (пази се в localStorage, за да не се губи и секунда при рефреш!)
 function getPendingQueue() {
   const todayStr = formatDdMmYyyy(new Date());
   try {
@@ -2418,7 +2513,6 @@ function hasAnyPendingData() {
   return hasS || hasA;
 }
 
-// 2. Връща сумата от сървъра (от всички устройства) + локално кешираните минути в това устройство
 function getCombinedDailyTracker() {
   const todayStr = formatDdMmYyyy(new Date());
   let srvBase = { date: todayStr, totalSec: 0, totalActs: 0, subjects: {}, acts: {} };
@@ -2485,7 +2579,8 @@ function detectActiveSubjectFromDOM(targetEl) {
     if (slotCard) {
       const codePill = slotCard.querySelector('.slot-code-pill');
       const titleEl = slotCard.querySelector('.slot-subj-title');
-      const gKey = guessSubjectKeyFromText((codePill ? codePill.innerText : '') + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
+      const rawCode = codePill ? (codePill.getAttribute('data-orig-code') || codePill.innerText) : '';
+      const gKey = guessSubjectKeyFromText(rawCode + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
       if (gKey) return gKey;
     }
   }
@@ -2501,7 +2596,8 @@ function detectActiveSubjectFromDOM(targetEl) {
         if (slotCard) {
           const codePill = slotCard.querySelector('.slot-code-pill');
           const titleEl = slotCard.querySelector('.slot-subj-title');
-          const gKey = guessSubjectKeyFromText((codePill ? codePill.innerText : '') + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
+          const rawCode = codePill ? (codePill.getAttribute('data-orig-code') || codePill.innerText) : '';
+          const gKey = guessSubjectKeyFromText(rawCode + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
           if (gKey) return gKey;
         }
       }
@@ -2523,7 +2619,8 @@ function detectActiveSubjectFromDOM(targetEl) {
     if (parentSlot) {
       const codePill = parentSlot.querySelector('.slot-code-pill');
       const titleEl = parentSlot.querySelector('.slot-subj-title');
-      const gKey = guessSubjectKeyFromText((codePill ? codePill.innerText : '') + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
+      const rawCode = codePill ? (codePill.getAttribute('data-orig-code') || codePill.innerText) : '';
+      const gKey = guessSubjectKeyFromText(rawCode + ' ' + (titleEl ? titleEl.innerText : ''), window.APP_DATA.subjects);
       if (gKey) return gKey;
     }
   }
@@ -2531,7 +2628,6 @@ function detectActiveSubjectFromDOM(targetEl) {
   return currentActiveSubjId || 'math';
 }
 
-// Само кешира действието локално в устройството (0 заявки към Google при клик!)
 function registerRealStudyPulse(subjId, isExplicitClickAction) {
   if (!subjId || subjId === 'box') return;
   currentActiveSubjId = subjId;
@@ -2560,7 +2656,6 @@ stopSpeech = function() {
   _origStopSpeech();
   activeAudioSubjId = '';
   renderDailySubjectBanner();
-  // Когато аудио урокът приключи, спокойно записваме натрупаното време към облака
   if (getTotalPendingSec() >= 20) {
     flushPendingQueueToServer(false);
   }
@@ -2698,9 +2793,9 @@ function renderDailySubjectBanner() {
     }
 
     if (sec > 0 || acts > 0) {
-      studiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, code: s.subjCode, sec: sec, acts: acts });
+      studiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, grade: valOr(s.grade, 7), sec: sec, acts: acts });
     } else {
-      unstudiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, code: s.subjCode });
+      unstudiedList.push({ id: s.id, icon: valOr(s.icon, '📘'), name: s.shortName, grade: valOr(s.grade, 7) });
     }
   });
 
@@ -2749,7 +2844,7 @@ function renderDailySubjectBanner() {
       const studiedRows = studiedList.length > 0
         ? studiedList.map(function(item) {
             return `<div onclick="toggleDailyTrackerModal(false); jumpToSubject('${item.id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:rgba(34,197,94,0.16); border:1px solid #22c55e; padding:7px 11px; border-radius:9px;">
-              <span style="font-weight:900; color:#fff;">${item.icon} ${item.name} <span class="slot-code-pill">${item.code}</span></span>
+              <span style="font-weight:900; color:#fff;">${item.icon} ${item.name} <span class="slot-code-pill">${item.grade}. клас</span></span>
               <span style="font-weight:900; color:#fde047;">⏱️ ${formatExactTimeBg(item.sec)} &nbsp;|&nbsp; <b style="color:#86efac;">⚡ ${item.acts} действия</b></span>
             </div>`;
           }).join('')
@@ -2757,7 +2852,7 @@ function renderDailySubjectBanner() {
 
       const unstudiedChips = unstudiedList.map(function(item) {
         return `<span onclick="toggleDailyTrackerModal(false); jumpToSubject('${item.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:#090d16; border:1px dashed rgba(239,68,68,0.55); color:#94a3b8; padding:4px 9px; border-radius:7px; font-weight:700; font-size:0.77rem;">
-          ${item.icon} ${item.name}: <b style="color:#f87171;">0 сек. (⚡0)</b>
+          ${item.icon} ${item.name} (${item.grade}. клас): <b style="color:#f87171;">0 сек. (⚡0)</b>
         </span>`;
       }).join('');
 
@@ -2776,7 +2871,6 @@ function renderDailySubjectBanner() {
   }
 }
 
-// Изпраща целия кеширан пакет от предмети наведнъж към сървъра (само когато се съберат >= 2 минути работа или при рефреш/затваряне)
 function flushPendingQueueToServer(forceEvenIfEmpty) {
   const url = getDriveUrl();
   const rawKey = getDriveSecretKey();
@@ -2787,10 +2881,8 @@ function flushPendingQueueToServer(forceEvenIfEmpty) {
 
   const qSnapshot = getPendingQueue();
   const todayStr = formatDdMmYyyy(new Date());
-  // Изчистваме опашката преди пращане (ако няма интернет, ще я възстановим обратно)
   savePendingQueue({ date: todayStr, sec: {}, acts: {} });
 
-  // За съвместимост намираме и първия предмет, ако има само един
   const secKeys = Object.keys(qSnapshot.sec);
   const actKeys = Object.keys(qSnapshot.acts);
   const singleSubj = (secKeys.length === 1 && actKeys.length <= 1) ? secKeys[0] : (actKeys.length === 1 && secKeys.length === 0 ? actKeys[0] : '');
@@ -2811,7 +2903,6 @@ function flushPendingQueueToServer(forceEvenIfEmpty) {
     if (res && res.status === 'ok' && res.daily) {
       applyServerDailyTracker(res.daily);
     } else if (hasPending) {
-      // Ако връзката е прекъснала, връщаме секундите обратно в кеша на устройството, за да не се изгуби нито секунда!
       Object.keys(qSnapshot.sec).forEach(function(k) {
         addLocalPendingDelta(k, Number(qSnapshot.sec[k]) || 0, 0);
       });
@@ -2918,7 +3009,6 @@ function syncFromGoogleDrive(isSilentAuto) {
     if (res.daily) {
       applyServerDailyTracker(res.daily);
     }
-    // Ако в това устройство има кеширани минути от предишно учене, прибавяме ги към сървъра!
     if (hasAnyPendingData()) {
       flushPendingQueueToServer(false);
     }
@@ -2985,7 +3075,6 @@ function generateSyncReport() {
   if (navigator.clipboard) navigator.clipboard.writeText(rep);
 }
 
-// Ако затвори таба или минимизира браузъра след учене, изпращаме кешираните минути към сървъра
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'hidden' && hasAnyPendingData()) {
     flushPendingQueueToServer(false);
@@ -2999,6 +3088,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedKey && document.getElementById('tab3-pass-input')) document.getElementById('tab3-pass-input').value = savedKey;
   cleanupOldSubjectiveTrackers();
   rebuildAndInitFromStorage();
+  humanizeAllSubjectCodePills();
   renderDailySubjectBanner();
   syncFromGoogleDrive(true);
 
@@ -3011,8 +3101,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Локален пулс на всеки 10 секунди (записва само в локалния кеш на браузъра!).
-  // Към Google сървъра праща пакетно САМО когато се натрупат 120 сек. (2 минути) ИЛИ когато спре да учи!
   setInterval(() => {
     const isMediaRunning = isMediaActiveNow();
     const isPageVisible = (document.visibilityState !== 'hidden') || isMediaRunning;
@@ -3025,14 +3113,12 @@ window.addEventListener('DOMContentLoaded', () => {
         addLocalPendingDelta(subjNow, 10, 0);
         renderDailySubjectBanner();
 
-        // Ако в локалния кеш са се събрали 2 минути (120 сек.), пращаме ги спокойно в 1 общ пакет към сървъра
         if (getTotalPendingSec() >= 120) {
           flushPendingQueueToServer(false);
         }
       }
     } else {
       renderDailySubjectBanner();
-      // Ако допреди малко е учил (напр. 40 сек. на телефона) и вече е спрял, записваме тези 40 сек. към сървъра веднъж
       if (wasWorkingInPrevTick && hasAnyPendingData()) {
         wasWorkingInPrevTick = false;
         flushPendingQueueToServer(false);
