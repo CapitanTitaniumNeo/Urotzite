@@ -2512,49 +2512,6 @@ function humanizeAllSubjectCodePills() {
     el.innerHTML = html;
   });
 }
-
-function humanizeAllSubjectCodePills() {
-  // 1. Премахваме блокиращия extraCSS от .js файла (който правеше font-size: 0 върху .slot-code-pill)
-  const dynCss = document.getElementById('dynamic-data-css');
-  if (dynCss && dynCss.innerHTML.indexOf('font-size: 0') !== -1) {
-    dynCss.innerHTML = '';
-  }
-
-  // 2. Заменяме всички табелки .slot-code-pill и .tier-badge-new / .tier-badge-rev с реалните имена, емотикони и клас
-  document.querySelectorAll('.slot-code-pill').forEach(function(pill) {
-    const parentCard = pill.closest('.rot-slot-card');
-    if (parentCard && parentCard.id === 'slot_card_rot_extra_hw_mon26_su_visit') {
-      pill.innerHTML = '🏛️ Посещение БФ на СУ • 7. клас';
-      return;
-    }
-    const orig = pill.getAttribute('data-orig-code') || pill.innerText;
-    if (!pill.getAttribute('data-orig-code')) {
-      pill.setAttribute('data-orig-code', orig);
-    }
-    const humanLbl = formatHumanSubjCode(orig);
-    if (humanLbl) {
-      // В бутоните на Таб 2 (които вече имат името на предмета до себе си) оставяме компактно "7. клас"
-      if (pill.closest('.s-btn')) {
-        pill.innerHTML = '7. клас';
-      } else {
-        pill.innerHTML = humanLbl;
-      }
-    }
-  });
-
-  // 3. Превеждаме и кодовете G07-... вътре в зелените/лилавите значки на Златния сейф и 3D картите
-  document.querySelectorAll('.tier-badge-new, .tier-badge-rev, .step-1-must, .step-1-greenbook, .step-1-none').forEach(function(el) {
-    let html = el.innerHTML;
-    const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
-    codes.forEach(function(code) {
-      if (html.indexOf(code) !== -1) {
-        html = html.split(code).join(HUMAN_SUBJ_LABELS[code]);
-      }
-    });
-    el.innerHTML = html;
-  });
-}
-
 // === ПЪЛНО ПРЕМАХВАНЕ НА СТАРИТЕ ОТЧИТАНИЯ И ПОВДИГАНЕ НА ЖИВАТА ПРОГРАМА НАЙ-ОТГОРЕ ===
 function cleanupOldSubjectiveTrackers() {
   let cleanStyle = document.getElementById('hide-old-trackers-css');
