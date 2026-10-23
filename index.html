@@ -2352,6 +2352,167 @@ function formatHumanSubjCode(rawText) {
   return str;
 }
 
+// Кратки, точни указания по подразбиране за всеки предмет (когато в слота стои само общото име на предмета)
+const DEFAULT_SLOT_HINTS = {
+  'G07-MATH': '📌 Формули за съкратено умножение и тъждества',
+  'G07-MATH-IUCH': '📗 Упражнение по Зеленото помагало (Цели изрази)',
+  'G07-BG': '📌 Видове текст и лексикология (Урок 22–23)',
+  'G07-LIT': '📌 „На прощаване в 1868 г.“ – Анализ и 6 тези',
+  'G07-BEL-IUCH': '📗 Тестове за НВО в помагалото „Регалия 6“',
+  'G07-GEO': '📌 Тема 9–10: Климатични пояси и води на Европа',
+  'G07-PHY': '📌 Урок 8–9: Източници на напрежение и вериги',
+  'G07-CHM': '📌 Химични означения, валентност и уравнения',
+  'G07-BIO': '📌 Урок 12–13: Едноклетъчни и подготовка за КР',
+  'G07-ENG': '📌 Unit 2: Sensations (Граматика и лексика)',
+  'G07-ENG-IUCH': '📌 Science: Water – A Global Resource',
+  'G07-HIS': '📌 Урок 5–6: Възрожденски бит и култура',
+  'G07-MUS': '📌 Урок 5–6: Знаци за алтерация и Канон',
+  'G07-IT': '📌 Урок 6–7: Защита на данните и Таблици',
+  'G07-ART': '📌 Текуща практическа тема по учебен план',
+  'G07-BEEL': '📌 Задача № 25 (НВО): Тези върху „На прощаване“',
+  'G07-MAAT': '📌 НВО задачи: Цели изрази и формули',
+  'G07-BOX': '📌 Бой със сянка, защити и ударни серии'
+};
+
+function cleanRedundantSlotTitle(rawTitle, slotCode, dateStr, numStr) {
+  let t = String(valOr(rawTitle, '')).trim();
+
+  // Специални точни указания за понеделник 26.10.2026 г. (Избори + МААТ до 12:05 + БФ на СУ от 12:30)
+  if (dateStr === '26.10.2026') {
+    if (slotCode === 'G07-MAAT') return '⏰ Извънредно до 12:05 ч.: Формули (Преди БФ на СУ!)';
+    if (numStr === '1 час' || t.indexOf('Биологическия факултет') !== -1) {
+      return '🏛️ Посещение на Биологически факултет на СУ (Тръгване 12:30 ч.)';
+    }
+    return '🚫 Неучебен ден в училище (Посещение в БФ на СУ)';
+  }
+
+  // Махаме повтарящите се имена на учители и предмети в началото на title от старите .js файлове
+  t = t
+    .replace(/^(Регина Бабенко|Павлинка Борисова|Веселина Хаджийска|Борислав Лозанов|Нели Шипочка|Петя Кайрякова|Венета Терзиева|Елена Николова|Веселинка Стоилчева|Надежда Недялкова|Никита Йорданов|Поля Борисова|Мирослав Зашев|г-жа Петрова|Филип|Кико Бонев)\s*(\/\s*Зам\.)?\s*\((.*)\)$/i, '$3')
+    .replace(/^(Математика|БЕЛ|Български език|Литература|География и икономика|География|Физика и астрономия|Физика|Химия и ООС|Химия|Биология и ЗО|Биология|Английски език|История и цивилизации|История|Музика|КМИТ)\s*[–—-]\s*/i, '')
+    .trim();
+
+  // Ако в текста е останало само общото име на предмета от WEEKLY_SLOTS_TEMPLATE, слагаме точното указание!
+  const genericNames = [
+    'математика',
+    'математика иуч (зелено помагало)',
+    'бел (български език)',
+    'бел (литература – 1 час)',
+    'бел (литература – 2 час)',
+    'бел (литература)',
+    'бел иуч (зелено помагало „регалия 6“)',
+    'география и икономика',
+    'физика и астрономия',
+    'химия и оос',
+    'биология и зо',
+    'английски език',
+    'английски език иуч (science)',
+    'история и цивилизации',
+    'музика',
+    'кмит (група 1)',
+    'маат (уроци) – нво математика',
+    'беел (уроци) – нво по бел и литература',
+    'бокс – тренировка'
+  ];
+
+  const normT = t.toLowerCase();
+  if (genericNames.indexOf(normT) !== -1) {
+    return DEFAULT_SLOT_HINTS[slotCode] || t;
+  }
+  if (normT === 'час на класа / го') return '📌 Тема 11–14: Безопасен интернет и Права';
+  if (normT.indexOf('изобразително изкуство') !== -1) return '🎨 Урок 5: Импресионизъм (Носи скицник!)';
+  if (normT.indexOf('технологии и предприемачество') !== -1) return '💼 Урок 2: Първи стъпки в бизнес плана';
+  if (normT.indexOf('волейбол') !== -1) return '🏐 Придвижване, ловене и подаване (Екип!)';
+  if (normT === 'фвс') return '🏃 Скок на дължина начин „Дъга“ (Спортен екип!)';
+
+  return t;
+}
+
+function humanizeAllSubjectCodePills() {
+  const dynCss = document.getElementById('dynamic-data-css');
+  if (dynCss && dynCss.innerHTML.indexOf('font-size: 0') !== -1) {
+    dynCss.innerHTML = '';
+  }
+
+  // 1. Преобразуваме всички кутийки .slot-code-pill и текста на часа .slot-subj-title до тях
+  document.querySelectorAll('.rot-slot-card').forEach(function(card) {
+    const pill = card.querySelector('.slot-code-pill');
+    const titleEl = card.querySelector('.slot-subj-title');
+    const timePill = card.querySelector('.slot-time-pill');
+    if (!pill) return;
+
+    const orig = pill.getAttribute('data-orig-code') || pill.innerText;
+    if (!pill.getAttribute('data-orig-code')) {
+      pill.setAttribute('data-orig-code', orig);
+    }
+
+    // Извличаме оригиналния код G07-...
+    let detectedCode = 'G07-ART';
+    const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
+    for (let i = 0; i < codes.length; i++) {
+      if (orig.indexOf(codes[i]) !== -1) {
+        detectedCode = codes[i];
+        break;
+      }
+    }
+
+    // Дата на слота (ако е от ротационния поток)
+    let dateStr = '';
+    const mDate = String(card.id || '').match(/rot_(\d{2})(\d{2})(\d{4})_/);
+    if (mDate) dateStr = `${mDate[1]}.${mDate[2]}.${mDate[3]}`;
+    const numStr = timePill ? timePill.innerText.split('•')[0].trim() : '';
+
+    // Специална кутийка за посещението в Биологическия факултет на 26.10
+    if (card.id === 'slot_card_rot_extra_hw_mon26_su_visit' || (dateStr === '26.10.2026' && numStr === '1 час')) {
+      pill.innerHTML = '🏛️ Посещение БФ на СУ • 7. клас';
+    } else {
+      pill.innerHTML = HUMAN_SUBJ_LABELS[detectedCode] || orig;
+    }
+
+    // Заменяме повтарящото се име на предмета в .slot-subj-title с точното указание за часа/задачата!
+    if (titleEl) {
+      // Ако за този час има прикачено домашно с конкретно заглавие в отворения панел, взимаме него
+      let rawTitle = titleEl.getAttribute('data-orig-title');
+      if (!rawTitle) {
+        const condEl = card.querySelector('.step-2-cond b');
+        if (condEl && condEl.innerText) {
+          const mCond = condEl.innerText.match(/\((.*)\):$/);
+          if (mCond && mCond[1]) rawTitle = mCond[1];
+        }
+        if (!rawTitle) rawTitle = titleEl.innerText;
+        titleEl.setAttribute('data-orig-title', rawTitle);
+      }
+      const cleanTitle = cleanRedundantSlotTitle(rawTitle, detectedCode, dateStr, numStr);
+      titleEl.innerHTML = cleanTitle;
+    }
+  });
+
+  // 2. Табелките извън ротационните карти (в Таб 2 и архива)
+  document.querySelectorAll('.slot-code-pill').forEach(function(pill) {
+    if (pill.closest('.rot-slot-card')) return;
+    const orig = pill.getAttribute('data-orig-code') || pill.innerText;
+    if (!pill.getAttribute('data-orig-code')) pill.setAttribute('data-orig-code', orig);
+    if (pill.closest('.s-btn')) {
+      pill.innerHTML = '7. клас';
+    } else {
+      pill.innerHTML = formatHumanSubjCode(orig);
+    }
+  });
+
+  // 3. Изчистваме кодовете G07-... в падащите панели ("Взети и следващи теми" и др.)
+  document.querySelectorAll('.slot-expand-drawer b, .tier-badge-new, .tier-badge-rev, .step-1-must, .step-1-greenbook, .step-1-none').forEach(function(el) {
+    let html = el.innerHTML;
+    const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
+    codes.forEach(function(code) {
+      if (html.indexOf(code) !== -1) {
+        html = html.split(`(${code} • 7. клас)`).join('(7. клас)');
+        html = html.split(code).join(HUMAN_SUBJ_LABELS[code]);
+      }
+    });
+    el.innerHTML = html;
+  });
+}
+
 function humanizeAllSubjectCodePills() {
   // 1. Премахваме блокиращия extraCSS от .js файла (който правеше font-size: 0 върху .slot-code-pill)
   const dynCss = document.getElementById('dynamic-data-css');
