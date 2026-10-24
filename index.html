@@ -596,6 +596,7 @@ const WEEKLY_SLOTS_TEMPLATE = [
     { num: "Следобед", start: "17:00", end: "18:30", subjId: "beel", slotCode: "G07-BEEL", grade: 7, title: "БЕЕЛ (уроци) – НВО по БЕЛ и Литература", teacher: "г-жа Петрова", room: "Онлайн" }
   ]}
 ];
+
 function valOr(a, b) { return (a !== undefined && a !== null && a !== '') ? a : b; }
 
 function ui(key, fallback) {
@@ -1947,7 +1948,7 @@ function toggleAllMasks() {
   const hide = Array.from(words).some(w => !w.classList.contains('masked'));
   words.forEach(w => w.classList.toggle('masked', hide));
 }
-  
+
 function saveChk(chk) {
   const realKey = valOr(chk.getAttribute('data-real-chk'), chk.id);
   localStorage.setItem(STORAGE_PREFIX + 'chk_' + realKey, chk.checked ? '1' : '0');
@@ -2014,7 +2015,10 @@ function updatePlayButtonUI(id, state, engineInfo) {
     btn.classList.add('speaking-glow');
   } else if (state === 'playing') {
     const voiceTag = (engineInfo && engineInfo.indexOf('edge') !== -1) ? ' (🎙️ Калина Neural)' : '';
-    btn.innerHTML = '⏹️ Спри четенето' + voiceTag;
+    btn.innerHTML = '⏸️ Пауза' + voiceTag;
+    btn.classList.add('speaking-glow');
+  } else if (state === 'paused') {
+    btn.innerHTML = '▶️ Продължи оттук';
     btn.classList.add('speaking-glow');
   } else {
     btn.innerHTML = originalBtnLabels.get(id) || ui('btnListen', '▶️ Слушай');
@@ -2022,21 +2026,292 @@ function updatePlayButtonUI(id, state, engineInfo) {
   }
 }
 
+// === ДИНАМИЧЕН ЕКРАНЕН КУРСОР ЗА ЧЕТЕНЕ (АВТОМАТИЧНО ДВИЖЕНИЕ ПО ЕКРАНА + СКРИВАНЕ НА ПРОЧЕТЕНОТО) ===
+let ttsHighlightSegments = [];
+let ttsCurrentHighlightIdx = -1;
+let ttsHighlightTargetId = null;
+let lastEngineUsedName = 'edge-tts-neural';
+let ttsTickerInterval = null;
+let ttsElapsedSec = 0;
+let ttsEstimatedTotalSec = 1;
+let ttsLastTickMs = 0;
+
+function ensureTtsHighlightCSS() {
+  if (document.getElementById('tts-karaoke-css')) return;
+  const st = document.createElement('style');
+  st.id = 'tts-karaoke-css';
+  st.innerHTML = `
+    .tts-active-container .tts-seg-unit {
+      transition: all 0.22s ease !important;
+    }
+    /* Последното току-що прочетено изречение остава леко видимо за контекст, а по-старите се скриват напълно */
+    .tts-active-container .tts-read-done {
+      opacity: 0.16 !important;
+      font-size: 0.8em !important;
+      color: #64748b !important;
+    }
+    /* Предстоящият текст отдолу стои леко приглушен */
+    .tts-active-container .tts-read-upcoming {
+      opacity: 0.58 !important;
+    }
+    /* Текущото изречение, което се чете ТОЧНО СЕГА – ярко, удебелено и с курсор */
+    .tts-active-container .tts-reading-now {
+      opacity: 1 !important;
+      filter: none !important;
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.42), rgba(56, 189, 248, 0.28)) !important;
+      color: #ffffff !important;
+      font-weight: 900 !important;
+      font-size: 1.05em !important;
+      border-left: 5px solid #fbbf24 !important;
+      border-bottom: 2px solid #fbbf24 !important;
+      border-radius: 7px !important;
+      padding: 3px 8px !important;
+      margin: 2px 0 !important;
+      display: inline-block !important;
+      box-shadow: 0 0 18px rgba(251, 191, 36, 0.55) !important;
+    }
+    .tts-active-container .tts-reading-now::before {
+      content: "🔊 ➔ ";
+      color: #fde047;
+      font-weight: 900;
+    }
+    /* При пауза – виждаш точно на кое изречение си спрял */
+    .tts-active-container .tts-paused-here {
+      opacity: 1 !important;
+      background: rgba(251, 191, 36, 0.24) !important;
+      color: #fde047 !important;
+      font-weight: 900 !important;
+      border: 2px dashed #fbbf24 !important;
+      border-radius: 7px !important;
+      padding: 3px 8px !important;
+      display: inline-block !important;
+    }
+    .tts-active-container .tts-paused-here::before {
+      content: "⏸️ Пауза тук: ";
+      color: #fbbf24;
+      font-weight: 900;
+    }
+  `;
+  document.head.appendChild(st);
+}
+
+function stopTtsTicker() {
+  if (ttsTickerInterval) {
+    clearInterval(ttsTickerInterval);
+    ttsTickerInterval = null;
+  }
+}
+
+function clearTtsHighlights() {
+  stopTtsTicker();
+  ttsCurrentHighlightIdx = -1;
+  ttsHighlightSegments = [];
+  ttsElapsedSec = 0;
+  document.querySelectorAll('.tts-active-container').forEach(function(c) {
+    c.classList.remove('tts-active-container');
+  });
+  ttsHighlightTargetId = null;
+  document.querySelectorAll('.tts-seg-unit, .tts-reading-now, .tts-paused-here, .tts-read-done, .tts-read-upcoming').forEach(function(span) {
+    span.style.display = '';
+    const parent = span.parentNode;
+    if (parent) {
+      while (span.firstChild) parent.insertBefore(span.firstChild, span);
+      parent.removeChild(span);
+      parent.normalize();
+    }
+  });
+}
+
+function markHighlightPaused(isPausedNow) {
+  if (ttsCurrentHighlightIdx >= 0 && ttsHighlightSegments[ttsCurrentHighlightIdx]) {
+    ttsHighlightSegments[ttsCurrentHighlightIdx].els.forEach(function(el) {
+      el.style.display = '';
+      if (isPausedNow) {
+        el.classList.remove('tts-reading-now');
+        el.classList.add('tts-paused-here');
+      } else {
+        el.classList.remove('tts-paused-here');
+        el.classList.add('tts-reading-now');
+      }
+    });
+  }
+}
+
+function buildLiveTtsSegments(containerEl, targetId, spokenCharLen) {
+  clearTtsHighlights();
+  ensureTtsHighlightCSS();
+  if (!containerEl) return;
+  ttsHighlightTargetId = targetId;
+  containerEl.classList.add('tts-active-container');
+
+  const ignoreSelector = ui('speechIgnoreSelectors') + ', .slot-expand-drawer:not(.open), .card-back';
+  const textNodes = [];
+
+  function collectNodes(node) {
+    if (!node) return;
+    if (node.nodeType === 1) {
+      if (node.matches && node.matches(ignoreSelector)) return;
+      const children = Array.from(node.childNodes);
+      for (let i = 0; i < children.length; i++) collectNodes(children[i]);
+    } else if (node.nodeType === 3) {
+      const raw = node.nodeValue || '';
+      const cyrCount = (raw.match(/[а-яА-Я0-9]/g) || []).length;
+      if (cyrCount >= 2) textNodes.push(node);
+    }
+  }
+
+  collectNodes(containerEl);
+  if (!textNodes.length) return;
+
+  const rawPieces = [];
+  let totalWeight = 0;
+
+  textNodes.forEach(function(tNode) {
+    const text = tNode.nodeValue;
+    const parts = text.match(/[^.!?;\n]+[.!?;\n]*|\s+/g) || [text];
+    if (parts.length <= 1) {
+      const span = document.createElement('span');
+      span.className = 'tts-seg-unit tts-read-upcoming';
+      tNode.parentNode.insertBefore(span, tNode);
+      span.appendChild(tNode);
+      const w = Math.max(5, (text.match(/[а-яА-Я0-9]/g) || []).length);
+      rawPieces.push({ el: span, weight: w });
+      totalWeight += w;
+    } else {
+      const frag = document.createDocumentFragment();
+      parts.forEach(function(part) {
+        const cyr = (part.match(/[а-яА-Я0-9]/g) || []).length;
+        if (cyr >= 2) {
+          const span = document.createElement('span');
+          span.className = 'tts-seg-unit tts-read-upcoming';
+          span.textContent = part;
+          frag.appendChild(span);
+          const w = Math.max(5, cyr);
+          rawPieces.push({ el: span, weight: w });
+          totalWeight += w;
+        } else {
+          frag.appendChild(document.createTextNode(part));
+        }
+      });
+      if (tNode.parentNode) tNode.parentNode.replaceChild(frag, tNode);
+    }
+  });
+
+  if (!rawPieces.length || totalWeight <= 0) return;
+
+  const merged = [];
+  let currentGroup = [];
+  let currentWeight = 0;
+
+  rawPieces.forEach(function(p, idx) {
+    currentGroup.push(p.el);
+    currentWeight += p.weight;
+    const txt = (p.el.textContent || '').trim();
+    const endsSentence = /[.!?;:]$/.test(txt);
+    if (currentWeight >= 28 || endsSentence || idx === rawPieces.length - 1) {
+      merged.push({ els: currentGroup, weight: currentWeight });
+      currentGroup = [];
+      currentWeight = 0;
+    }
+  });
+
+  let acc = 0;
+  ttsHighlightSegments = merged.map(function(g) {
+    const startRatio = acc / totalWeight;
+    acc += g.weight;
+    const endRatio = acc / totalWeight;
+    return { els: g.els, startRatio: startRatio, endRatio: endRatio };
+  });
+
+  const charBasis = Math.max(spokenCharLen || 0, totalWeight);
+  ttsEstimatedTotalSec = Math.max(3, charBasis / 13.2);
+}
+
+function syncTtsHighlightByRatio(ratio) {
+  if (!ttsHighlightSegments.length) return;
+  const clamped = Math.min(0.999, Math.max(0, ratio));
+  let foundIdx = ttsHighlightSegments.findIndex(function(seg) {
+    return clamped >= seg.startRatio && clamped <= seg.endRatio;
+  });
+  if (foundIdx === -1) foundIdx = ttsHighlightSegments.length - 1;
+  if (foundIdx === ttsCurrentHighlightIdx) return;
+
+  ttsCurrentHighlightIdx = foundIdx;
+
+  ttsHighlightSegments.forEach(function(seg, idx) {
+    seg.els.forEach(function(el) {
+      el.classList.remove('tts-reading-now', 'tts-paused-here', 'tts-read-done', 'tts-read-upcoming');
+      if (idx < foundIdx) {
+        el.classList.add('tts-read-done');
+        // Вече прочетените изречения се скриват, за да се изтегля долният текст сам нагоре!
+        el.style.display = (idx < foundIdx - 1) ? 'none' : '';
+      } else if (idx === foundIdx) {
+        el.style.display = '';
+        el.classList.add('tts-reading-now');
+      } else {
+        el.style.display = '';
+        el.classList.add('tts-read-upcoming');
+      }
+    });
+  });
+
+  // 100% универсално автоматично скролване на екрана (работи и на Samsung TV, и на телефон, и на ПК)
+  const activeSeg = ttsHighlightSegments[foundIdx];
+  if (activeSeg && activeSeg.els.length) {
+    const firstEl = activeSeg.els[0];
+    if (firstEl && firstEl.getBoundingClientRect) {
+      const rect = firstEl.getBoundingClientRect();
+      const viewH = window.innerHeight || document.documentElement.clientHeight || 800;
+      const targetY = (window.pageYOffset || document.documentElement.scrollTop || 0) + rect.top - (viewH * 0.38);
+      window.scrollTo(0, Math.max(0, Math.round(targetY)));
+    }
+  }
+}
+
+function startTtsLiveTicker(audioEl, targetId) {
+  stopTtsTicker();
+  ttsLastTickMs = Date.now();
+
+  ttsTickerInterval = setInterval(function() {
+    if (stopped || paused || activeId !== targetId) return;
+    const now = Date.now();
+    const dt = (now - ttsLastTickMs) / 1000;
+    ttsLastTickMs = now;
+
+    if (audioEl && !audioEl.paused) {
+      ttsElapsedSec += dt;
+    }
+
+    let ratio = 0;
+    const realDur = (audioEl && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration > 1) ? audioEl.duration : 0;
+    if (realDur > 0 && audioEl.currentTime > 0) {
+      const effectiveDur = Math.max(realDur, ttsEstimatedTotalSec * 0.75);
+      ratio = audioEl.currentTime / effectiveDur;
+    } else {
+      ratio = ttsElapsedSec / ttsEstimatedTotalSec;
+    }
+
+    syncTtsHighlightByRatio(ratio);
+  }, 150);
+}
+
 function stopSpeech() {
   const prevId = activeId;
   stopped = true; paused = false;
   if (speechTimer) { clearTimeout(speechTimer); speechTimer = null; }
+  stopTtsTicker();
   if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch (e) {} }
   const audioEl = document.getElementById('tv-tts-audio-el');
   if (audioEl) {
-    try { audioEl.onended = null; audioEl.onerror = null; audioEl.pause(); audioEl.removeAttribute('src'); } catch (e) {}
+    try { audioEl.ontimeupdate = null; audioEl.onplay = null; audioEl.onended = null; audioEl.onerror = null; audioEl.pause(); audioEl.removeAttribute('src'); } catch (e) {}
   }
+  clearTtsHighlights();
   document.querySelectorAll('.speaking-glow').forEach(function(e) { e.classList.remove('speaking-glow'); });
   if (prevId) updatePlayButtonUI(prevId, 'stopped');
   activeId = null; queue = []; idx = 0;
 }
 
-// За Samsung TV и всички устройства: изтегля ЦЕЛИЯ урок накуп като ЕДИН непрекъснат MP3 файл от Google Apps Script!
+// За Samsung TV и всички устройства: изтегля ЦЕЛИЯ урок накуп, движи екрана ред по ред и скрива вече прочетеното!
 function playFullTextOnTV(fullCleanText, targetId) {
   const audioEl = getTvAudioElement();
   const driveUrl = getDriveUrl();
@@ -2046,12 +2321,28 @@ function playFullTextOnTV(fullCleanText, targetId) {
 
   function playReceivedDataUrl(dataUrl, engineName) {
     if (stopped || activeId !== targetId) return;
-    updatePlayButtonUI(targetId, 'playing', engineName);
+    lastEngineUsedName = engineName || 'edge-tts-neural';
+    paused = false;
+    ttsElapsedSec = 0;
+    updatePlayButtonUI(targetId, 'playing', lastEngineUsedName);
+
+    const targetContainer = document.getElementById(targetId);
+    if (targetContainer && targetId !== 'header-title') {
+      buildLiveTtsSegments(targetContainer, targetId, trimmedText.length);
+      ttsCurrentHighlightIdx = -1;
+      syncTtsHighlightByRatio(0);
+    }
+
+    audioEl.onplay = function() {
+      ttsLastTickMs = Date.now();
+      startTtsLiveTicker(audioEl, targetId);
+    };
     audioEl.onended = function() { stopSpeech(); };
     audioEl.onerror = function() { stopSpeech(); };
     audioEl.src = dataUrl;
-    try { audioEl.playbackRate = 1.0; } catch (e) {}
+    try { audioEl.currentTime = 0; audioEl.playbackRate = 1.0; } catch (e) {}
     const p = audioEl.play();
+    startTtsLiveTicker(audioEl, targetId);
     if (p && typeof p.catch === 'function') {
       p.catch(function() { stopSpeech(); });
     }
@@ -2201,9 +2492,29 @@ function prepareLiteraryBgText(containerEl) {
 }
 
 function startSpeech(id, startIdx) {
+  const audioEl = getTvAudioElement();
+
+  // Ако същият урок вече е зареден и се натисне 🔄 (Рестарт отначало), връщаме аудиото, таймера и курсора на Изречение № 1!
+  if (activeId === id && !stopped && audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV && startIdx === 0) {
+    paused = false;
+    ttsElapsedSec = 0;
+    ttsLastTickMs = Date.now();
+    try {
+      audioEl.currentTime = 0;
+      ttsCurrentHighlightIdx = -1;
+      syncTtsHighlightByRatio(0);
+      updatePlayButtonUI(id, 'playing', lastEngineUsedName);
+      startTtsLiveTicker(audioEl, id);
+      const p = audioEl.play();
+      if (p && typeof p.catch === 'function') p.catch(function() {});
+      return;
+    } catch (e) {}
+  }
+
   unlockTvAudioNow();
   const el = document.getElementById(id);
   if (!el) return;
+  clearTtsHighlights();
   const clean = prepareLiteraryBgText(el);
   if (!clean) return;
 
@@ -2216,8 +2527,27 @@ function startSpeech(id, startIdx) {
 }
 
 function toggleSpeak(id) {
-  if (activeId === id && !stopped) stopSpeech();
-  else startSpeech(id, 0);
+  const audioEl = getTvAudioElement();
+  if (activeId === id && !stopped && audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV) {
+    if (!paused && !audioEl.paused) {
+      paused = true;
+      try { audioEl.pause(); } catch (e) {}
+      markHighlightPaused(true);
+      updatePlayButtonUI(id, 'paused', lastEngineUsedName);
+    } else {
+      paused = false;
+      ttsLastTickMs = Date.now();
+      markHighlightPaused(false);
+      updatePlayButtonUI(id, 'playing', lastEngineUsedName);
+      startTtsLiveTicker(audioEl, id);
+      try {
+        const p = audioEl.play();
+        if (p && typeof p.catch === 'function') p.catch(function() { stopSpeech(); });
+      } catch (e) { stopSpeech(); }
+    }
+  } else {
+    startSpeech(id, 0);
+  }
 }
 
 function speakDirect(txt) {
@@ -2237,6 +2567,7 @@ function speakDirect(txt) {
 }
 
 function speakGreeting() { speakDirect(ui('voiceGreeting')); }
+
 function getSavedSourcesList() {
   try { return JSON.parse(valOr(localStorage.getItem(STORAGE_PREFIX + 'MERGED_SOURCES'), '[]')); } catch (e) { return []; }
 }
@@ -2352,7 +2683,6 @@ function formatHumanSubjCode(rawText) {
   return str;
 }
 
-// Кратки, точни указания по подразбиране за всеки предмет (когато в слота стои само общото име на предмета)
 const DEFAULT_SLOT_HINTS = {
   'G07-MATH': '📌 Формули за съкратено умножение и тъждества',
   'G07-MATH-IUCH': '📗 Упражнение по Зеленото помагало (Цели изрази)',
@@ -2377,7 +2707,6 @@ const DEFAULT_SLOT_HINTS = {
 function cleanRedundantSlotTitle(rawTitle, slotCode, dateStr, numStr) {
   let t = String(valOr(rawTitle, '')).trim();
 
-  // Специални точни указания за понеделник 26.10.2026 г. (Избори + МААТ до 12:05 + БФ на СУ от 12:30)
   if (dateStr === '26.10.2026') {
     if (slotCode === 'G07-MAAT') return '⏰ Извънредно до 12:05 ч.: Формули (Преди БФ на СУ!)';
     if (numStr === '1 час' || t.indexOf('Биологическия факултет') !== -1) {
@@ -2386,13 +2715,11 @@ function cleanRedundantSlotTitle(rawTitle, slotCode, dateStr, numStr) {
     return '🚫 Неучебен ден в училище (Посещение в БФ на СУ)';
   }
 
-  // Махаме повтарящите се имена на учители и предмети в началото на title от старите .js файлове
   t = t
     .replace(/^(Регина Бабенко|Павлинка Борисова|Веселина Хаджийска|Борислав Лозанов|Нели Шипочка|Петя Кайрякова|Венета Терзиева|Елена Николова|Веселинка Стоилчева|Надежда Недялкова|Никита Йорданов|Поля Борисова|Мирослав Зашев|г-жа Петрова|Филип|Кико Бонев)\s*(\/\s*Зам\.)?\s*\((.*)\)$/i, '$3')
     .replace(/^(Математика|БЕЛ|Български език|Литература|География и икономика|География|Физика и астрономия|Физика|Химия и ООС|Химия|Биология и ЗО|Биология|Английски език|История и цивилизации|История|Музика|КМИТ)\s*[–—-]\s*/i, '')
     .trim();
 
-  // Ако в текста е останало само общото име на предмета от WEEKLY_SLOTS_TEMPLATE, слагаме точното указание!
   const genericNames = [
     'математика',
     'математика иуч (зелено помагало)',
@@ -2434,7 +2761,6 @@ function humanizeAllSubjectCodePills() {
     dynCss.innerHTML = '';
   }
 
-  // 1. Преобразуваме всички кутийки .slot-code-pill и текста на часа .slot-subj-title до тях
   document.querySelectorAll('.rot-slot-card').forEach(function(card) {
     const pill = card.querySelector('.slot-code-pill');
     const titleEl = card.querySelector('.slot-subj-title');
@@ -2446,7 +2772,6 @@ function humanizeAllSubjectCodePills() {
       pill.setAttribute('data-orig-code', orig);
     }
 
-    // Извличаме оригиналния код G07-...
     let detectedCode = 'G07-ART';
     const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
     for (let i = 0; i < codes.length; i++) {
@@ -2456,22 +2781,18 @@ function humanizeAllSubjectCodePills() {
       }
     }
 
-    // Дата на слота (ако е от ротационния поток)
     let dateStr = '';
     const mDate = String(card.id || '').match(/rot_(\d{2})(\d{2})(\d{4})_/);
     if (mDate) dateStr = `${mDate[1]}.${mDate[2]}.${mDate[3]}`;
     const numStr = timePill ? timePill.innerText.split('•')[0].trim() : '';
 
-    // Специална кутийка за посещението в Биологическия факултет на 26.10
     if (card.id === 'slot_card_rot_extra_hw_mon26_su_visit' || (dateStr === '26.10.2026' && numStr === '1 час')) {
       pill.innerHTML = '🏛️ Посещение БФ на СУ • 7. клас';
     } else {
       pill.innerHTML = HUMAN_SUBJ_LABELS[detectedCode] || orig;
     }
 
-    // Заменяме повтарящото се име на предмета в .slot-subj-title с точното указание за часа/задачата!
     if (titleEl) {
-      // Ако за този час има прикачено домашно с конкретно заглавие в отворения панел, взимаме него
       let rawTitle = titleEl.getAttribute('data-orig-title');
       if (!rawTitle) {
         const condEl = card.querySelector('.step-2-cond b');
@@ -2487,7 +2808,6 @@ function humanizeAllSubjectCodePills() {
     }
   });
 
-  // 2. Табелките извън ротационните карти (в Таб 2 и архива)
   document.querySelectorAll('.slot-code-pill').forEach(function(pill) {
     if (pill.closest('.rot-slot-card')) return;
     const orig = pill.getAttribute('data-orig-code') || pill.innerText;
@@ -2499,7 +2819,6 @@ function humanizeAllSubjectCodePills() {
     }
   });
 
-  // 3. Изчистваме кодовете G07-... в падащите панели ("Взети и следващи теми" и др.)
   document.querySelectorAll('.slot-expand-drawer b, .tier-badge-new, .tier-badge-rev, .step-1-must, .step-1-greenbook, .step-1-none').forEach(function(el) {
     let html = el.innerHTML;
     const codes = Object.keys(HUMAN_SUBJ_LABELS).sort((a, b) => b.length - a.length);
@@ -2670,7 +2989,7 @@ function getCombinedDailyTracker() {
 }
 
 function isMediaActiveNow() {
-  if (activeId && !stopped) {
+  if (activeId && !stopped && !paused) {
     return true;
   }
   const audioEl = document.getElementById('tv-tts-audio-el');
@@ -2809,6 +3128,8 @@ window.addEventListener('scroll', function() {
   const curY = window.scrollY || 0;
   if (Math.abs(curY - lastScrollCheckY) >= 35) {
     lastScrollCheckY = curY;
+    // Ако в момента върви гласовият четец и системата сама скролва екрана, не трупаме фалшиви кликове от скрола
+    if (isMediaActiveNow()) return;
     const now = Date.now();
     const detectedSubj = detectActiveSubjectFromDOM(null);
     if (detectedSubj) {
