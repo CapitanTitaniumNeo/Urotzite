@@ -1971,6 +1971,8 @@ let speechTimer = null;
 const originalBtnLabels = new Map();
 const ttsFullAudioCache = new Map();
 const PREFERRED_NEURAL_VOICE = 'bg-BG-KalinaNeural';
+// Спокойно учебно темпо на четене (88% от стандартната скорост, със запазен естествен тембър на гласа)
+const TTS_STUDY_SPEED = 0.88;
 
 // Тихо 0.1-секундно аудио за мигновено отключване на колоните на Samsung Smart TV при клик с дистанционното
 const SILENT_UNLOCK_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
@@ -1986,6 +1988,17 @@ function getTvAudioElement() {
     document.body.appendChild(el);
   }
   return el;
+}
+
+function applyCalmStudyPlaybackRate(audioEl) {
+  if (!audioEl) return;
+  try {
+    if ('preservesPitch' in audioEl) audioEl.preservesPitch = true;
+    if ('mozPreservesPitch' in audioEl) audioEl.mozPreservesPitch = true;
+    if ('webkitPreservesPitch' in audioEl) audioEl.webkitPreservesPitch = true;
+    audioEl.defaultPlaybackRate = TTS_STUDY_SPEED;
+    audioEl.playbackRate = TTS_STUDY_SPEED;
+  } catch (e) {}
 }
 
 function unlockTvAudioNow() {
@@ -2026,13 +2039,14 @@ function updatePlayButtonUI(id, state, engineInfo) {
   }
 }
 
-// === СВЕТЕЩА СТРАНИЧНА РАМКА + АВТОМАТИЧНО ЦЕНТРИРАНЕ НА ЧЕТЕНИЯ СЕЙФ И ПРОГРЕС ПРИ ДЪЛЪГ ТЕКСТ ===
+// === СИНХРОНИЗИРАНА ЛЕНТА ЗА ПАУЗА/ПУСКАНЕ ВЪРХУ КОНКРЕТНИЯ ЧЕТЕН СЕЙФ + ПРИОРИТЕТ НА ПРОЧЕТЕНИЯ ТЕКСТ ОТГОРЕ ===
 let ttsTickerInterval = null;
 let ttsElapsedSec = 0;
 let ttsEstimatedTotalSec = 1;
 let ttsLastTickMs = 0;
 let ttsSubBoxes = [];
 let ttsCurrentContainerEl = null;
+let ttsActiveRailParent = null;
 let ttsLastScrolledSubIdx = -1;
 let ttsLastAutoScrollMs = 0;
 let lastEngineUsedName = 'edge-tts-neural';
@@ -2044,46 +2058,53 @@ function ensureSideBarTtsCSS() {
   st.innerHTML = `
     .tts-box-reading {
       position: relative !important;
-      padding-left: 30px !important;
-      border-color: #22c55e !important;
-      box-shadow: 0 0 22px rgba(34, 197, 94, 0.35), inset 0 0 12px rgba(251, 191, 36, 0.15) !important;
-      transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
+      border-color: rgba(56, 189, 248, 0.75) !important;
+      transition: border-color 0.25s ease !important;
     }
-    /* Удебелената странична зона на квадрата: показва нивото докъдето чете и спира при клик! */
+    .tts-rail-host {
+      position: relative !important;
+      padding-left: 32px !important;
+    }
+    /* Страничната лента върху конкретния четен сейф: клик = Пауза / Продължи! */
     .tts-side-stop-rail {
       position: absolute;
       left: 0;
       top: 0;
       bottom: 0;
-      width: 22px;
-      background: rgba(15, 23, 42, 0.95);
+      width: 24px;
+      background: rgba(15, 23, 42, 0.96);
       border-right: 2px solid #fbbf24;
-      border-radius: 10px 0 0 10px;
+      border-radius: 9px 0 0 9px;
       cursor: pointer;
-      z-index: 50;
+      z-index: 60;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 2px 0 12px rgba(251, 191, 36, 0.4);
+      box-shadow: 2px 0 12px rgba(251, 191, 36, 0.45);
+      transition: width 0.15s ease, background 0.2s ease;
     }
     .tts-side-stop-rail:hover {
-      width: 26px;
-      border-right-color: #ef4444;
-      box-shadow: 2px 0 16px rgba(239, 68, 68, 0.7);
+      width: 28px;
+      border-right-color: #38bdf8;
+      box-shadow: 2px 0 16px rgba(56, 189, 248, 0.75);
     }
-    /* Светещият стълб вътре в страничната лента, който слиза до нивото, което се чете в момента */
+    .tts-side-stop-rail.rail-paused {
+      border-right-color: #f59e0b;
+      background: rgba(69, 26, 3, 0.95);
+      box-shadow: 2px 0 16px rgba(245, 158, 11, 0.75);
+    }
+    /* Светещият стълб вътре в конкретния сейф (0% - 100% точно за този сейф) */
     .tts-side-progress-fill {
       position: absolute;
       left: 0;
       top: 0;
       width: 100%;
       height: 0%;
-      background: linear-gradient(180deg, #22c55e 0%, #fbbf24 85%, #ef4444 100%);
-      transition: height 0.2s linear;
+      background: linear-gradient(180deg, #22c55e 0%, #fbbf24 85%, #38bdf8 100%);
+      transition: height 0.18s linear;
       pointer-events: none;
     }
-    /* Светещата точка-курсор на точното ниво на четене */
     .tts-side-level-dot {
       position: absolute;
       left: 2px;
@@ -2091,10 +2112,10 @@ function ensureSideBarTtsCSS() {
       height: 10px;
       top: 0%;
       background: #ffffff;
-      border: 2px solid #ef4444;
+      border: 2px solid #0284c7;
       border-radius: 99px;
       box-shadow: 0 0 12px #ffffff, 0 0 18px #fbbf24;
-      transition: top 0.2s linear;
+      transition: top 0.18s linear;
       pointer-events: none;
     }
     .tts-side-stop-label {
@@ -2103,26 +2124,28 @@ function ensureSideBarTtsCSS() {
       writing-mode: vertical-rl;
       text-orientation: mixed;
       transform: rotate(180deg);
-      font-size: 0.68rem;
+      font-size: 0.67rem;
       font-weight: 900;
       color: #ffffff;
       text-shadow: 0 1px 4px #000000, 0 0 6px #000000;
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
       user-select: none;
       pointer-events: none;
       white-space: nowrap;
     }
-    /* Автоматично оцветяване на вътрешната карта/правило в Златния сейф, което се чете в момента */
+    /* Активният сейф, който се чете в момента */
     .tts-subcard-active {
       border: 2px solid #22c55e !important;
       border-top: 5px solid #fbbf24 !important;
-      background: linear-gradient(145deg, rgba(6, 78, 59, 0.45), rgba(15, 23, 42, 0.96)) !important;
-      box-shadow: 0 0 24px rgba(34, 197, 94, 0.55) !important;
+      background: linear-gradient(145deg, rgba(6, 78, 59, 0.42), rgba(15, 23, 42, 0.96)) !important;
+      box-shadow: 0 0 22px rgba(34, 197, 94, 0.5) !important;
       transition: all 0.25s ease !important;
     }
+    /* Вече прочетените сейфове отгоре остават напълно ясни и четливи със зелен/син кант */
     .tts-subcard-done {
-      border-color: rgba(56, 189, 248, 0.45) !important;
-      opacity: 0.82 !important;
+      border-color: rgba(34, 197, 94, 0.55) !important;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(23, 37, 84, 0.5)) !important;
+      opacity: 0.96 !important;
     }
   `;
   document.head.appendChild(st);
@@ -2140,38 +2163,68 @@ function clearTtsVisualBox() {
   ttsElapsedSec = 0;
   ttsSubBoxes = [];
   ttsCurrentContainerEl = null;
+  ttsActiveRailParent = null;
   ttsLastScrolledSubIdx = -1;
   document.querySelectorAll('.tts-side-stop-rail').forEach(function(r) { r.remove(); });
-  document.querySelectorAll('.tts-box-reading').forEach(function(b) { b.classList.remove('tts-box-reading'); });
+  document.querySelectorAll('.tts-box-reading, .tts-rail-host').forEach(function(b) {
+    b.classList.remove('tts-box-reading', 'tts-rail-host');
+  });
   document.querySelectorAll('.tts-subcard-active, .tts-subcard-done').forEach(function(c) {
     c.classList.remove('tts-subcard-active', 'tts-subcard-done');
   });
 }
 
-// Плавно центрира активния сейф на екрана, а ако сейфът е по-дълъг – придвижва екрана надолу по редовете му!
-function scrollActiveBoxIntoCenter(boxEl, innerProgressRatio, isNewBoxSwitch) {
+// Мести страничната лента директно върху конкретния Златен сейф, който се чете в момента (независимо от Zoom-а!)
+function mountRailOnTargetBox(boxEl) {
+  if (!boxEl || ttsActiveRailParent === boxEl) return;
+  document.querySelectorAll('.tts-side-stop-rail').forEach(function(r) { r.remove(); });
+  document.querySelectorAll('.tts-rail-host').forEach(function(h) { h.classList.remove('tts-rail-host'); });
+
+  ttsActiveRailParent = boxEl;
+  boxEl.classList.add('tts-rail-host');
+
+  const rail = document.createElement('div');
+  rail.className = 'tts-side-stop-rail no-read' + (paused ? ' rail-paused' : '');
+  rail.id = 'tts-active-rail';
+  rail.title = 'Кликни върху лентата за ПАУЗА или ПРОДЪЛЖАВАНЕ на четенето!';
+  rail.onclick = function(ev) {
+    ev.stopPropagation();
+    if (activeId) toggleSpeak(activeId);
+  };
+  rail.innerHTML = `
+    <div class="tts-side-progress-fill" id="tts-rail-fill"></div>
+    <div class="tts-side-level-dot" id="tts-rail-dot"></div>
+    <span class="tts-side-stop-label" id="tts-rail-lbl">⏸️ ПАУЗА</span>
+  `;
+  boxEl.insertBefore(rail, boxEl.firstChild);
+}
+
+// Държи вече прочетения текст в горните 2/3 на екрана (висок приоритет), а текущо четения ред – в долната част (~68%)!
+function scrollActiveBoxWithReadHistoryPriority(boxEl, innerProgressRatio, isNewBoxSwitch) {
   if (!boxEl || !boxEl.getBoundingClientRect) return;
   const now = Date.now();
-  if (!isNewBoxSwitch && (now - ttsLastAutoScrollMs) < 550) return;
+  if (!isNewBoxSwitch && (now - ttsLastAutoScrollMs) < 600) return;
 
   const rect = boxEl.getBoundingClientRect();
   const viewH = window.innerHeight || document.documentElement.clientHeight || 800;
   const pageY = window.pageYOffset || document.documentElement.scrollTop || 0;
   const boxTopDoc = pageY + rect.top;
   const boxH = rect.height;
+  const localR = Math.min(1, Math.max(0, innerProgressRatio || 0));
 
   let desiredY = pageY;
 
-  if (boxH <= viewH * 0.78) {
-    // Сейфът се побира целия на екрана -> центрираме го точно в средата на екрана!
-    desiredY = boxTopDoc - ((viewH - boxH) / 2);
-    if (!isNewBoxSwitch && Math.abs(desiredY - pageY) < 45) return;
+  if (boxH <= viewH * 0.55) {
+    // Позиционираме текущия сейф така, че долният му край да е на ~76% от екрана –
+    // по този начин целият текущ сейф се вижда ясно, а НАД него (в горните 50-60% от екрана) стои вече прочетеният сейф!
+    desiredY = (boxTopDoc + boxH) - (viewH * 0.76);
+    if (!isNewBoxSwitch && Math.abs(desiredY - pageY) < 55) return;
   } else {
-    // Сейфът е по-дълъг -> движим екрана плавно надолу по височината му според прочетените букви!
-    const localR = Math.min(1, Math.max(0, innerProgressRatio || 0));
+    // При по-дълъг сейф или при голям Zoom: текущата точка на четене се държи на 68% от височината на екрана,
+    // така че над нея (в горните 68% от екрана) винаги да виждаш току-що прочетените редове, а отдолу да идват новите!
     const readingPointDoc = boxTopDoc + (boxH * localR);
-    desiredY = readingPointDoc - (viewH * 0.42);
-    if (!isNewBoxSwitch && Math.abs(desiredY - pageY) < 35) return;
+    desiredY = readingPointDoc - (viewH * 0.68);
+    if (!isNewBoxSwitch && Math.abs(desiredY - pageY) < 40) return;
   }
 
   ttsLastAutoScrollMs = now;
@@ -2191,33 +2244,27 @@ function attachSideStopRail(containerEl, spokenCharLen) {
   ttsCurrentContainerEl = containerEl;
   containerEl.classList.add('tts-box-reading');
 
-  // Създаваме удебелената странична зона върху самия квадрат – клик върху нея веднага спира четенето!
-  const rail = document.createElement('div');
-  rail.className = 'tts-side-stop-rail no-read';
-  rail.title = 'Кликни тук върху страничната лента, за да СПРЕШ четенето веднага!';
-  rail.onclick = function(ev) {
-    ev.stopPropagation();
-    stopSpeech();
-  };
-  rail.innerHTML = `
-    <div class="tts-side-progress-fill" id="tts-rail-fill"></div>
-    <div class="tts-side-level-dot" id="tts-rail-dot"></div>
-    <span class="tts-side-stop-label" id="tts-rail-lbl">⏹️ СТОП (КЛИКНИ ТУК)</span>
-  `;
-  containerEl.insertBefore(rail, containerEl.firstChild);
-
-  // Измерваме вътрешните кутийки (.memo-card в Златния сейф или стъпките в домашното) без да пипаме текста им!
-  const candidates = Array.from(containerEl.querySelectorAll('.memo-card, .step-1-must, .step-1-greenbook, .step-1-none, .step-2-cond, .step-4-copy, .step-5-deep, .algo-step, .story-box'));
-  const visibleCards = candidates.filter(function(c) {
-    return c.offsetParent !== null && !c.closest('.slot-expand-drawer:not(.open)') && !c.closest('.card-back');
+  // Събираме ВСИЧКИ последователни блокове за четене (включително заглавието .memo-head / .zone-title),
+  // за да може времето за изговаряне на заглавието да не измества синхрона на отделните сейфове!
+  const candidates = Array.from(containerEl.querySelectorAll('.memo-head, .zone-title, .memo-card, .step-1-must, .step-1-greenbook, .step-1-none, .step-2-cond, .step-4-copy, .step-5-deep, .algo-step, .story-box'));
+  const visibleBlocks = candidates.filter(function(c) {
+    if (c.offsetParent === null) return false;
+    if (c.closest('.slot-expand-drawer:not(.open)') || c.closest('.card-back')) return false;
+    // Избягваме вложени дублирания (напр. ако .algo-step е вътре в друг вече хванат блок)
+    return !candidates.some(function(other) { return other !== c && other.contains(c); });
   });
 
   let totalW = 0;
-  const weighted = visibleCards.map(function(c) {
+  const weighted = [];
+  visibleBlocks.forEach(function(c) {
     const cleanTxt = prepareLiteraryBgText(c);
-    const w = Math.max(8, cleanTxt.length);
-    totalW += w;
-    return { el: c, weight: w };
+    if (cleanTxt.length >= 2) {
+      // Добавяме +14 знака тежест за естествената интонационна пауза в края на всяка кутийка
+      const w = cleanTxt.length + 14;
+      totalW += w;
+      const isHeader = c.classList.contains('memo-head') || c.classList.contains('zone-title');
+      weighted.push({ el: c, weight: w, isHeader: isHeader });
+    }
   });
 
   if (weighted.length > 0 && totalW > 0) {
@@ -2226,53 +2273,84 @@ function attachSideStopRail(containerEl, spokenCharLen) {
       const startR = acc / totalW;
       acc += item.weight;
       const endR = acc / totalW;
-      return { el: item.el, startRatio: startR, endRatio: endR };
+      return { el: item.el, startRatio: startR, endRatio: endR, isHeader: item.isHeader };
     });
   }
 
-  ttsEstimatedTotalSec = Math.max(3, (spokenCharLen || 100) / 13.2);
+  // При скорост 0.88 гласът Калина изговаря средно около 11.4 знака в секунда
+  ttsEstimatedTotalSec = Math.max(3, (spokenCharLen || 100) / 11.4);
   ttsLastScrolledSubIdx = -1;
+
+  const firstCardBox = ttsSubBoxes.find(function(b) { return !b.isHeader; });
+  mountRailOnTargetBox(firstCardBox ? firstCardBox.el : containerEl);
   updateSideRailProgress(0);
 }
 
 function updateSideRailProgress(ratio) {
   const clamped = Math.min(1, Math.max(0, ratio));
-  const pct = Math.round(clamped * 100);
-
-  const fillEl = document.getElementById('tts-rail-fill');
-  const dotEl = document.getElementById('tts-rail-dot');
-  const lblEl = document.getElementById('tts-rail-lbl');
-
-  if (fillEl) fillEl.style.height = pct + '%';
-  if (dotEl) dotEl.style.top = 'calc(' + pct + '% - 5px)';
-  if (lblEl) {
-    lblEl.innerText = paused ? ('⏸️ ПАУЗА (' + pct + '%) • КЛИК = СТОП') : ('⏹️ СТОП • ' + pct + '%');
-  }
 
   if (ttsSubBoxes.length > 0) {
     let activeIdx = -1;
     ttsSubBoxes.forEach(function(sb, idx) {
       sb.el.classList.remove('tts-subcard-active', 'tts-subcard-done');
       if (clamped > sb.endRatio) {
-        sb.el.classList.add('tts-subcard-done');
+        if (!sb.isHeader) sb.el.classList.add('tts-subcard-done');
       } else if (clamped >= sb.startRatio && clamped <= sb.endRatio && activeIdx === -1) {
-        sb.el.classList.add('tts-subcard-active');
+        if (!sb.isHeader) sb.el.classList.add('tts-subcard-active');
         activeIdx = idx;
       }
     });
 
-    if (activeIdx !== -1 && !paused) {
-      const activeSb = ttsSubBoxes[activeIdx];
-      const spanRange = Math.max(0.01, activeSb.endRatio - activeSb.startRatio);
-      const localRatio = (clamped - activeSb.startRatio) / spanRange;
+    if (activeIdx === -1) activeIdx = ttsSubBoxes.length - 1;
+    const activeSb = ttsSubBoxes[activeIdx];
+    const spanRange = Math.max(0.005, activeSb.endRatio - activeSb.startRatio);
+    const localRatio = Math.min(1, Math.max(0, (clamped - activeSb.startRatio) / spanRange));
+    const localPct = Math.round(localRatio * 100);
+
+    // Ако в момента чете заглавието (.memo-head), закачаме лентата на първия сейф на 0%, а после я местим сейф по сейф!
+    const targetRailBox = activeSb.isHeader
+      ? ((ttsSubBoxes.find(function(b) { return !b.isHeader; }) || activeSb).el)
+      : activeSb.el;
+    mountRailOnTargetBox(targetRailBox);
+
+    const railEl = document.getElementById('tts-active-rail');
+    const fillEl = document.getElementById('tts-rail-fill');
+    const dotEl = document.getElementById('tts-rail-dot');
+    const lblEl = document.getElementById('tts-rail-lbl');
+
+    const shownPct = activeSb.isHeader ? 0 : localPct;
+    if (railEl) railEl.classList.toggle('rail-paused', paused);
+    if (fillEl) fillEl.style.height = shownPct + '%';
+    if (dotEl) dotEl.style.top = 'calc(' + shownPct + '% - 5px)';
+    if (lblEl) {
+      lblEl.innerText = paused ? ('▶️ ПУСНИ (' + shownPct + '%)') : ('⏸️ ПАУЗА • ' + shownPct + '%');
+    }
+
+    if (!paused && !activeSb.isHeader) {
       const isNewSwitch = (activeIdx !== ttsLastScrolledSubIdx);
       ttsLastScrolledSubIdx = activeIdx;
-      scrollActiveBoxIntoCenter(activeSb.el, localRatio, isNewSwitch);
+      scrollActiveBoxWithReadHistoryPriority(activeSb.el, localRatio, isNewSwitch);
     }
-  } else if (ttsCurrentContainerEl && !paused) {
-    const isInitial = (ttsLastScrolledSubIdx === -1);
-    ttsLastScrolledSubIdx = 0;
-    scrollActiveBoxIntoCenter(ttsCurrentContainerEl, clamped, isInitial);
+  } else if (ttsCurrentContainerEl) {
+    mountRailOnTargetBox(ttsCurrentContainerEl);
+    const pct = Math.round(clamped * 100);
+    const railEl = document.getElementById('tts-active-rail');
+    const fillEl = document.getElementById('tts-rail-fill');
+    const dotEl = document.getElementById('tts-rail-dot');
+    const lblEl = document.getElementById('tts-rail-lbl');
+
+    if (railEl) railEl.classList.toggle('rail-paused', paused);
+    if (fillEl) fillEl.style.height = pct + '%';
+    if (dotEl) dotEl.style.top = 'calc(' + pct + '% - 5px)';
+    if (lblEl) {
+      lblEl.innerText = paused ? ('▶️ ПУСНИ (' + pct + '%)') : ('⏸️ ПАУЗА • ' + pct + '%');
+    }
+
+    if (!paused) {
+      const isInitial = (ttsLastScrolledSubIdx === -1);
+      ttsLastScrolledSubIdx = 0;
+      scrollActiveBoxWithReadHistoryPriority(ttsCurrentContainerEl, clamped, isInitial);
+    }
   }
 }
 
@@ -2291,16 +2369,16 @@ function startTtsLiveTicker(audioEl, targetId) {
     }
 
     let ratio = 0;
-    const realDur = (audioEl && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration > 1) ? audioEl.duration : 0;
+    // Използваме реалното времетраене на аудио файла, когато браузърът го знае точно!
+    const realDur = (audioEl && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration > 1.5) ? audioEl.duration : 0;
     if (realDur > 0 && audioEl.currentTime > 0) {
-      const effectiveDur = Math.max(realDur, ttsEstimatedTotalSec * 0.75);
-      ratio = audioEl.currentTime / effectiveDur;
+      ratio = audioEl.currentTime / realDur;
     } else {
       ratio = ttsElapsedSec / ttsEstimatedTotalSec;
     }
 
     updateSideRailProgress(ratio);
-  }, 150);
+  }, 140);
 }
 
 function stopSpeech() {
@@ -2319,13 +2397,13 @@ function stopSpeech() {
   activeId = null; queue = []; idx = 0;
 }
 
-// Изтегля ЦЕЛИЯ урок накуп, НЕ пипа текста, а движи светещото ниво отстрани и центрира активния сейф!
+// Изтегля ЦЕЛИЯ урок накуп, чете с по-бавно учебно темпо (0.88) и движи лентата сейф по сейф!
 function playFullTextOnTV(fullCleanText, targetId) {
   const audioEl = getTvAudioElement();
   const driveUrl = getDriveUrl();
   const secretKey = getDriveSecretKey() || 'Bug!2026';
   const trimmedText = fullCleanText.slice(0, 1800);
-  const cacheKey = PREFERRED_NEURAL_VOICE + ':' + trimmedText;
+  const cacheKey = PREFERRED_NEURAL_VOICE + '_slow88:' + trimmedText;
 
   function playReceivedDataUrl(dataUrl, engineName) {
     if (stopped || activeId !== targetId) return;
@@ -2339,14 +2417,21 @@ function playFullTextOnTV(fullCleanText, targetId) {
       attachSideStopRail(targetContainer, trimmedText.length);
     }
 
+    audioEl.onloadedmetadata = function() {
+      applyCalmStudyPlaybackRate(audioEl);
+    };
     audioEl.onplay = function() {
+      applyCalmStudyPlaybackRate(audioEl);
       ttsLastTickMs = Date.now();
       startTtsLiveTicker(audioEl, targetId);
     };
     audioEl.onended = function() { stopSpeech(); };
     audioEl.onerror = function() { stopSpeech(); };
     audioEl.src = dataUrl;
-    try { audioEl.currentTime = 0; audioEl.playbackRate = 1.0; } catch (e) {}
+    try {
+      audioEl.currentTime = 0;
+      applyCalmStudyPlaybackRate(audioEl);
+    } catch (e) {}
     const p = audioEl.play();
     startTtsLiveTicker(audioEl, targetId);
     if (p && typeof p.catch === 'function') {
@@ -2361,7 +2446,7 @@ function playFullTextOnTV(fullCleanText, targetId) {
   }
 
   const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
-  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&voice=' + encodeURIComponent(PREFERRED_NEURAL_VOICE) + '&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
+  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&voice=' + encodeURIComponent(PREFERRED_NEURAL_VOICE) + '&rate=-12%25&ttsspeed=0.88&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
 
   fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
     .then(function(r) { return r.json(); })
@@ -2507,6 +2592,7 @@ function startSpeech(id, startIdx) {
     ttsLastScrolledSubIdx = -1;
     try {
       audioEl.currentTime = 0;
+      applyCalmStudyPlaybackRate(audioEl);
       updateSideRailProgress(0);
       updatePlayButtonUI(id, 'playing', lastEngineUsedName);
       startTtsLiveTicker(audioEl, id);
@@ -2534,16 +2620,21 @@ function startSpeech(id, startIdx) {
 function toggleSpeak(id) {
   const audioEl = getTvAudioElement();
   if (activeId === id && !stopped && audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV) {
+    const realDur = (audioEl.duration && isFinite(audioEl.duration) && audioEl.duration > 1.5) ? audioEl.duration : ttsEstimatedTotalSec;
+    const curRatio = (audioEl.currentTime > 0 && realDur > 0) ? (audioEl.currentTime / realDur) : (ttsElapsedSec / ttsEstimatedTotalSec);
+
     if (!paused && !audioEl.paused) {
       paused = true;
       try { audioEl.pause(); } catch (e) {}
       updatePlayButtonUI(id, 'paused', lastEngineUsedName);
-      updateSideRailProgress(ttsElapsedSec / ttsEstimatedTotalSec);
+      updateSideRailProgress(curRatio);
     } else {
       paused = false;
       ttsLastTickMs = Date.now();
       ttsLastScrolledSubIdx = -1;
+      applyCalmStudyPlaybackRate(audioEl);
       updatePlayButtonUI(id, 'playing', lastEngineUsedName);
+      updateSideRailProgress(curRatio);
       startTtsLiveTicker(audioEl, id);
       try {
         const p = audioEl.play();
@@ -3134,7 +3225,7 @@ window.addEventListener('scroll', function() {
   const curY = window.scrollY || 0;
   if (Math.abs(curY - lastScrollCheckY) >= 35) {
     lastScrollCheckY = curY;
-    // Ако в момента върви гласовият четец и системата сама центрира сейфа, не броим скрола за ръчен клик
+    // Ако в момента върви гласовият четец и системата сама мести екрана, не броим скрола за ръчен клик
     if (isMediaActiveNow() && (Date.now() - ttsLastAutoScrollMs) < 1200) return;
     const now = Date.now();
     const detectedSubj = detectActiveSubjectFromDOM(null);
