@@ -1970,6 +1970,7 @@ let activeId = null, queue = [], idx = 0, paused = false, stopped = false;
 let speechTimer = null;
 const originalBtnLabels = new Map();
 const ttsFullAudioCache = new Map();
+const ttsInFlightPromises = new Map();
 const PREFERRED_NEURAL_VOICE = 'bg-BG-KalinaNeural';
 
 // Тихо 0.1-секундно аудио за мигновено отключване на колоните на Samsung Smart TV при клик с дистанционното
@@ -2011,7 +2012,7 @@ function updatePlayButtonUI(id, state, engineInfo) {
   if (!btn) return;
   if (!originalBtnLabels.has(id)) originalBtnLabels.set(id, btn.innerHTML);
   if (state === 'loading') {
-    btn.innerHTML = '⏳ Подготвя целия глас...';
+    btn.innerHTML = '⏳ Синхронизира гласа...';
     btn.classList.add('speaking-glow');
   } else if (state === 'playing') {
     const voiceTag = (engineInfo && engineInfo.indexOf('edge') !== -1) ? ' (🎙️ Neural)' : '';
@@ -2026,16 +2027,16 @@ function updatePlayButtonUI(id, state, engineInfo) {
   }
 }
 
-// === ЕДИНЕН ЦЯЛ MP3 ПОТОК ОТ GOOGLE SCRIPT (БЕЗ НАКЪСВАНЕ НА ТВ) + КОНТРОЛИ ПО КЛЕТКИТЕ ===
+// === ЧЕТЕНЕ КУТИЙКА ПО КУТИЙКА СЪС СИНХРОНИЗИРАЩА ПАУЗА МЕЖДУ ТЯХ И КРИСТАЛЕН ЗВУК НА 1.0 ===
 let ttsTickerInterval = null;
-let ttsElapsedSec = 0;
-let ttsEstimatedTotalSec = 1;
+let ttsSyncPauseTimer = null;
+let ttsCellQueue = [];
+let ttsCurrentCellIdx = 0;
+let ttsCellElapsedSec = 0;
+let ttsCellEstimatedSec = 1;
 let ttsLastTickMs = 0;
-let ttsSubBoxes = [];
-let ttsCurrentSubIdx = 0;
 let ttsCurrentContainerEl = null;
 let ttsActiveRailParent = null;
-let ttsLastScrolledSubIdx = -1;
 let ttsLastAutoScrollMs = 0;
 let lastEngineUsedName = 'edge-tts-neural';
 
@@ -2107,7 +2108,7 @@ function ensureSideBarTtsCSS() {
       width: 100%;
       height: 0%;
       background: linear-gradient(180deg, #22c55e 0%, #fbbf24 85%, #38bdf8 100%);
-      transition: height 0.16s linear;
+      transition: height 0.15s linear;
       pointer-events: none;
     }
     .tts-side-level-dot {
@@ -2120,7 +2121,7 @@ function ensureSideBarTtsCSS() {
       border: 2px solid #0284c7;
       border-radius: 99px;
       box-shadow: 0 0 12px #ffffff, 0 0 18px #fbbf24;
-      transition: top 0.16s linear;
+      transition: top 0.15s linear;
       pointer-events: none;
     }
     .tts-side-stop-label {
@@ -2159,16 +2160,19 @@ function stopTtsTicker() {
     clearInterval(ttsTickerInterval);
     ttsTickerInterval = null;
   }
+  if (ttsSyncPauseTimer) {
+    clearTimeout(ttsSyncPauseTimer);
+    ttsSyncPauseTimer = null;
+  }
 }
 
 function clearTtsVisualBox() {
   stopTtsTicker();
-  ttsElapsedSec = 0;
-  ttsSubBoxes = [];
-  ttsCurrentSubIdx = 0;
+  ttsCellQueue = [];
+  ttsCurrentCellIdx = 0;
+  ttsCellElapsedSec = 0;
   ttsCurrentContainerEl = null;
   ttsActiveRailParent = null;
-  ttsLastScrolledSubIdx = -1;
   document.querySelectorAll('.tts-side-stop-rail').forEach(function(r) { r.remove(); });
   document.querySelectorAll('.tts-box-reading, .tts-rail-host').forEach(function(b) {
     b.classList.remove('tts-box-reading', 'tts-rail-host');
@@ -2189,7 +2193,7 @@ function mountRailOnTargetBox(boxEl) {
   const rail = document.createElement('div');
   rail.className = 'tts-side-stop-rail no-read' + (paused ? ' rail-paused' : '');
   rail.id = 'tts-active-rail';
-  rail.title = 'Кликни за ПАУЗА / ПУСКАНЕ (или ползвай ⬆️ / ⬇️ за предна/следваща клетка)!';
+  rail.title = 'Кликни за ПАУЗА / ПУСКАНЕ (или ползвай ⬆️ / ⬇️ за предна/следваща кутийка)!';
   rail.onclick = function(ev) {
     ev.stopPropagation();
     if (activeId) toggleSpeak(activeId);
@@ -2197,15 +2201,15 @@ function mountRailOnTargetBox(boxEl) {
   rail.innerHTML = `
     <div class="tts-side-progress-fill" id="tts-rail-fill"></div>
     <div class="tts-side-level-dot" id="tts-rail-dot"></div>
-    <span class="tts-rail-step-btn" title="Към предната клетка" onclick="event.stopPropagation(); stepTtsCell(-1)">⬆️</span>
+    <span class="tts-rail-step-btn" title="Към предната кутийка" onclick="event.stopPropagation(); stepTtsCell(-1)">⬆️</span>
     <span class="tts-side-stop-label" id="tts-rail-lbl">⏸️ ПАУЗА</span>
-    <span class="tts-rail-step-btn" title="Прескочи към следващата клетка" onclick="event.stopPropagation(); stepTtsCell(1)">⬇️</span>
+    <span class="tts-rail-step-btn" title="Прескочи към следващата кутийка" onclick="event.stopPropagation(); stepTtsCell(1)">⬇️</span>
   `;
   boxEl.insertBefore(rail, boxEl.firstChild);
 }
 
-// Екранът НЕ слиза надолу докато се чете клетката, а се позиционира само при смяна на клетка (ако новата не се вижда цялата)!
-function positionScreenOnCellSwitch(boxEl, innerRatio, isNewCellSwitch) {
+// Екранът НЕ слиза надолу докато се чете кутийката – позиционира се само в началото на нова кутийка!
+function positionScreenForCurrentCell(boxEl, innerRatio, isCellStart) {
   if (!boxEl || !boxEl.getBoundingClientRect) return;
   const rect = boxEl.getBoundingClientRect();
   const viewH = window.innerHeight || document.documentElement.clientHeight || 800;
@@ -2214,8 +2218,7 @@ function positionScreenOnCellSwitch(boxEl, innerRatio, isNewCellSwitch) {
   const boxH = rect.height;
 
   if (boxH <= viewH * 0.72) {
-    // За стандартна клетка: местим екрана САМО в момента, когато се сменя клетката, и то само ако не се вижда добре!
-    if (!isNewCellSwitch) return;
+    if (!isCellStart) return;
     if (rect.top >= 65 && rect.bottom <= (viewH - 35)) return;
 
     const desiredY = Math.max(0, Math.round((boxTopDoc + boxH) - (viewH * 0.78)));
@@ -2224,53 +2227,289 @@ function positionScreenOnCellSwitch(boxEl, innerRatio, isNewCellSwitch) {
     return;
   }
 
-  // Само при много висока клетка (по-голяма от целия екран)
   const now = Date.now();
-  if (!isNewCellSwitch && (now - ttsLastAutoScrollMs) < 1200) return;
+  if (!isCellStart && (now - ttsLastAutoScrollMs) < 1200) return;
   const readingPointDoc = boxTopDoc + (boxH * Math.min(1, Math.max(0, innerRatio || 0)));
   const desiredLongY = Math.max(0, Math.round(readingPointDoc - (viewH * 0.65)));
-  if (!isNewCellSwitch && Math.abs(desiredLongY - pageY) < 75) return;
+  if (!isCellStart && Math.abs(desiredLongY - pageY) < 75) return;
 
   ttsLastAutoScrollMs = now;
   try { window.scrollTo({ top: desiredLongY, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, desiredLongY); }
 }
 
-function getEffectiveTotalAudioSec(audioEl) {
-  const realDur = (audioEl && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration > 2) ? audioEl.duration : 0;
-  if (realDur > 0) {
-    // Ако MP3 потокът е слепен от няколко парчета и браузърът отчита твърде малък duration (само за 1-вото парче),
-    // ползваме по-голямото между отчетеното и изчисленото време за целия текст!
-    return Math.max(realDur, ttsEstimatedTotalSec * 0.82);
+function updateCurrentCellRailUI(localRatio, customStatusText) {
+  if (!ttsCellQueue.length) return;
+  const clamped = Math.min(1, Math.max(0, localRatio || 0));
+  const pct = Math.round(clamped * 100);
+  const totalCells = ttsCellQueue.length;
+  const humanIdx = Math.min(totalCells, ttsCurrentCellIdx + 1);
+
+  const railEl = document.getElementById('tts-active-rail');
+  const fillEl = document.getElementById('tts-rail-fill');
+  const dotEl = document.getElementById('tts-rail-dot');
+  const lblEl = document.getElementById('tts-rail-lbl');
+
+  if (railEl) railEl.classList.toggle('rail-paused', paused);
+  if (fillEl) fillEl.style.height = pct + '%';
+  if (dotEl) dotEl.style.top = 'calc(' + pct + '% - 5px)';
+  if (lblEl) {
+    const stepTag = totalCells > 1 ? (' [' + humanIdx + '/' + totalCells + ']') : '';
+    if (customStatusText) {
+      lblEl.innerText = customStatusText + stepTag;
+    } else {
+      lblEl.innerText = paused
+        ? ('▶️ ПУСНИ (' + pct + '%)' + stepTag)
+        : ('⏸️ ПАУЗА • ' + pct + '%' + stepTag);
+    }
   }
-  return ttsEstimatedTotalSec;
 }
 
-// Стрелките ⬆️ и ⬇️ на страничната лента преместват четенето директно към предната или следващата клетка в рамките на същия MP3 файл!
-function stepTtsCell(delta) {
-  if (!activeId || stopped || !ttsSubBoxes.length) return;
-  const targetIdx = Math.max(0, Math.min(ttsSubBoxes.length - 1, ttsCurrentSubIdx + delta));
-  ttsCurrentSubIdx = targetIdx;
-  const targetSb = ttsSubBoxes[targetIdx];
-  const newRatio = targetSb.startRatio + 0.002;
+function highlightCellStatesByIndex(activeIdx) {
+  ttsCellQueue.forEach(function(cell, i) {
+    if (!cell.el) return;
+    cell.el.classList.remove('tts-subcard-active', 'tts-subcard-done');
+    if (i < activeIdx) {
+      if (!cell.isHeader) cell.el.classList.add('tts-subcard-done');
+    } else if (i === activeIdx) {
+      if (!cell.isHeader) cell.el.classList.add('tts-subcard-active');
+    }
+  });
+}
 
-  const audioEl = getTvAudioElement();
-  const totalSec = getEffectiveTotalAudioSec(audioEl);
-  ttsElapsedSec = newRatio * totalSec;
+function startCellProgressTicker(audioEl, targetId, cellObj) {
+  if (ttsTickerInterval) {
+    clearInterval(ttsTickerInterval);
+    ttsTickerInterval = null;
+  }
+  ttsLastTickMs = Date.now();
 
-  if (audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV) {
+  ttsTickerInterval = setInterval(function() {
+    if (stopped || paused || activeId !== targetId) return;
+    const now = Date.now();
+    const dt = (now - ttsLastTickMs) / 1000;
+    ttsLastTickMs = now;
+
+    if (audioEl && !audioEl.paused) {
+      ttsCellElapsedSec += dt;
+    }
+
+    // При 14.5 знака в секунда лентата не изпреварва гласа, а ако гласът е по-дълъг, чака на 96% до реалния край на аудиото!
+    const realDur = (audioEl && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration >= ttsCellEstimatedSec * 0.75)
+      ? audioEl.duration
+      : ttsCellEstimatedSec;
+    const curSec = (audioEl && audioEl.currentTime > 0 && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration >= ttsCellEstimatedSec * 0.75)
+      ? audioEl.currentTime
+      : ttsCellElapsedSec;
+
+    const localRatio = Math.min(0.96, curSec / Math.max(1, realDur));
+    updateCurrentCellRailUI(localRatio);
+    if (cellObj && cellObj.el && !cellObj.isHeader) {
+      positionScreenForCurrentCell(cellObj.el, localRatio, false);
+    }
+  }, 140);
+}
+
+// Изтегля чист MP3 за конкретната кутийка (с нормална честота 1.0 за Samsung TV) и го пази в кеша
+function fetchCellAudioFromServer(cellText) {
+  const trimmedText = String(cellText || '').slice(0, 1600).trim();
+  const cacheKey = PREFERRED_NEURAL_VOICE + '_sync10:' + trimmedText;
+
+  if (ttsFullAudioCache.has(cacheKey)) {
+    return Promise.resolve(ttsFullAudioCache.get(cacheKey));
+  }
+  if (ttsInFlightPromises.has(cacheKey)) {
+    return ttsInFlightPromises.get(cacheKey);
+  }
+
+  const driveUrl = getDriveUrl();
+  const secretKey = getDriveSecretKey() || 'Bug!2026';
+  const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
+  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&voice=' + encodeURIComponent(PREFERRED_NEURAL_VOICE) + '&ttsspeed=0.92&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
+
+  const prom = new Promise(function(resolve) {
+    fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res && res.status === 'ok' && res.audioDataUrl) {
+          const item = { dataUrl: res.audioDataUrl, engine: res.engine || 'edge-tts-neural' };
+          ttsFullAudioCache.set(cacheKey, item);
+          resolve(item);
+        } else {
+          resolve(null);
+        }
+      })
+      .catch(function() {
+        const cbName = 'tts_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        const sEl = document.createElement('script');
+        const tmr = setTimeout(function() {
+          if (window[cbName]) { delete window[cbName]; sEl.remove(); resolve(null); }
+        }, 14000);
+
+        window[cbName] = function(res) {
+          clearTimeout(tmr); delete window[cbName]; sEl.remove();
+          if (res && res.status === 'ok' && res.audioDataUrl) {
+            const item = { dataUrl: res.audioDataUrl, engine: res.engine || 'edge-tts-neural' };
+            ttsFullAudioCache.set(cacheKey, item);
+            resolve(item);
+          } else {
+            resolve(null);
+          }
+        };
+        sEl.onerror = function() {
+          clearTimeout(tmr); delete window[cbName]; sEl.remove();
+          resolve(null);
+        };
+        sEl.src = ttsApiUrl + '&callback=' + cbName;
+        document.body.appendChild(sEl);
+      });
+  }).finally(function() {
+    ttsInFlightPromises.delete(cacheKey);
+  });
+
+  ttsInFlightPromises.set(cacheKey, prom);
+  return prom;
+}
+
+// Чете кутийката докрай, прави синхронизираща пауза в края ѝ, изчаква следващата кутийка да е 100% изтеглена и я пуска от 0%!
+function playCurrentCellInQueue(targetId) {
+  if (stopped || activeId !== targetId) return;
+  if (ttsCurrentCellIdx < 0) ttsCurrentCellIdx = 0;
+  if (ttsCurrentCellIdx >= ttsCellQueue.length) {
+    stopSpeech();
+    return;
+  }
+
+  const cellObj = ttsCellQueue[ttsCurrentCellIdx];
+
+  // Предварително изтегляме следващите 3 кутийки във фонов режим, за да са готови в паметта преди да стигнем до тях!
+  for (let lookAhead = 1; lookAhead <= 3; lookAhead++) {
+    if (ttsCurrentCellIdx + lookAhead < ttsCellQueue.length) {
+      fetchCellAudioFromServer(ttsCellQueue[ttsCurrentCellIdx + lookAhead].text);
+    }
+  }
+
+  highlightCellStatesByIndex(ttsCurrentCellIdx);
+
+  const railHostEl = (!cellObj.isHeader && cellObj.el)
+    ? cellObj.el
+    : ((ttsCellQueue.find(function(c) { return !c.isHeader && c.el; }) || cellObj).el || ttsCurrentContainerEl);
+
+  if (railHostEl && targetId !== 'header-title') {
+    mountRailOnTargetBox(railHostEl);
+    updateCurrentCellRailUI(0, '⏳ СИНХРОН...');
+    if (!cellObj.isHeader) {
+      positionScreenForCurrentCell(railHostEl, 0, true);
+    }
+  }
+
+  fetchCellAudioFromServer(cellObj.text).then(function(audioData) {
+    if (stopped || activeId !== targetId) return;
+    if (!audioData || !audioData.dataUrl) {
+      ttsCurrentCellIdx++;
+      playCurrentCellInQueue(targetId);
+      return;
+    }
+
+    const audioEl = getTvAudioElement();
+    lastEngineUsedName = audioData.engine || 'edge-tts-neural';
+    ttsCellElapsedSec = 0;
+    const pauseChars = (cellObj.text.match(/[.!?;:]/g) || []).length * 5;
+    ttsCellEstimatedSec = Math.max(2.0, (cellObj.text.length + pauseChars) / 14.2);
+
+    if (paused) {
+      updatePlayButtonUI(targetId, 'paused', lastEngineUsedName);
+      updateCurrentCellRailUI(0);
+      audioEl.src = audioData.dataUrl;
+      return;
+    }
+
+    updatePlayButtonUI(targetId, 'playing', lastEngineUsedName);
+    updateCurrentCellRailUI(0);
+
+    audioEl.onplay = function() {
+      ttsLastTickMs = Date.now();
+      startCellProgressTicker(audioEl, targetId, cellObj);
+    };
+
+    // СИНХРОНИЗАЦИЯ МЕЖДУ КУТИЙКИТЕ: Когато гласът изговори последната дума на тази кутийка,
+    // запълваме лентата на 100%, правим кратка дикторска пауза (550 ms), през която гарантираме,
+    // че следващата кутийка е изтеглена, и тръгваме с нея на 100% синхрон!
+    audioEl.onended = function() {
+      stopTtsTicker();
+      if (stopped || activeId !== targetId) return;
+      updateCurrentCellRailUI(1, '✅ СИНХРОН');
+
+      const nextIdx = ttsCurrentCellIdx + 1;
+      if (nextIdx >= ttsCellQueue.length) {
+        ttsSyncPauseTimer = setTimeout(function() { stopSpeech(); }, 350);
+        return;
+      }
+
+      // Гарантираме, че следващата кутийка се тегли/е изтеглена през паузата
+      const nextReadyPromise = fetchCellAudioFromServer(ttsCellQueue[nextIdx].text);
+      ttsSyncPauseTimer = setTimeout(function() {
+        if (stopped || activeId !== targetId) return;
+        nextReadyPromise.then(function() {
+          if (stopped || activeId !== targetId) return;
+          ttsCurrentCellIdx = nextIdx;
+          if (!paused) {
+            playCurrentCellInQueue(targetId);
+          } else {
+            highlightCellStatesByIndex(ttsCurrentCellIdx);
+            const nextCell = ttsCellQueue[ttsCurrentCellIdx];
+            if (nextCell && nextCell.el && !nextCell.isHeader) {
+              mountRailOnTargetBox(nextCell.el);
+              positionScreenForCurrentCell(nextCell.el, 0, true);
+            }
+            updateCurrentCellRailUI(0);
+          }
+        });
+      }, 550);
+    };
+
+    audioEl.onerror = function() {
+      stopTtsTicker();
+      if (stopped || activeId !== targetId) return;
+      ttsCurrentCellIdx++;
+      if (ttsCurrentCellIdx < ttsCellQueue.length) {
+        playCurrentCellInQueue(targetId);
+      } else {
+        stopSpeech();
+      }
+    };
+
+    audioEl.src = audioData.dataUrl;
+    // ВАЖНО ЗА SAMSUNG TV: playbackRate = 1.0 пази гласа чист и естествен без никакво роботско изкривяване!
     try {
-      audioEl.currentTime = ttsElapsedSec;
+      audioEl.defaultPlaybackRate = 1.0;
+      audioEl.playbackRate = 1.0;
+      audioEl.currentTime = 0;
     } catch (e) {}
-  }
-  ttsLastScrolledSubIdx = -1;
-  updateSideRailProgress(newRatio);
+
+    const p = audioEl.play();
+    startCellProgressTicker(audioEl, targetId, cellObj);
+    if (p && typeof p.catch === 'function') {
+      p.catch(function() { stopSpeech(); });
+    }
+  });
 }
 
-function attachSideStopRail(containerEl, spokenCharLen) {
-  clearTtsVisualBox();
-  ensureSideBarTtsCSS();
-  if (!containerEl) return;
+// Стрелките ⬆️ и ⬇️ на страничната лента прехвърлят веднага на предната или следващата кутийка с точен синхрон!
+function stepTtsCell(delta) {
+  if (!activeId || stopped || !ttsCellQueue.length) return;
+  const audioEl = getTvAudioElement();
+  if (audioEl) {
+    try { audioEl.onended = null; audioEl.onerror = null; audioEl.pause(); } catch (e) {}
+  }
+  stopTtsTicker();
+  paused = false;
+  ttsCurrentCellIdx = Math.max(0, Math.min(ttsCellQueue.length - 1, ttsCurrentCellIdx + delta));
+  playCurrentCellInQueue(activeId);
+}
 
+function buildCellQueueForContainer(containerEl) {
+  ensureSideBarTtsCSS();
+  if (!containerEl) return [];
   ttsCurrentContainerEl = containerEl;
   containerEl.classList.add('tts-box-reading');
 
@@ -2281,128 +2520,20 @@ function attachSideStopRail(containerEl, spokenCharLen) {
     return !candidates.some(function(other) { return other !== c && other.contains(c); });
   });
 
-  let totalW = 0;
-  const weighted = [];
+  const cells = [];
   visibleBlocks.forEach(function(c) {
     const cleanTxt = prepareLiteraryBgText(c);
-    if (cleanTxt.length >= 2) {
-      const pauseWeight = (cleanTxt.match(/[.!?;:]/g) || []).length * 6 + 14;
-      const w = cleanTxt.length + pauseWeight;
-      totalW += w;
+    if (cleanTxt && cleanTxt.length >= 2) {
       const isHeader = c.classList.contains('memo-head') || c.classList.contains('zone-title');
-      weighted.push({ el: c, weight: w, isHeader: isHeader });
+      cells.push({ el: c, text: cleanTxt, isHeader: isHeader });
     }
   });
 
-  if (weighted.length > 0 && totalW > 0) {
-    let acc = 0;
-    ttsSubBoxes = weighted.map(function(item) {
-      const startR = acc / totalW;
-      acc += item.weight;
-      const endR = acc / totalW;
-      return { el: item.el, startRatio: startR, endRatio: endR, isHeader: item.isHeader };
-    });
+  if (!cells.length) {
+    const wholeTxt = prepareLiteraryBgText(containerEl);
+    if (wholeTxt) cells.push({ el: containerEl, text: wholeTxt, isHeader: false });
   }
-
-  // Спокойно дикторско темпо на сървъра (~12.4 знака в секунда при playbackRate = 1.0)
-  ttsEstimatedTotalSec = Math.max(3, (spokenCharLen || 100) / 12.4);
-  ttsLastScrolledSubIdx = -1;
-  ttsCurrentSubIdx = 0;
-
-  const firstCardBox = ttsSubBoxes.find(function(b) { return !b.isHeader; });
-  mountRailOnTargetBox(firstCardBox ? firstCardBox.el : containerEl);
-  updateSideRailProgress(0);
-}
-
-function updateSideRailProgress(ratio) {
-  const clamped = Math.min(1, Math.max(0, ratio));
-
-  if (ttsSubBoxes.length > 0) {
-    let activeIdx = -1;
-    ttsSubBoxes.forEach(function(sb, idx) {
-      sb.el.classList.remove('tts-subcard-active', 'tts-subcard-done');
-      if (clamped > sb.endRatio) {
-        if (!sb.isHeader) sb.el.classList.add('tts-subcard-done');
-      } else if (clamped >= sb.startRatio && clamped <= sb.endRatio && activeIdx === -1) {
-        if (!sb.isHeader) sb.el.classList.add('tts-subcard-active');
-        activeIdx = idx;
-      }
-    });
-
-    if (activeIdx === -1) activeIdx = ttsSubBoxes.length - 1;
-    ttsCurrentSubIdx = activeIdx;
-    const activeSb = ttsSubBoxes[activeIdx];
-    const spanRange = Math.max(0.005, activeSb.endRatio - activeSb.startRatio);
-    const localRatio = Math.min(1, Math.max(0, (clamped - activeSb.startRatio) / spanRange));
-    const localPct = Math.round(localRatio * 100);
-
-    const targetRailBox = activeSb.isHeader
-      ? ((ttsSubBoxes.find(function(b) { return !b.isHeader; }) || activeSb).el)
-      : activeSb.el;
-    mountRailOnTargetBox(targetRailBox);
-
-    const railEl = document.getElementById('tts-active-rail');
-    const fillEl = document.getElementById('tts-rail-fill');
-    const dotEl = document.getElementById('tts-rail-dot');
-    const lblEl = document.getElementById('tts-rail-lbl');
-
-    const shownPct = activeSb.isHeader ? 0 : localPct;
-    if (railEl) railEl.classList.toggle('rail-paused', paused);
-    if (fillEl) fillEl.style.height = shownPct + '%';
-    if (dotEl) dotEl.style.top = 'calc(' + shownPct + '% - 5px)';
-    if (lblEl) {
-      lblEl.innerText = paused ? ('▶️ ПУСНИ (' + shownPct + '%)') : ('⏸️ ПАУЗА • ' + shownPct + '%');
-    }
-
-    if (!paused && !activeSb.isHeader) {
-      const isNewSwitch = (activeIdx !== ttsLastScrolledSubIdx);
-      ttsLastScrolledSubIdx = activeIdx;
-      positionScreenOnCellSwitch(activeSb.el, localRatio, isNewSwitch);
-    }
-  } else if (ttsCurrentContainerEl) {
-    mountRailOnTargetBox(ttsCurrentContainerEl);
-    const pct = Math.round(clamped * 100);
-    const railEl = document.getElementById('tts-active-rail');
-    const fillEl = document.getElementById('tts-rail-fill');
-    const dotEl = document.getElementById('tts-rail-dot');
-    const lblEl = document.getElementById('tts-rail-lbl');
-
-    if (railEl) railEl.classList.toggle('rail-paused', paused);
-    if (fillEl) fillEl.style.height = pct + '%';
-    if (dotEl) dotEl.style.top = 'calc(' + pct + '% - 5px)';
-    if (lblEl) {
-      lblEl.innerText = paused ? ('▶️ ПУСНИ (' + pct + '%)') : ('⏸️ ПАУЗА • ' + pct + '%');
-    }
-
-    if (!paused) {
-      const isInitial = (ttsLastScrolledSubIdx === -1);
-      ttsLastScrolledSubIdx = 0;
-      positionScreenOnCellSwitch(ttsCurrentContainerEl, clamped, isInitial);
-    }
-  }
-}
-
-function startTtsLiveTicker(audioEl, targetId) {
-  stopTtsTicker();
-  ttsLastTickMs = Date.now();
-
-  ttsTickerInterval = setInterval(function() {
-    if (stopped || paused || activeId !== targetId) return;
-    const now = Date.now();
-    const dt = (now - ttsLastTickMs) / 1000;
-    ttsLastTickMs = now;
-
-    if (audioEl && !audioEl.paused) {
-      ttsElapsedSec += dt;
-    }
-
-    const totalSec = getEffectiveTotalAudioSec(audioEl);
-    const curSec = (audioEl && audioEl.currentTime > 0 && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration >= ttsEstimatedTotalSec * 0.75)
-      ? audioEl.currentTime
-      : ttsElapsedSec;
-
-    updateSideRailProgress(curSec / totalSec);
-  }, 150);
+  return cells;
 }
 
 function stopSpeech() {
@@ -2419,92 +2550,6 @@ function stopSpeech() {
   document.querySelectorAll('.speaking-glow').forEach(function(e) { e.classList.remove('speaking-glow'); });
   if (prevId) updatePlayButtonUI(prevId, 'stopped');
   activeId = null; queue = []; idx = 0;
-}
-
-// За Samsung TV и всички устройства: изтегля ЦЕЛИЯ урок накуп като 1 MP3 файл и го пуска с кристален звук на playbackRate = 1.0!
-function playFullTextOnTV(fullCleanText, targetId) {
-  const audioEl = getTvAudioElement();
-  const driveUrl = getDriveUrl();
-  const secretKey = getDriveSecretKey() || 'Bug!2026';
-  const trimmedText = fullCleanText.slice(0, 1800);
-  const cacheKey = PREFERRED_NEURAL_VOICE + '_full10:' + trimmedText;
-
-  function playReceivedDataUrl(dataUrl, engineName) {
-    if (stopped || activeId !== targetId) return;
-    lastEngineUsedName = engineName || 'edge-tts-neural';
-    paused = false;
-    ttsElapsedSec = 0;
-    updatePlayButtonUI(targetId, 'playing', lastEngineUsedName);
-
-    const targetContainer = document.getElementById(targetId);
-    if (targetContainer && targetId !== 'header-title') {
-      attachSideStopRail(targetContainer, trimmedText.length);
-    }
-
-    audioEl.onplay = function() {
-      ttsLastTickMs = Date.now();
-      startTtsLiveTicker(audioEl, targetId);
-    };
-    audioEl.onended = function() { stopSpeech(); };
-    audioEl.onerror = function() { stopSpeech(); };
-    audioEl.src = dataUrl;
-    // ВАЖНО ЗА SAMSUNG TV: playbackRate = 1.0 гарантира гладък, естествен невронен глас без накъсване и без роботско звучене!
-    try {
-      audioEl.defaultPlaybackRate = 1.0;
-      audioEl.playbackRate = 1.0;
-      audioEl.currentTime = 0;
-    } catch (e) {}
-    const p = audioEl.play();
-    startTtsLiveTicker(audioEl, targetId);
-    if (p && typeof p.catch === 'function') {
-      p.catch(function() { stopSpeech(); });
-    }
-  }
-
-  if (ttsFullAudioCache.has(cacheKey)) {
-    const cached = ttsFullAudioCache.get(cacheKey);
-    playReceivedDataUrl(cached.dataUrl, cached.engine);
-    return;
-  }
-
-  const sep = driveUrl.indexOf('?') !== -1 ? '&' : '?';
-  const ttsApiUrl = driveUrl + sep + 'mode=tts&key=' + encodeURIComponent(secretKey) + '&voice=' + encodeURIComponent(PREFERRED_NEURAL_VOICE) + '&ttsspeed=0.92&text=' + encodeURIComponent(trimmedText) + '&t=' + Date.now();
-
-  fetch(ttsApiUrl, { method: 'GET', redirect: 'follow' })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (stopped || activeId !== targetId) return;
-      if (res && res.status === 'ok' && res.audioDataUrl) {
-        ttsFullAudioCache.set(cacheKey, { dataUrl: res.audioDataUrl, engine: res.engine || 'edge-tts-neural' });
-        playReceivedDataUrl(res.audioDataUrl, res.engine || 'edge-tts-neural');
-      } else {
-        stopSpeech();
-      }
-    })
-    .catch(function() {
-      const cbName = 'tts_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-      const sEl = document.createElement('script');
-      const tmr = setTimeout(function() {
-        if (window[cbName]) { delete window[cbName]; sEl.remove(); stopSpeech(); }
-      }, 14000);
-
-      window[cbName] = function(res) {
-        clearTimeout(tmr); delete window[cbName]; sEl.remove();
-        if (stopped || activeId !== targetId) return;
-        if (res && res.status === 'ok' && res.audioDataUrl) {
-          ttsFullAudioCache.set(cacheKey, { dataUrl: res.audioDataUrl, engine: res.engine || 'edge-tts-neural' });
-          playReceivedDataUrl(res.audioDataUrl, res.engine || 'edge-tts-neural');
-        } else {
-          stopSpeech();
-        }
-      };
-      sEl.onerror = function() {
-        clearTimeout(tmr); delete window[cbName]; sEl.remove();
-        stopSpeech();
-      };
-      sEl.src = ttsApiUrl + '&callback=' + cbName;
-      document.body.appendChild(sEl);
-    });
 }
 
 // Пълен литературен, фонетичен и пунктуационен нормализатор за книжовен български изговор (7. клас)
@@ -2605,65 +2650,57 @@ function prepareLiteraryBgText(containerEl) {
 }
 
 function startSpeech(id, startIdx) {
-  const audioEl = getTvAudioElement();
-
-  if (activeId === id && !stopped && audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV && startIdx === 0) {
-    paused = false;
-    ttsElapsedSec = 0;
-    ttsLastTickMs = Date.now();
-    ttsLastScrolledSubIdx = -1;
-    try {
-      audioEl.currentTime = 0;
-      audioEl.playbackRate = 1.0;
-      updateSideRailProgress(0);
-      updatePlayButtonUI(id, 'playing', lastEngineUsedName);
-      startTtsLiveTicker(audioEl, id);
-      const p = audioEl.play();
-      if (p && typeof p.catch === 'function') p.catch(function() {});
-      return;
-    } catch (e) {}
-  }
-
   unlockTvAudioNow();
   const el = document.getElementById(id);
   if (!el) return;
-  clearTtsVisualBox();
-  const clean = prepareLiteraryBgText(el);
-  if (!clean) return;
 
   stopSpeech();
+  const cells = buildCellQueueForContainer(el);
+  if (!cells.length) return;
+
   activeId = id;
-  stopped = false; paused = false;
+  stopped = false;
+  paused = false;
+  ttsCellQueue = cells;
+  ttsCurrentCellIdx = startIdx || 0;
   el.classList.add('speaking-glow');
   updatePlayButtonUI(id, 'loading');
-  playFullTextOnTV(clean, id);
+  playCurrentCellInQueue(id);
 }
 
 function toggleSpeak(id) {
   const audioEl = getTvAudioElement();
-  if (activeId === id && !stopped && audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV) {
-    const totalSec = getEffectiveTotalAudioSec(audioEl);
-    const curSec = (audioEl.currentTime > 0 && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration >= ttsEstimatedTotalSec * 0.75)
+  if (activeId === id && !stopped && ttsCellQueue.length > 0) {
+    const realDur = (audioEl && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration >= ttsCellEstimatedSec * 0.75)
+      ? audioEl.duration
+      : ttsCellEstimatedSec;
+    const curSec = (audioEl && audioEl.currentTime > 0 && audioEl.duration && isFinite(audioEl.duration) && audioEl.duration >= ttsCellEstimatedSec * 0.75)
       ? audioEl.currentTime
-      : ttsElapsedSec;
-    const curRatio = curSec / totalSec;
+      : ttsCellElapsedSec;
+    const curRatio = Math.min(0.98, curSec / Math.max(1, realDur));
 
-    if (!paused && !audioEl.paused) {
+    if (!paused) {
       paused = true;
-      try { audioEl.pause(); } catch (e) {}
+      if (ttsSyncPauseTimer) { clearTimeout(ttsSyncPauseTimer); ttsSyncPauseTimer = null; }
+      try { if (audioEl) audioEl.pause(); } catch (e) {}
       updatePlayButtonUI(id, 'paused', lastEngineUsedName);
-      updateSideRailProgress(curRatio);
+      updateCurrentCellRailUI(curRatio);
     } else {
       paused = false;
       ttsLastTickMs = Date.now();
-      try { audioEl.playbackRate = 1.0; } catch (e) {}
       updatePlayButtonUI(id, 'playing', lastEngineUsedName);
-      updateSideRailProgress(curRatio);
-      startTtsLiveTicker(audioEl, id);
-      try {
-        const p = audioEl.play();
-        if (p && typeof p.catch === 'function') p.catch(function() { stopSpeech(); });
-      } catch (e) { stopSpeech(); }
+      updateCurrentCellRailUI(curRatio);
+      if (audioEl && audioEl.src && audioEl.src !== SILENT_UNLOCK_WAV && !audioEl.ended && audioEl.currentTime > 0) {
+        try { audioEl.playbackRate = 1.0; } catch (e) {}
+        const cellObj = ttsCellQueue[ttsCurrentCellIdx] || null;
+        startCellProgressTicker(audioEl, id, cellObj);
+        try {
+          const p = audioEl.play();
+          if (p && typeof p.catch === 'function') p.catch(function() { playCurrentCellInQueue(id); });
+        } catch (e) { playCurrentCellInQueue(id); }
+      } else {
+        playCurrentCellInQueue(id);
+      }
     }
   } else {
     startSpeech(id, 0);
@@ -2683,7 +2720,9 @@ function speakDirect(txt) {
   stopped = false; paused = false;
   const headEl = document.querySelector('header');
   if (headEl) headEl.classList.add('speaking-glow');
-  playFullTextOnTV(clean, 'header-title');
+  ttsCellQueue = [{ el: headEl, text: clean, isHeader: true }];
+  ttsCurrentCellIdx = 0;
+  playCurrentCellInQueue('header-title');
 }
 
 function speakGreeting() { speakDirect(ui('voiceGreeting')); }
